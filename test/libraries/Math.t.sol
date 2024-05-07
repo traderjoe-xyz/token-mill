@@ -15,9 +15,9 @@ contract MathTest is Test {
         uint256 y = x.addDelta(delta);
 
         if (delta < 0) {
-            assertEq(x - uint256(-delta), y);
+            assertEq(x - uint256(-delta), y, "test_Fuzz_AddDelta::1");
         } else {
-            assertEq(x + uint256(delta), y);
+            assertEq(x + uint256(delta), y, "test_Fuzz_AddDelta::2");
         }
     }
 
@@ -42,9 +42,9 @@ contract MathTest is Test {
         int256 delta = x.sub(y);
 
         if (y > x) {
-            assertEq(-int256(y - x), delta);
+            assertEq(-int256(y - x), delta, "test_Fuzz_Sub::1");
         } else {
-            assertEq(int256(x - y), delta);
+            assertEq(int256(x - y), delta, "test_Fuzz_Sub::2");
         }
     }
 
@@ -66,18 +66,27 @@ contract MathTest is Test {
     function test_Fuzz_MostSignificantBit(uint256 x) public {
         x = bound(x, 1, type(uint256).max);
 
-        uint8 msb = x.mostSignificantBit();
+        uint256 msb = x.mostSignificantBit();
 
-        assertGe(x, 1 << msb);
-        assertLt(x >> 1, 1 << msb);
+        assertGe(x, 1 << msb, "test_Fuzz_MostSignificantBit::1");
+        assertLt(x >> 1, 1 << msb, "test_Fuzz_MostSignificantBit::2");
     }
 
-    function test_Fuzz_Sqrt(uint256 x) public {
+    function test_Fuzz_SqrtRoundDown(uint256 x) public {
         x = bound(x, 0, type(uint256).max);
 
-        uint256 y = x.sqrt();
+        uint256 y = x.sqrt(false);
 
-        assertLe(y * y, x);
+        assertLe(y * y, x, "test_Fuzz_SqrtRoundDown::1");
         if (y < type(uint128).max) assertGt((y + 1) * (y + 1), x);
+    }
+
+    function test_Fuzz_SqrtRoundUp(uint256 x) public {
+        x = bound(x, 0, type(uint256).max);
+
+        uint256 y = x.sqrt(true);
+
+        if (y < type(uint128).max) assertGe(y * y, x, "test_Fuzz_Sqrt::0");
+        if (y > 0) assertLt((y - 1) * (y - 1), x);
     }
 }
