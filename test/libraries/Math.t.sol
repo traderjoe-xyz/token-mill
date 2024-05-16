@@ -3,10 +3,47 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
+import {Math as OZMath} from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import {Math} from "../../src/libraries/Math.sol";
 
 contract MathTest is Test {
     using Math for uint256;
+    using Math for int256;
+
+    function test_Fuzz_Min(uint256 x, uint256 y) public {
+        uint256 z = x.min(y);
+
+        if (x < y) {
+            assertEq(x, z, "test_Fuzz_Min::1");
+        } else {
+            assertEq(y, z, "test_Fuzz_Min::2");
+        }
+    }
+
+    function test_Fuzz_Max(uint256 x, uint256 y) public {
+        uint256 z = x.max(y);
+
+        if (x > y) {
+            assertEq(x, z, "test_Fuzz_Max::1");
+        } else {
+            assertEq(y, z, "test_Fuzz_Max::2");
+        }
+    }
+
+    function test_Fuzz_Abs(int256 x) public {
+        uint256 y = x.abs();
+
+        if (x < 0) {
+            if (x == type(int256).min) {
+                assertEq(uint256(type(int256).max) + 1, y, "test_Fuzz_Abs::0");
+            } else {
+                assertEq(uint256(-x), y, "test_Fuzz_Abs::1");
+            }
+        } else {
+            assertEq(uint256(x), y, "test_Fuzz_Abs::2");
+        }
+    }
 
     function test_Fuzz_AddDelta(uint256 x, int256 delta) public {
         x = bound(x, 0, uint256(type(int256).max));
@@ -35,32 +72,21 @@ contract MathTest is Test {
         x1.addDelta(delta1);
     }
 
-    function test_Fuzz_Sub(uint256 x, uint256 y) public {
-        x = bound(x, 0, uint256(type(int256).max));
-        y = bound(y, 0, uint256(type(int256).max));
+    function test_Fuzz_Div(uint256 x, uint256 y) public {
+        y = bound(y, 1, type(uint256).max);
 
-        int256 delta = x.sub(y);
+        uint256 z = x.div(y, true);
 
-        if (y > x) {
-            assertEq(-int256(y - x), delta, "test_Fuzz_Sub::1");
-        } else {
-            assertEq(int256(x - y), delta, "test_Fuzz_Sub::2");
-        }
+        assertEq(x == 0 ? 0 : (x - 1) / y + 1, z, "test_Fuzz_Div::1");
+
+        z = x.div(y, false);
+
+        assertEq(x / y, z, "test_Fuzz_Div::2");
     }
 
-    function test_Fuzz_Revert_Sub(uint256 x, uint256 y) public {
-        uint256 x0 = bound(x, uint256(type(int256).max) + 1, type(uint256).max);
-
-        vm.expectRevert(Math.Math__UnderOverflow.selector);
-        x0.sub(0);
-
-        uint256 y0 = bound(y, uint256(type(int256).max) + 1, type(uint256).max);
-
-        vm.expectRevert(Math.Math__UnderOverflow.selector);
-        uint256(0).sub(y0);
-
-        vm.expectRevert(Math.Math__UnderOverflow.selector);
-        x0.sub(y0);
+    function test_Fuzz_Revert_Div(uint256 x, bool roundUp) public {
+        vm.expectRevert(Math.Math__DivisionByZero.selector);
+        x.div(0, roundUp);
     }
 
     function test_Fuzz_MostSignificantBit(uint256 x) public {
@@ -72,21 +98,74 @@ contract MathTest is Test {
         assertLt(x >> 1, 1 << msb, "test_Fuzz_MostSignificantBit::2");
     }
 
-    function test_Fuzz_SqrtRoundDown(uint256 x) public {
-        x = bound(x, 0, type(uint256).max);
+    function test_Fuzz_MulDiv(uint256 x, uint256 y, uint256 z) public {
+        z = bound(z, 1, type(uint256).max);
 
-        uint256 y = x.sqrt(false);
+        bool roundUp = false;
 
-        assertLe(y * y, x, "test_Fuzz_SqrtRoundDown::1");
-        if (y < type(uint128).max) assertGt((y + 1) * (y + 1), x);
+        try this.OZMulDiv(x, y, z, roundUp) returns (uint256 r0) {
+            uint256 r1 = x.mulDiv(y, z, roundUp);
+
+            assertEq(r1, r0, "test_Fuzz_MulDiv::1");
+        } catch {
+            vm.expectRevert(Math.Math__UnderOverflow.selector);
+            x.mulDiv(y, z, roundUp);
+        }
+
+        roundUp = true;
+
+        try this.OZMulDiv(x, y, z, roundUp) returns (uint256 r0) {
+            uint256 r1 = x.mulDiv(y, z, roundUp);
+
+            assertEq(r1, r0, "test_Fuzz_MulDiv::1");
+        } catch {
+            vm.expectRevert(Math.Math__UnderOverflow.selector);
+            x.mulDiv(y, z, roundUp);
+        }
     }
 
-    function test_Fuzz_SqrtRoundUp(uint256 x) public {
+    function test_Fuzz_Revert_MulDiv(uint256 x, uint256 y, bool roundUp) public {
+        vm.expectRevert(Math.Math__DivisionByZero.selector);
+        x.mulDiv(y, 0, roundUp);
+    }
+
+    function test_Fuzz_Sqrt(uint256 x) public {
         x = bound(x, 0, type(uint256).max);
 
-        uint256 y = x.sqrt(true);
+        uint256 yDown = x.sqrt(false);
 
-        if (y < type(uint128).max) assertGe(y * y, x, "test_Fuzz_Sqrt::0");
-        if (y > 0) assertLt((y - 1) * (y - 1), x);
+        assertLe(yDown * yDown, x, "test_Fuzz_SqrtRoundDown::1");
+        if (yDown < type(uint128).max) assertGt((yDown + 1) * (yDown + 1), x);
+
+        uint256 yUp = x.sqrt(true);
+
+        if (yUp < type(uint128).max) assertGe(yUp * yUp, x, "test_Fuzz_Sqrt::0");
+        if (yUp > 0) assertLt((yUp - 1) * (yUp - 1), x);
+    }
+
+    function test_Fuzz_Sqrt512(uint256 x, uint256 y) public {
+        (uint256 xy0, uint256 xy1) = Math.mul512(x, y);
+
+        uint256 sxyDown = Math.sqrt512(xy0, xy1, false);
+        uint256 sxyUp = Math.sqrt512(xy0, xy1, true);
+
+        (uint256 xyDown0, uint256 xyDown1) = Math.mul512(sxyDown, sxyDown);
+        (uint256 xyUp0, uint256 xyUp1) = Math.mul512(sxyUp, sxyUp);
+
+        if (xyDown1 == xy1) {
+            assertLe(xyDown0, xy0, "test_Fuzz_Sqrt512::1");
+        } else {
+            assertLe(xyDown1, xy1, "test_Fuzz_Sqrt512::2");
+        }
+
+        if (xyUp1 == xy1) {
+            assertGe(xyUp0, xy0, "test_Fuzz_Sqrt512::3");
+        } else {
+            assertGe(xyUp1, xy1, "test_Fuzz_Sqrt512::4");
+        }
+    }
+
+    function OZMulDiv(uint256 x, uint256 y, uint256 z, bool roundUp) external pure returns (uint256) {
+        return OZMath.mulDiv(x, y, z, roundUp ? OZMath.Rounding.Ceil : OZMath.Rounding.Floor);
     }
 }

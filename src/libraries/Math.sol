@@ -19,18 +19,6 @@ library Math {
         if (success == 0) revert Math__UnderOverflow();
     }
 
-    function sub(uint256 x, uint256 y) internal pure returns (int256 delta) {
-        uint256 success;
-
-        assembly {
-            delta := sub(x, y)
-
-            success := iszero(or(gt(x, MAX_INT256), gt(y, MAX_INT256)))
-        }
-
-        if (success == 0) revert Math__UnderOverflow();
-    }
-
     function mostSignificantBit(uint256 x) internal pure returns (uint256 msb) {
         assembly {
             let n := mul(128, gt(x, 0xffffffffffffffffffffffffffffffff))
@@ -91,15 +79,22 @@ library Math {
     }
 
     function min(uint256 x, uint256 y) internal pure returns (uint256 r) {
-        return x < y ? x : y;
+        assembly {
+            r := xor(y, mul(xor(x, y), lt(x, y)))
+        }
     }
 
     function max(uint256 x, uint256 y) internal pure returns (uint256 r) {
-        return x > y ? x : y;
+        assembly {
+            r := xor(y, mul(xor(x, y), gt(x, y)))
+        }
     }
 
     function abs(int256 x) internal pure returns (uint256 r) {
-        return x < 0 ? uint256(-x) : uint256(x);
+        assembly {
+            let mask := sar(255, x)
+            r := xor(add(x, mask), mask)
+        }
     }
 
     function div(uint256 x, uint256 y, bool roundUp) internal pure returns (uint256 z) {
@@ -107,21 +102,6 @@ library Math {
 
         assembly {
             z := add(div(x, y), iszero(or(iszero(mod(x, y)), iszero(roundUp))))
-        }
-    }
-
-    function div(int256 x, int256 y, bool roundUp) internal pure returns (int256 z) {
-        if (y == 0) revert Math__DivisionByZero();
-
-        assembly {
-            switch roundUp
-            case 0 { z := sdiv(x, y) }
-            default {
-                switch sgt(x, 0)
-                    // todo optimize
-                case 0 { z := sub(sdiv(x, y), iszero(iszero(smod(x, y)))) }
-                default { z := add(sdiv(x, y), iszero(iszero(smod(x, y)))) }
-            }
         }
     }
 
@@ -153,9 +133,7 @@ library Math {
             // Handle non-overflow cases, 256 by 256 division
             switch iszero(prod1)
             case 1 {
-                result := div(prod0, denominator)
-
-                if roundUp { result := add(result, iszero(iszero(mod(prod0, denominator)))) }
+                result := add(div(prod0, denominator), iszero(or(iszero(mod(prod0, denominator)), iszero(roundUp))))
             }
             default {
                 // Make sure the result is less than 2^256. Also prevents denominator == 0
@@ -206,50 +184,118 @@ library Math {
                 // This will give us the correct result modulo 2^256. Since the preconditions guarantee that the outcome is
                 // less than 2^256, this is the final result. We don't need to compute the high bits of the result and prod1
                 // is no longer required.
-                result := mul(prod0, inverse)
+                let resultRoundedDown := mul(prod0, inverse)
+                result := add(resultRoundedDown, iszero(or(iszero(remainder), iszero(roundUp))))
+
+                // Check if the result didn't overflow
+                if lt(result, resultRoundedDown) {
+                    mstore(0x00, 0x11528576)
+                    revert(0x1c, 0x04) // revert with Math__UnderOverflow
+                }
             }
         }
     }
 
-    /**
-     * @notice Calculates floor(x * y / 2**offset) with full precision
-     * The result will be rounded following the roundUp parameter
-     * @dev Credit to Remco Bloemen under MIT license https://xn--2-umb.com/21/muldiv
-     * Requirements:
-     * - The offset needs to be strictly lower than 256
-     * - The result must fit within uint256
-     * Caveats:
-     * - This function does not work with fixed-point numbers
-     * @param x The multiplicand as an uint256
-     * @param y The multiplier as an uint256
-     * @param offset The offset as an uint256, can't be greater than 256
-     * @param roundUp Whether to round up or down
-     * @return result The result as an uint256
-     */
-    function mulShift(uint256 x, uint256 y, uint8 offset, bool roundUp) internal pure returns (uint256 result) {
-        // 512-bit multiply [prod1 prod0] = x * y. Compute the product mod 2^256 and mod 2^256 - 1, then use
-        // use the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
-        // variables such that product = prod1 * 2^256 + prod0.
+    function mul512(uint256 x, uint256 y) internal pure returns (uint256 z0, uint256 z1) {
         assembly {
             let mm := mulmod(x, y, not(0))
-            let prod0 := mul(x, y)
-            let prod1 := sub(sub(mm, prod0), lt(mm, prod0))
+            z0 := mul(x, y)
+            z1 := sub(sub(mm, z0), lt(mm, z0))
+        }
+    }
 
-            if prod0 {
-                let rounding := iszero(iszero(roundUp))
+    function add512(uint256 x0, uint256 x1, uint256 y0, uint256 y1) internal pure returns (uint256 z0, uint256 z1) {
+        assembly {
+            z0 := add(x0, y0)
+            z1 := add(add(x1, y1), lt(z0, x0))
+        }
 
-                result := add(shr(offset, sub(prod0, rounding)), rounding)
-            }
+        if (z1 < x1) revert Math__UnderOverflow();
+    }
 
-            if prod1 {
-                // Make sure the result is less than 2^256.
-                if shr(offset, prod1) {
-                    mstore(0x00, 0x11528576)
-                    revert(0x1c, 0x04) // revert with Math__UnderOverflow
-                }
+    /**
+     * @dev Credit to SimonSuckut for the implementation of the Karatsuba Square Root method
+     * See https://hal.inria.fr/inria-00072854/document for details.
+     * n = a_3 * b^3 + a_2 * b^2 + a_1 * b + a_0
+     * n = (a_3 * b + a_2) * b^2 + a_1 * b + a_0
+     * n = x1 * b^2 + x0
+     * where x1 = a_3 * b + a_2 and x0 = a_1 * b + a_0
+     */
+    function sqrt512(uint256 x0, uint256 x1, bool roundUp) internal pure returns (uint256 s) {
+        if (x1 == 0) return sqrt(x0, roundUp);
+        if (x1 > 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe) revert Math__UnderOverflow(); // max allowed is sqrt((2^256-1)^2), orelse round up would overflow
 
-                result := add(result, shl(sub(256, offset), prod1))
-            }
+        uint256 shift;
+
+        // Condition: a_3 >= b / 4
+        // => x_1 >= b^2 / 4 = 2^254
+        assembly {
+            let n := mul(lt(x1, 0x100000000000000000000000000000000), 128)
+            x1 := shl(n, x1)
+            shift := n
+
+            n := mul(lt(x1, 0x1000000000000000000000000000000000000000000000000), 64)
+            x1 := shl(n, x1)
+            shift := add(shift, n)
+
+            n := mul(lt(x1, 0x100000000000000000000000000000000000000000000000000000000), 32)
+            x1 := shl(n, x1)
+            shift := add(shift, n)
+
+            n := mul(lt(x1, 0x1000000000000000000000000000000000000000000000000000000000000), 16)
+            x1 := shl(n, x1)
+            shift := add(shift, n)
+
+            n := mul(lt(x1, 0x100000000000000000000000000000000000000000000000000000000000000), 8)
+            x1 := shl(n, x1)
+            shift := add(shift, n)
+
+            n := mul(lt(x1, 0x1000000000000000000000000000000000000000000000000000000000000000), 4)
+            x1 := shl(n, x1)
+            shift := add(shift, n)
+
+            n := mul(lt(x1, 0x4000000000000000000000000000000000000000000000000000000000000000), 2)
+            x1 := shl(n, x1)
+            shift := add(shift, n)
+
+            x1 := or(x1, shr(sub(256, shift), x0))
+            x0 := shl(shift, x0)
+        }
+
+        uint256 sp = sqrt(x1, false); // s' = sqrt(x1)
+
+        assembly {
+            let rp := sub(x1, mul(sp, sp)) // r' = x1 - s^2
+
+            let nom := or(shl(128, rp), shr(128, x0)) // r'b + a_1
+            let denom := shl(1, sp) // 2s'
+            let q := div(nom, denom) // q = floor(nom / denom)
+            let u := mod(nom, denom) // u = nom % denom
+
+            // The nominator can be bigger than 2**256. We know that rp < (sp+1) * (sp+1). As sp can be
+            // at most floor(sqrt(2**256 - 1)) we can conclude that the nominator has at most 513 bits
+            // set. An expensive 512x256 bit division can be avoided by treating the bit at position 513 manually
+            let carry := shr(128, rp)
+            let x := mul(carry, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+            q := add(q, div(x, denom))
+            u := add(u, add(carry, mod(x, denom)))
+            q := add(q, div(u, denom))
+            u := mod(u, denom)
+
+            s := add(shl(128, sp), q) // s'b + q
+
+            // r = u'b + a_0 - q^2
+            // r = (u_1 * b + u_0) * b + a_0 - (q_1 * b + q_0)^2
+            // r = u_1 * b^2 + u_0 * b + a_0 - q_1^2 * b^2 - 2 * q_1 * q_0 * b - q_0^2
+            // r < 0 <=> u_1 < q_1 or (u_1 == q_1 and u_0 * b + a_0 - 2 * q_1 * q_0 * b - q_0^2)
+            let rl := or(shl(128, u), and(x0, 0xffffffffffffffffffffffffffffffff)) // u_0 *b + a_0
+            let rr := mul(q, q) // q^2
+            let q1 := shr(128, q)
+            let u1 := shr(128, u)
+            s := sub(s, or(lt(u1, q1), and(eq(u1, q1), lt(rl, rr)))) // if r < 0 { s -= 1 }
+            s := shr(shr(1, shift), s) // s >>= (shift / 2)
+
+            s := add(s, iszero(or(eq(mul(s, s), x0), iszero(roundUp)))) // round up if necessary
         }
     }
 }
