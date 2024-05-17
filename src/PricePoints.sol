@@ -86,29 +86,36 @@ contract PricePoints {
         uint256 length = _pricePoints.length;
         require(supply <= _totalSupply, "PricePoints::getAmount: SUPPLY_EXCEEDED");
 
-        supply = supply * 1e18 / _basePrecision;
-        uint256 remainingScaled = baseAmount * 1e18 / _basePrecision;
+        uint256 basePrecision = _basePrecision;
+        uint256 widthScaled = _widthScaled;
 
-        uint256 i = supply / _widthScaled;
-        uint256 x = supply % _widthScaled;
+        supply = supply * 1e18 / basePrecision;
+        actualBaseAmount = baseAmount;
+
+        baseAmount = baseAmount * 1e18 / basePrecision;
+
+        uint256 i = supply / widthScaled;
+        supply = supply % widthScaled;
 
         uint256 p0 = _pricePoints[i];
 
-        while (remainingScaled > 0 && ++i < length) {
+        while (baseAmount > 0 && ++i < length) {
             uint256 p1 = _pricePoints[i];
 
-            uint256 dx = Math.min(remainingScaled, _widthScaled - x);
-            uint256 dy = Math.mulDiv(dx, (p1 - p0) * (dx + 2 * x) + 2 * p0 * _widthScaled, 2e18 * _widthScaled, roundUp);
+            uint256 deltaBase = Math.min(baseAmount, widthScaled - supply);
+            uint256 deltaQuote = Math.mulDiv(
+                deltaBase, (p1 - p0) * (deltaBase + 2 * supply) + 2 * p0 * widthScaled, 2e18 * widthScaled, roundUp
+            );
 
-            quoteAmount += dy;
-            remainingScaled -= dx;
+            quoteAmount += deltaQuote;
+            baseAmount -= deltaBase;
 
-            x = 0;
+            supply = 0;
             p0 = p1;
         }
 
         return (
-            baseAmount - Math.div((remainingScaled) * _basePrecision, 1e18, !roundUp),
+            actualBaseAmount - Math.div((baseAmount) * basePrecision, 1e18, !roundUp),
             Math.div(quoteAmount * _quotePrecision, 1e18, roundUp)
         );
     }
@@ -121,29 +128,34 @@ contract PricePoints {
         uint256 length = _pricePoints.length;
         require(supply <= _totalSupply, "PricePoints::getAmount: SUPPLY_EXCEEDED");
 
-        supply = supply * 1e18 / _basePrecision;
-        uint256 remainingScaled = quoteAmount * 1e18 / _quotePrecision;
+        uint256 basePrecision = _basePrecision;
+        uint256 quotePrecision = _quotePrecision;
 
-        uint256 i = supply / _widthScaled;
-        uint256 x = supply % _widthScaled;
+        uint256 widthScaled = _widthScaled;
+
+        uint256 supplyScaled = supply * 1e18 / basePrecision;
+        uint256 remainingQuote = quoteAmount * 1e18 / quotePrecision;
+
+        uint256 i = supplyScaled / widthScaled;
+        uint256 base = supplyScaled % widthScaled;
 
         uint256 p0 = _pricePoints[i];
 
-        while (remainingScaled > 0 && ++i < length) {
+        while (remainingQuote > 0 && ++i < length) {
             uint256 p1 = _pricePoints[i];
 
-            (uint256 dx, uint256 dy) = _getDeltaBaseOut(p0, p1, x, remainingScaled);
+            (uint256 deltaBase, uint256 deltaQuote) = _getDeltaBaseOut(p0, p1, widthScaled, base, remainingQuote);
 
-            baseAmount += dx;
-            remainingScaled -= dy;
+            baseAmount += deltaBase;
+            remainingQuote -= deltaQuote;
 
-            x = 0;
+            base = 0;
             p0 = p1;
         }
 
         return (
-            Math.div(baseAmount * _basePrecision, 1e18, false),
-            quoteAmount - Math.div(remainingScaled * _quotePrecision, 1e18, true)
+            Math.div(baseAmount * basePrecision, 1e18, false),
+            quoteAmount - Math.div(remainingQuote * quotePrecision, 1e18, true)
         );
     }
 
@@ -154,91 +166,96 @@ contract PricePoints {
     {
         require(supply <= _totalSupply, "PricePoints::getAmount: SUPPLY_EXCEEDED");
 
-        supply = supply * 1e18 / _basePrecision;
-        uint256 remainingScaled = quoteAmount * 1e18 / _quotePrecision;
+        uint256 basePrecision = _basePrecision;
+        uint256 quotePrecision = _quotePrecision;
 
-        uint256 i = supply / _widthScaled;
-        uint256 x = supply % _widthScaled;
+        uint256 widthScaled = _widthScaled;
 
-        if (x == 0) x = _widthScaled;
+        uint256 supplyScaled = supply * 1e18 / basePrecision;
+        uint256 remainingQuote = quoteAmount * 1e18 / quotePrecision;
+
+        uint256 i = supplyScaled / widthScaled;
+        uint256 base = supplyScaled % widthScaled;
+
+        if (base == 0) base = widthScaled;
         else ++i;
 
         uint256 p1 = _pricePoints[i];
 
-        while (remainingScaled > 0 && i > 0) {
+        while (remainingQuote > 0 && i > 0) {
             uint256 p0 = _pricePoints[--i];
 
-            (uint256 dx, uint256 dy) = _getDeltaBaseIn(p0, p1, x, remainingScaled);
+            (uint256 deltaBase, uint256 deltaQuote) = _getDeltaBaseIn(p0, p1, widthScaled, base, remainingQuote);
 
-            baseAmount += dx;
-            remainingScaled -= dy;
+            baseAmount += deltaBase;
+            remainingQuote -= deltaQuote;
 
-            x = _widthScaled;
+            base = widthScaled;
             p1 = p0;
         }
 
         return (
-            Math.div(baseAmount * _basePrecision, 1e18, true),
-            quoteAmount - Math.div(remainingScaled * _quotePrecision, 1e18, false)
+            Math.div(baseAmount * basePrecision, 1e18, true),
+            quoteAmount - Math.div(remainingQuote * quotePrecision, 1e18, false)
         );
     }
 
-    function _getDeltaBaseOut(uint256 p0, uint256 p1, uint256 x, uint256 remainingScaled)
+    function _getDeltaBaseOut(uint256 p0, uint256 p1, uint256 widthScaled, uint256 base, uint256 remainingQuote)
         private
-        view
-        returns (uint256 dx, uint256 dy)
+        pure
+        returns (uint256 deltaBase, uint256 deltaQuote)
     {
         uint256 dp = p1 - p0;
 
-        uint256 y = Math.mulDiv(x, dp * x + 2 * p0 * _widthScaled, 2e18 * _widthScaled, false);
-        uint256 nextY = Math.div((p0 + p1) * _widthScaled, 2e18, false);
+        uint256 currentQuote = Math.mulDiv(base, dp * base + 2 * p0 * widthScaled, 2e18 * widthScaled, false);
+        uint256 nextQuote = Math.div((p0 + p1) * widthScaled, 2e18, false);
 
-        uint256 maxdy = nextY - y;
+        uint256 maxQuote = nextQuote - currentQuote;
 
-        if (remainingScaled > maxdy) {
-            dy = maxdy;
-            dx = _widthScaled - x;
+        if (remainingQuote > maxQuote) {
+            deltaQuote = maxQuote;
+            deltaBase = widthScaled - base;
         } else {
-            dy = remainingScaled;
-            uint256 sqrtDiscriminant = _getSqrtDiscriminant(dp, p0, y + dy, false);
+            deltaQuote = remainingQuote;
+            uint256 sqrtDiscriminant = _getSqrtDiscriminant(dp, p0, widthScaled, currentQuote + deltaQuote, false);
 
-            uint256 termA = p0 * _widthScaled + x * dp;
-            uint256 termB = sqrtDiscriminant;
+            uint256 rl = sqrtDiscriminant;
+            uint256 rr = p0 * widthScaled + base * dp;
 
-            dx = termB > termA ? Math.div(termB - termA, dp, false) : 0;
+            deltaBase = rl > rr ? Math.div(rl - rr, dp, false) : 0;
         }
     }
 
-    function _getDeltaBaseIn(uint256 p0, uint256 p1, uint256 x, uint256 remainingScaled)
+    function _getDeltaBaseIn(uint256 p0, uint256 p1, uint256 widthScaled, uint256 base, uint256 remainingQuote)
         private
-        view
-        returns (uint256 dx, uint256 dy)
+        pure
+        returns (uint256 deltaBase, uint256 deltaQuote)
     {
         uint256 dp = p1 - p0;
-        uint256 y = Math.mulDiv(x, dp * x + 2 * p0 * _widthScaled, 2e18 * _widthScaled, false);
+        uint256 currentQuote = Math.mulDiv(base, dp * base + 2 * p0 * widthScaled, 2e18 * widthScaled, false);
 
-        if (remainingScaled > y) {
-            dy = y;
-            dx = x;
+        if (remainingQuote > currentQuote) {
+            deltaQuote = currentQuote;
+            deltaBase = base;
         } else {
-            dy = remainingScaled;
+            deltaQuote = remainingQuote;
 
-            uint256 sqrtDiscriminant = _getSqrtDiscriminant(dp, p0, y - dy, false);
+            uint256 sqrtDiscriminant = _getSqrtDiscriminant(dp, p0, widthScaled, currentQuote - deltaQuote, false);
 
-            uint256 termA = p0 * _widthScaled + x * dp;
-            uint256 termB = sqrtDiscriminant;
+            uint256 rl = p0 * widthScaled + base * dp;
+            uint256 rr = sqrtDiscriminant;
 
-            dx = termB < termA ? Math.div(termA - termB, dp, true) : 0;
+            deltaBase = rl > rr ? Math.div(rl - rr, dp, true) : 0;
         }
     }
 
-    function _getSqrtDiscriminant(uint256 dp, uint256 p0, uint256 y, bool roundUp)
+    function _getSqrtDiscriminant(uint256 dp, uint256 p0, uint256 widthScaled, uint256 currentQuote, bool roundUp)
         private
-        view
+        pure
         returns (uint256 sqrtDiscriminant)
     {
-        (uint256 dl0, uint256 dl1) = Math.mul512(_widthScaled * dp, y * 2e18);
-        (uint256 dr0, uint256 dr1) = Math.mul512(p0 * _widthScaled, p0 * _widthScaled);
+        (uint256 dl0, uint256 dl1) = Math.mul512(widthScaled * dp, currentQuote * 2e18);
+        (uint256 dr0, uint256 dr1) = Math.mul512(p0 * widthScaled, p0 * widthScaled);
 
         (uint256 d0, uint256 d1) = Math.add512(dl0, dl1, dr0, dr1);
 
