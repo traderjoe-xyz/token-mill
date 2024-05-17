@@ -4,6 +4,8 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 
 import "../src/PricePoints.sol";
+import "../src/libraries/ImmutableCreate.sol";
+import "../src/libraries/Helper.sol";
 
 contract PricePointsTest is Test {
     PricePoints _curve;
@@ -874,7 +876,15 @@ contract PricePointsTest is Test {
         totalSupply = bound(totalSupply, nb * 10 ** decimalsBase, type(uint128).max / 10 ** (18 - decimalsBase));
         totalSupply = (totalSupply / nb) * nb;
 
-        _curve = new PricePoints(pricePoints, totalSupply, decimalsBase, decimalsQuote);
+        uint256 widthScaled = (totalSupply / nb) * 1e18 / (10 ** decimalsBase);
+
+        uint256[] memory packedPrices = Helper.packPrices(pricePoints, pricePoints);
+
+        bytes memory args = abi.encodePacked(
+            totalSupply, widthScaled, 10 ** decimalsBase, 10 ** decimalsQuote, pricePoints.length, packedPrices
+        );
+
+        _curve = PricePoints(ImmutableCreate.create2(type(PricePoints).runtimeCode, args, 0));
 
         _pricePoints = pricePoints;
         _totalSupply = totalSupply;

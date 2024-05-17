@@ -58,10 +58,10 @@ contract PricePoints is ImmutableContract {
         uint256 i = supply / widthScaled;
         supply = supply % widthScaled;
 
-        uint256 p0 = _pricePoints(i);
+        uint256 p0 = _pricePoints(i, roundUp);
 
         while (baseAmount > 0 && ++i < length) {
-            uint256 p1 = _pricePoints(i);
+            uint256 p1 = _pricePoints(i, roundUp);
 
             uint256 deltaBase = Math.min(baseAmount, widthScaled - supply);
             uint256 deltaQuote = Math.mulDiv(
@@ -100,10 +100,10 @@ contract PricePoints is ImmutableContract {
         uint256 i = supplyScaled / widthScaled;
         uint256 base = supplyScaled % widthScaled;
 
-        uint256 p0 = _pricePoints(i);
+        uint256 p0 = _pricePoints(i, true);
 
         while (remainingQuote > 0 && ++i < length) {
-            uint256 p1 = _pricePoints(i);
+            uint256 p1 = _pricePoints(i, true);
 
             (uint256 deltaBase, uint256 deltaQuote) = _getDeltaBaseOut(p0, p1, widthScaled, base, remainingQuote);
 
@@ -141,10 +141,10 @@ contract PricePoints is ImmutableContract {
         if (base == 0) base = widthScaled;
         else ++i;
 
-        uint256 p1 = _pricePoints(i);
+        uint256 p1 = _pricePoints(i, false);
 
         while (remainingQuote > 0 && i > 0) {
-            uint256 p0 = _pricePoints(--i);
+            uint256 p0 = _pricePoints(--i, false);
 
             (uint256 deltaBase, uint256 deltaQuote) = _getDeltaBaseIn(p0, p1, widthScaled, base, remainingQuote);
 
@@ -243,7 +243,7 @@ contract PricePoints is ImmutableContract {
         return _getUint256(0x80);
     }
 
-    function _pricePoints(uint256 i) internal pure returns (uint256) {
-        return _getUint256(0xa0 + i * 0x20);
+    function _pricePoints(uint256 i, bool bid) internal pure returns (uint256) {
+        return _getUint((bid ? 0xb0 : 0xa0) + i * 0x20, 128);
     }
 }
