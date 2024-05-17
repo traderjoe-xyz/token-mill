@@ -2,6 +2,15 @@
 pragma solidity ^0.8.20;
 
 abstract contract ImmutableContract {
+    function _getAddress(uint256 argOffset) internal pure returns (address value) {
+        bytes32 offset = _getOffset();
+
+        assembly {
+            codecopy(0, add(offset, argOffset), 0x20)
+            value := shr(96, mload(0))
+        }
+    }
+
     function _getUint256(uint256 argOffset) internal pure returns (uint256 value) {
         bytes32 offset = _getOffset();
 

@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "../src/libraries/Math.sol";
-import "../src/libraries/ImmutableContract.sol";
+import {Math} from "../src/libraries/Math.sol";
 
-contract PricePoints is ImmutableContract {
+abstract contract PricePoints {
+    error PricePoints__TotalSupplyExceeded();
+
     function getDeltaQuoteAmount(uint256 supply, int256 deltaBaseAmount)
         public
-        pure
+        view
         returns (int256 actualDeltaBaseAmount, int256 deltaQuoteAmount)
     {
         if (deltaBaseAmount == 0) return (0, 0);
@@ -16,7 +17,7 @@ contract PricePoints is ImmutableContract {
             ? (supply - uint256(deltaBaseAmount), uint256(deltaBaseAmount))
             : (supply, uint256(-deltaBaseAmount));
 
-        (uint256 baseAmount, uint256 quoteAmount) = getQuoteAmount(circSupply, base, deltaBaseAmount < 0);
+        (uint256 baseAmount, uint256 quoteAmount) = _getQuoteAmount(circSupply, base, deltaBaseAmount < 0);
 
         return deltaBaseAmount > 0
             ? (int256(baseAmount), -int256(quoteAmount))
@@ -25,27 +26,28 @@ contract PricePoints is ImmutableContract {
 
     function getDeltaBaseAmount(uint256 supply, int256 deltaQuoteAmount)
         public
-        pure
+        view
         returns (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount)
     {
         if (deltaQuoteAmount == 0) return (0, 0);
 
         if (deltaQuoteAmount > 0) {
-            (uint256 baseAmount, uint256 quoteAmount) = getBaseAmountOut(supply, uint256(deltaQuoteAmount));
+            (uint256 baseAmount, uint256 quoteAmount) = _getBaseAmountOut(supply, uint256(deltaQuoteAmount));
             return (-int256(baseAmount), int256(quoteAmount));
         } else {
-            (uint256 baseAmount, uint256 quoteAmount) = getBaseAmountIn(supply, uint256(-deltaQuoteAmount));
+            (uint256 baseAmount, uint256 quoteAmount) = _getBaseAmountIn(supply, uint256(-deltaQuoteAmount));
             return (int256(baseAmount), -int256(quoteAmount));
         }
     }
 
-    function getQuoteAmount(uint256 supply, uint256 baseAmount, bool roundUp)
-        public
-        pure
+    function _getQuoteAmount(uint256 supply, uint256 baseAmount, bool roundUp)
+        internal
+        view
         returns (uint256 actualBaseAmount, uint256 quoteAmount)
     {
+        if (supply > _totalSupply()) revert PricePoints__TotalSupplyExceeded();
+
         uint256 length = _pricePointsLength();
-        require(supply <= _totalSupply(), "PricePoints::getAmount: SUPPLY_EXCEEDED");
 
         uint256 basePrecision = _basePrecision();
         uint256 widthScaled = _widthScaled();
@@ -81,13 +83,14 @@ contract PricePoints is ImmutableContract {
         );
     }
 
-    function getBaseAmountOut(uint256 supply, uint256 quoteAmount)
-        public
-        pure
+    function _getBaseAmountOut(uint256 supply, uint256 quoteAmount)
+        internal
+        view
         returns (uint256 baseAmount, uint256 actualQuoteAmount)
     {
+        if (supply > _totalSupply()) revert PricePoints__TotalSupplyExceeded();
+
         uint256 length = _pricePointsLength();
-        require(supply <= _totalSupply(), "PricePoints::getAmount: SUPPLY_EXCEEDED");
 
         uint256 basePrecision = _basePrecision();
         uint256 quotePrecision = _quotePrecision();
@@ -120,12 +123,12 @@ contract PricePoints is ImmutableContract {
         );
     }
 
-    function getBaseAmountIn(uint256 supply, uint256 quoteAmount)
-        public
-        pure
+    function _getBaseAmountIn(uint256 supply, uint256 quoteAmount)
+        internal
+        view
         returns (uint256 baseAmount, uint256 actualQuoteAmount)
     {
-        require(supply <= _totalSupply(), "PricePoints::getAmount: SUPPLY_EXCEEDED");
+        if (supply > _totalSupply()) revert PricePoints__TotalSupplyExceeded();
 
         uint256 basePrecision = _basePrecision();
         uint256 quotePrecision = _quotePrecision();
@@ -162,7 +165,7 @@ contract PricePoints is ImmutableContract {
     }
 
     function _getDeltaBaseOut(uint256 p0, uint256 p1, uint256 widthScaled, uint256 base, uint256 remainingQuote)
-        private
+        internal
         pure
         returns (uint256 deltaBase, uint256 deltaQuote)
     {
@@ -188,7 +191,7 @@ contract PricePoints is ImmutableContract {
     }
 
     function _getDeltaBaseIn(uint256 p0, uint256 p1, uint256 widthScaled, uint256 base, uint256 remainingQuote)
-        private
+        internal
         pure
         returns (uint256 deltaBase, uint256 deltaQuote)
     {
@@ -211,7 +214,7 @@ contract PricePoints is ImmutableContract {
     }
 
     function _getSqrtDiscriminant(uint256 dp, uint256 p0, uint256 widthScaled, uint256 currentQuote, bool roundUp)
-        private
+        internal
         pure
         returns (uint256 sqrtDiscriminant)
     {
@@ -223,27 +226,15 @@ contract PricePoints is ImmutableContract {
         return Math.sqrt512(d0, d1, roundUp);
     }
 
-    function _totalSupply() internal pure returns (uint256) {
-        return _getUint256(0x00);
-    }
+    function _totalSupply() internal view virtual returns (uint256);
 
-    function _widthScaled() internal pure returns (uint256) {
-        return _getUint256(0x20);
-    }
+    function _widthScaled() internal view virtual returns (uint256);
 
-    function _basePrecision() internal pure returns (uint256) {
-        return _getUint256(0x40);
-    }
+    function _basePrecision() internal view virtual returns (uint256);
 
-    function _quotePrecision() internal pure returns (uint256) {
-        return _getUint256(0x60);
-    }
+    function _quotePrecision() internal view virtual returns (uint256);
 
-    function _pricePointsLength() internal pure returns (uint256) {
-        return _getUint256(0x80);
-    }
+    function _pricePointsLength() internal view virtual returns (uint256);
 
-    function _pricePoints(uint256 i, bool bid) internal pure returns (uint256) {
-        return _getUint((bid ? 0xb0 : 0xa0) + i * 0x20, 128);
-    }
+    function _pricePoints(uint256 i, bool bid) internal view virtual returns (uint256);
 }
