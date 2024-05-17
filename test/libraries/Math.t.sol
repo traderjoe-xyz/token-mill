@@ -36,12 +36,12 @@ contract MathTest is Test {
 
         if (x < 0) {
             if (x == type(int256).min) {
-                assertEq(uint256(type(int256).max) + 1, y, "test_Fuzz_Abs::0");
+                assertEq(uint256(type(int256).max) + 1, y, "test_Fuzz_Abs::1");
             } else {
-                assertEq(uint256(-x), y, "test_Fuzz_Abs::1");
+                assertEq(uint256(-x), y, "test_Fuzz_Abs::2");
             }
         } else {
-            assertEq(uint256(x), y, "test_Fuzz_Abs::2");
+            assertEq(uint256(x), y, "test_Fuzz_Abs::3");
         }
     }
 
@@ -117,7 +117,7 @@ contract MathTest is Test {
         try this.OZMulDiv(x, y, z, roundUp) returns (uint256 r0) {
             uint256 r1 = x.mulDiv(y, z, roundUp);
 
-            assertEq(r1, r0, "test_Fuzz_MulDiv::1");
+            assertEq(r1, r0, "test_Fuzz_MulDiv::2");
         } catch {
             vm.expectRevert(Math.Math__UnderOverflow.selector);
             x.mulDiv(y, z, roundUp);
@@ -134,7 +134,7 @@ contract MathTest is Test {
 
         uint256 yDown = x.sqrt(false);
 
-        assertLe(yDown * yDown, x, "test_Fuzz_SqrtRoundDown::1");
+        assertLe(yDown * yDown, x, "test_Fuzz_Sqrt::1");
         if (yDown < type(uint128).max) assertGt((yDown + 1) * (yDown + 1), x);
 
         uint256 yUp = x.sqrt(true);

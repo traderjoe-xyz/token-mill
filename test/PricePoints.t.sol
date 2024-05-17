@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
-import "../src/Market.sol";
+import "../src/TMMarket.sol";
 import "../src/libraries/ImmutableCreate.sol";
 import "../src/libraries/Helper.sol";
 
@@ -18,7 +18,7 @@ contract PricePointsTest is Test {
 
     function setUp() public {}
 
-    function test_getAmount() public {
+    function test_GetAmount() public {
         uint256 decimalsBase = 9;
         uint256 decimalsQuote = 6;
         uint256 totalSupply = 500_000_000 * 10 ** decimalsBase;
@@ -32,8 +32,8 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_getAmount::1");
-            assertEq(actualQuoteAmount, quoteAmount, "test_getAmount::2");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::1");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::2");
         }
 
         {
@@ -43,8 +43,8 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_getAmount::3");
-            assertEq(actualQuoteAmount, quoteAmount, "test_getAmount::4");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::3");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::4");
         }
 
         {
@@ -54,8 +54,8 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_getAmount::5");
-            assertEq(actualQuoteAmount, quoteAmount, "test_getAmount::6");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::5");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::6");
         }
 
         {
@@ -65,8 +65,8 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_getAmount::7");
-            assertEq(actualQuoteAmount, quoteAmount, "test_getAmount::8");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::7");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::8");
         }
 
         {
@@ -76,8 +76,8 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_getAmount::9");
-            assertEq(actualQuoteAmount, quoteAmount, "test_getAmount::10");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::9");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::10");
         }
 
         {
@@ -87,8 +87,8 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_getAmount::11");
-            assertEq(actualQuoteAmount, quoteAmount, "test_getAmount::12");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::11");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::12");
         }
 
         {
@@ -98,8 +98,8 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_getAmount::13");
-            assertEq(actualQuoteAmount, quoteAmount, "test_getAmount::14");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::13");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::14");
         }
 
         {
@@ -109,12 +109,12 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount + 1);
 
-            assertEq(actualBaseAmount, baseAmount, "test_getAmount::15");
-            assertEq(actualQuoteAmount, quoteAmount, "test_getAmount::16");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::15");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::16");
         }
     }
 
-    function test_getDeltaAmount() public {
+    function test_GetDeltaAmount() public {
         uint256 decimalsBase = 9;
         uint256 decimalsQuote = 6;
         uint256 totalSupply = 500_000_000 * 10 ** decimalsBase;
@@ -129,8 +129,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply + uint256(-deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::1");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::2");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::1");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::2");
         }
 
         {
@@ -141,8 +141,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply - uint256(deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::3");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::4");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::3");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::4");
         }
 
         {
@@ -153,8 +153,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply + uint256(-deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::5");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::6");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::5");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::6");
         }
 
         {
@@ -165,8 +165,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply - uint256(deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::7");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::8");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::7");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::8");
         }
 
         {
@@ -177,8 +177,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply + uint256(-deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::9");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::10");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::9");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::10");
         }
 
         {
@@ -189,8 +189,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply - uint256(deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::11");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::12");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::11");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::12");
         }
 
         {
@@ -201,8 +201,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply + uint256(-deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::13");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::14");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::13");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::14");
         }
 
         {
@@ -213,8 +213,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply - uint256(deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::15");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::16");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::15");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::16");
         }
 
         {
@@ -225,8 +225,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply + uint256(-deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::17");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::18");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::17");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::18");
         }
 
         {
@@ -237,8 +237,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply - uint256(deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::19");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::20");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::19");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::20");
         }
 
         {
@@ -249,8 +249,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply + uint256(-deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::21");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::22");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::21");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::22");
         }
 
         {
@@ -261,8 +261,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply - uint256(deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::23");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::24");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::23");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::24");
         }
 
         {
@@ -273,8 +273,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply + uint256(-deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::25");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::26");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::25");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::26");
         }
 
         {
@@ -285,8 +285,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply - uint256(deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::27");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::28");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::27");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::28");
         }
 
         {
@@ -297,8 +297,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply + uint256(-deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::29");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::30");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::29");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::30");
         }
 
         {
@@ -309,8 +309,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply - uint256(deltaBase), -deltaQuoteAmount);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::31");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::32");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::31");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::32");
         }
 
         {
@@ -322,8 +322,8 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply + uint256(-deltaBase), -(deltaQuoteAmount + 1));
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::33");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::34");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::33");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::34");
         }
 
         {
@@ -334,12 +334,12 @@ contract PricePointsTest is Test {
             (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount) =
                 _market.getDeltaBaseAmount(circSupply - uint256(deltaBase), -(deltaQuoteAmount) + 1);
 
-            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_getDeltaAmount::35");
-            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_getDeltaAmount::36");
+            assertEq(actualDeltaBaseAmount, -deltaBaseAmount, "test_GetDeltaAmount::35");
+            assertEq(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_GetDeltaAmount::36");
         }
     }
 
-    function test_Fuzz_getQuoteAmount(
+    function test_Fuzz_GetQuoteAmount(
         uint256 totalSupply,
         uint256[] memory pricePoints,
         uint256 circSupply,
@@ -356,20 +356,20 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount,) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertGe(actualBaseAmount, baseAmount, "test_Fuzz_getQuoteAmount::1");
-            assertGe(base, actualBaseAmount, "test_Fuzz_getQuoteAmount::2");
+            assertGe(actualBaseAmount, baseAmount, "test_Fuzz_GetQuoteAmount::1");
+            assertGe(base, actualBaseAmount, "test_Fuzz_GetQuoteAmount::2");
         }
 
         {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, true);
             (uint256 baseAmount,) = _market.getBaseAmountIn(circSupply + actualBaseAmount, quoteAmount);
 
-            assertLe(actualBaseAmount, baseAmount, "test_Fuzz_getQuoteAmount::3");
-            assertGe(base, actualBaseAmount, "test_Fuzz_getQuoteAmount::4");
+            assertLe(actualBaseAmount, baseAmount, "test_Fuzz_GetQuoteAmount::3");
+            assertGe(base, actualBaseAmount, "test_Fuzz_GetQuoteAmount::4");
         }
     }
 
-    function test_Fuzz_getBaseAmount(
+    function test_Fuzz_GetBaseAmount(
         uint256 totalSupply,
         uint256[] memory pricePoints,
         uint256 circSupply,
@@ -388,20 +388,20 @@ contract PricePointsTest is Test {
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quote);
             (, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, baseAmount, false);
 
-            assertGe(actualQuoteAmount, quoteAmount, "test_Fuzz_getBaseAmount::1");
-            assertGe(quote, actualQuoteAmount, "test_Fuzz_getBaseAmount::2");
+            assertGe(actualQuoteAmount, quoteAmount, "test_Fuzz_GetBaseAmount::1");
+            assertGe(quote, actualQuoteAmount, "test_Fuzz_GetBaseAmount::2");
         }
 
         {
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountIn(circSupply, quote);
             (, uint256 quoteAmount) = _market.getQuoteAmount(circSupply - baseAmount, baseAmount, true);
 
-            assertLe(actualQuoteAmount, quoteAmount, "test_Fuzz_getBaseAmount::3");
-            assertGe(quote, actualQuoteAmount, "test_Fuzz_getBaseAmount::4");
+            assertLe(actualQuoteAmount, quoteAmount, "test_Fuzz_GetBaseAmount::3");
+            assertGe(quote, actualQuoteAmount, "test_Fuzz_GetBaseAmount::4");
         }
     }
 
-    function test_Fuzz_getDeltaQuoteAmount(
+    function test_Fuzz_GetDeltaQuoteAmount(
         uint256 totalSupply,
         uint256[] memory pricePoints,
         uint256 circSupply,
@@ -419,30 +419,30 @@ contract PricePointsTest is Test {
             _market.getDeltaBaseAmount(uint256(int256(circSupply) - actualDeltaBaseAmount), -deltaQuoteAmount);
 
         if (deltaBase == 0) {
-            assertEq(actualDeltaBaseAmount, 0, "test_Fuzz_getDeltaQuoteAmount::1");
-            assertEq(deltaQuoteAmount, 0, "test_Fuzz_getDeltaQuoteAmount::2");
-            assertEq(deltaBaseAmount, 0, "test_Fuzz_getDeltaQuoteAmount::3");
-            assertEq(actualDeltaQuoteAmount, 0, "test_Fuzz_getDeltaQuoteAmount::4");
+            assertEq(actualDeltaBaseAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::1");
+            assertEq(deltaQuoteAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::2");
+            assertEq(deltaBaseAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::3");
+            assertEq(actualDeltaQuoteAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::4");
         } else if (deltaBase > 0) {
-            assertGe(actualDeltaBaseAmount, 0, "test_Fuzz_getDeltaQuoteAmount::5");
-            assertLe(deltaQuoteAmount, 0, "test_Fuzz_getDeltaQuoteAmount::6");
-            assertLe(deltaBaseAmount, 0, "test_Fuzz_getDeltaQuoteAmount::7");
-            assertGe(actualDeltaQuoteAmount, 0, "test_Fuzz_getDeltaQuoteAmount::8");
+            assertGe(actualDeltaBaseAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::5");
+            assertLe(deltaQuoteAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::6");
+            assertLe(deltaBaseAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::7");
+            assertGe(actualDeltaQuoteAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::8");
 
-            assertGe(deltaBase, actualDeltaBaseAmount, "test_Fuzz_getDeltaQuoteAmount::9");
-            assertGe(actualDeltaBaseAmount, -deltaBaseAmount, "test_Fuzz_getDeltaQuoteAmount::10");
+            assertGe(deltaBase, actualDeltaBaseAmount, "test_Fuzz_GetDeltaQuoteAmount::9");
+            assertGe(actualDeltaBaseAmount, -deltaBaseAmount, "test_Fuzz_GetDeltaQuoteAmount::10");
         } else {
-            assertLe(actualDeltaBaseAmount, 0, "test_Fuzz_getDeltaQuoteAmount::11");
-            assertGe(deltaQuoteAmount, 0, "test_Fuzz_getDeltaQuoteAmount::12");
-            assertGe(deltaBaseAmount, 0, "test_Fuzz_getDeltaQuoteAmount::13");
-            assertLe(actualDeltaQuoteAmount, 0, "test_Fuzz_getDeltaQuoteAmount::14");
+            assertLe(actualDeltaBaseAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::11");
+            assertGe(deltaQuoteAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::12");
+            assertGe(deltaBaseAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::13");
+            assertLe(actualDeltaQuoteAmount, 0, "test_Fuzz_GetDeltaQuoteAmount::14");
 
-            assertGe(-deltaBase, -actualDeltaBaseAmount, "test_Fuzz_getDeltaQuoteAmount::15");
-            assertLe(-actualDeltaBaseAmount, deltaBaseAmount, "test_Fuzz_getDeltaQuoteAmount::16");
+            assertGe(-deltaBase, -actualDeltaBaseAmount, "test_Fuzz_GetDeltaQuoteAmount::15");
+            assertLe(-actualDeltaBaseAmount, deltaBaseAmount, "test_Fuzz_GetDeltaQuoteAmount::16");
         }
     }
 
-    function test_Fuzz_getDeltaBaseAmount(
+    function test_Fuzz_GetDeltaBaseAmount(
         uint256 totalSupply,
         uint256[] memory pricePoints,
         uint256 circSupply,
@@ -464,26 +464,26 @@ contract PricePointsTest is Test {
             _market.getDeltaQuoteAmount(uint256(int256(circSupply) - deltaBaseAmount), -deltaBaseAmount);
 
         if (deltaQuote == 0) {
-            assertEq(deltaBaseAmount, 0, "test_Fuzz_getDeltaBaseAmount::1");
-            assertEq(actualDeltaQuoteAmount, 0, "test_Fuzz_getDeltaBaseAmount::2");
-            assertEq(actualDeltaBaseAmount, 0, "test_Fuzz_getDeltaBaseAmount::3");
-            assertEq(deltaQuoteAmount, 0, "test_Fuzz_getDeltaBaseAmount::4");
+            assertEq(deltaBaseAmount, 0, "test_Fuzz_GetDeltaBaseAmount::1");
+            assertEq(actualDeltaQuoteAmount, 0, "test_Fuzz_GetDeltaBaseAmount::2");
+            assertEq(actualDeltaBaseAmount, 0, "test_Fuzz_GetDeltaBaseAmount::3");
+            assertEq(deltaQuoteAmount, 0, "test_Fuzz_GetDeltaBaseAmount::4");
         } else if (deltaQuote > 0) {
-            assertLe(deltaBaseAmount, 0, "test_Fuzz_getDeltaBaseAmount::5");
-            assertGe(actualDeltaQuoteAmount, 0, "test_Fuzz_getDeltaBaseAmount::6");
-            assertGe(actualDeltaBaseAmount, 0, "test_Fuzz_getDeltaBaseAmount::7");
-            assertLe(deltaQuoteAmount, 0, "test_Fuzz_getDeltaBaseAmount::8");
+            assertLe(deltaBaseAmount, 0, "test_Fuzz_GetDeltaBaseAmount::5");
+            assertGe(actualDeltaQuoteAmount, 0, "test_Fuzz_GetDeltaBaseAmount::6");
+            assertGe(actualDeltaBaseAmount, 0, "test_Fuzz_GetDeltaBaseAmount::7");
+            assertLe(deltaQuoteAmount, 0, "test_Fuzz_GetDeltaBaseAmount::8");
 
-            assertGe(deltaQuote, actualDeltaQuoteAmount, "test_Fuzz_getDeltaBaseAmount::9");
-            assertGe(actualDeltaQuoteAmount, -deltaQuoteAmount, "test_Fuzz_getDeltaBaseAmount::10");
+            assertGe(deltaQuote, actualDeltaQuoteAmount, "test_Fuzz_GetDeltaBaseAmount::9");
+            assertGe(actualDeltaQuoteAmount, -deltaQuoteAmount, "test_Fuzz_GetDeltaBaseAmount::10");
         } else {
-            assertGe(deltaBaseAmount, 0, "test_Fuzz_getDeltaBaseAmount::11");
-            assertLe(actualDeltaQuoteAmount, 0, "test_Fuzz_getDeltaBaseAmount::12");
-            assertLe(actualDeltaBaseAmount, 0, "test_Fuzz_getDeltaBaseAmount::13");
-            assertGe(deltaQuoteAmount, 0, "test_Fuzz_getDeltaBaseAmount::14");
+            assertGe(deltaBaseAmount, 0, "test_Fuzz_GetDeltaBaseAmount::11");
+            assertLe(actualDeltaQuoteAmount, 0, "test_Fuzz_GetDeltaBaseAmount::12");
+            assertLe(actualDeltaBaseAmount, 0, "test_Fuzz_GetDeltaBaseAmount::13");
+            assertGe(deltaQuoteAmount, 0, "test_Fuzz_GetDeltaBaseAmount::14");
 
-            assertGe(-deltaQuote, -actualDeltaQuoteAmount, "test_Fuzz_getDeltaBaseAmount::15");
-            assertLe(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_Fuzz_getDeltaBaseAmount::16");
+            assertGe(-deltaQuote, -actualDeltaQuoteAmount, "test_Fuzz_GetDeltaBaseAmount::15");
+            assertLe(-actualDeltaQuoteAmount, deltaQuoteAmount, "test_Fuzz_GetDeltaBaseAmount::16");
         }
     }
 
@@ -551,7 +551,7 @@ contract PricePointsTest is Test {
         }
     }
 
-    function test_Fuzz_getDeltaQuoteAmountSplitFirstSwap(
+    function test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap(
         uint256 totalSupply,
         uint256[] memory pricePoints,
         uint256 decimalsBase,
@@ -579,17 +579,19 @@ contract PricePointsTest is Test {
                 -(deltaQuoteAmount0 + deltaQuoteAmount1)
             );
 
-            assertEq(actualDeltaBaseAmount0, deltaBase0, "test_Fuzz_getDeltaQuoteAmount::1");
-            assertEq(actualDeltaBaseAmount1, deltaBase1, "test_Fuzz_getDeltaQuoteAmount::2");
+            assertEq(actualDeltaBaseAmount0, deltaBase0, "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::1");
+            assertEq(actualDeltaBaseAmount1, deltaBase1, "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::2");
             assertEq(
-                actualDeltaQuoteAmount01, -(deltaQuoteAmount0 + deltaQuoteAmount1), "test_Fuzz_getDeltaQuoteAmount::3"
+                actualDeltaQuoteAmount01,
+                -(deltaQuoteAmount0 + deltaQuoteAmount1),
+                "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::3"
             );
 
-            assertLe(deltaQuoteAmount0, 0, "test_Fuzz_getDeltaQuoteAmount::4");
-            assertLe(deltaQuoteAmount1, 0, "test_Fuzz_getDeltaQuoteAmount::5");
-            assertLe(deltaBaseAmount01, 0, "test_Fuzz_getDeltaQuoteAmount::6");
+            assertLe(deltaQuoteAmount0, 0, "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::4");
+            assertLe(deltaQuoteAmount1, 0, "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::5");
+            assertLe(deltaBaseAmount01, 0, "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::6");
 
-            assertLe(-deltaBaseAmount01, deltaBase0 + deltaBase1, "test_Fuzz_getDeltaQuoteAmount::7");
+            assertLe(-deltaBaseAmount01, deltaBase0 + deltaBase1, "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::7");
         }
 
         // deltaBase <= 0
@@ -607,21 +609,23 @@ contract PricePointsTest is Test {
                 -(deltaQuoteAmount0 + deltaQuoteAmount1)
             );
 
-            assertEq(actualDeltaBaseAmount0, deltaBase0, "test_Fuzz_getDeltaQuoteAmount::8");
-            assertEq(actualDeltaBaseAmount1, deltaBase1, "test_Fuzz_getDeltaQuoteAmount::9");
+            assertEq(actualDeltaBaseAmount0, deltaBase0, "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::8");
+            assertEq(actualDeltaBaseAmount1, deltaBase1, "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::9");
             assertLe(
-                -actualDeltaQuoteAmount01, (deltaQuoteAmount0 + deltaQuoteAmount1), "test_Fuzz_getDeltaQuoteAmount::10"
+                -actualDeltaQuoteAmount01,
+                (deltaQuoteAmount0 + deltaQuoteAmount1),
+                "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::10"
             ); // Not always eq due to rounding
 
-            assertGe(deltaQuoteAmount0, 0, "test_Fuzz_getDeltaQuoteAmount::11");
-            assertGe(deltaQuoteAmount1, 0, "test_Fuzz_getDeltaQuoteAmount::12");
-            assertGe(deltaBaseAmount01, 0, "test_Fuzz_getDeltaQuoteAmount::13");
+            assertGe(deltaQuoteAmount0, 0, "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::11");
+            assertGe(deltaQuoteAmount1, 0, "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::12");
+            assertGe(deltaBaseAmount01, 0, "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::13");
 
-            assertGe(deltaBaseAmount01, -(deltaBase0 + deltaBase1), "test_Fuzz_getDeltaQuoteAmount::14");
+            assertGe(deltaBaseAmount01, -(deltaBase0 + deltaBase1), "test_Fuzz_GetDeltaQuoteAmountSplitFirstSwap::14");
         }
     }
 
-    function test_Fuzz_getDeltaQuoteAmountSplitSecondSwap(
+    function test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap(
         uint256 totalSupply,
         uint256[] memory pricePoints,
         uint256 decimalsBase,
@@ -650,15 +654,17 @@ contract PricePointsTest is Test {
                 uint256(int256(circSupply) - actualDeltaBaseAmount0 - deltaBaseAmount1), -deltaQuoteAmount2
             );
 
-            assertEq(actualDeltaBaseAmount0, deltaBase0, "test_Fuzz_getDeltaQuoteAmount::1");
-            assertEq(actualDeltaQuoteAmount1, -deltaQuoteAmount1, "test_Fuzz_getDeltaQuoteAmount::2");
-            assertEq(actualDeltaQuoteAmount2, -deltaQuoteAmount2, "test_Fuzz_getDeltaQuoteAmount::3");
+            assertEq(actualDeltaBaseAmount0, deltaBase0, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::1");
+            assertEq(actualDeltaQuoteAmount1, -deltaQuoteAmount1, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::2");
+            assertEq(actualDeltaQuoteAmount2, -deltaQuoteAmount2, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::3");
 
-            assertLe(deltaQuoteAmount0, 0, "test_Fuzz_getDeltaQuoteAmount::4");
-            assertLe(deltaBaseAmount1, 0, "test_Fuzz_getDeltaQuoteAmount::5");
-            assertLe(deltaBaseAmount2, 0, "test_Fuzz_getDeltaQuoteAmount::6");
+            assertLe(deltaQuoteAmount0, 0, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::4");
+            assertLe(deltaBaseAmount1, 0, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::5");
+            assertLe(deltaBaseAmount2, 0, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::6");
 
-            assertLe(-(deltaBaseAmount1 + deltaBaseAmount2), deltaBase0, "test_Fuzz_getDeltaQuoteAmount::7");
+            assertLe(
+                -(deltaBaseAmount1 + deltaBaseAmount2), deltaBase0, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::7"
+            );
         }
 
         // deltaBase <= 0
@@ -677,19 +683,21 @@ contract PricePointsTest is Test {
                 uint256(int256(circSupply) - actualDeltaBaseAmount0 - deltaBaseAmount1), -deltaQuoteAmount2
             );
 
-            assertEq(actualDeltaBaseAmount0, deltaBase0, "test_Fuzz_getDeltaQuoteAmount::8");
-            assertLe(-actualDeltaQuoteAmount1, deltaQuoteAmount1, "test_Fuzz_getDeltaQuoteAmount::9");
-            assertLe(-actualDeltaQuoteAmount2, deltaQuoteAmount2, "test_Fuzz_getDeltaQuoteAmount::10");
+            assertEq(actualDeltaBaseAmount0, deltaBase0, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::8");
+            assertLe(-actualDeltaQuoteAmount1, deltaQuoteAmount1, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::9");
+            assertLe(-actualDeltaQuoteAmount2, deltaQuoteAmount2, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::10");
 
-            assertGe(deltaQuoteAmount0, 0, "test_Fuzz_getDeltaQuoteAmount::11");
-            assertGe(deltaBaseAmount1, 0, "test_Fuzz_getDeltaQuoteAmount::12");
-            assertGe(deltaBaseAmount2, 0, "test_Fuzz_getDeltaQuoteAmount::13");
+            assertGe(deltaQuoteAmount0, 0, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::11");
+            assertGe(deltaBaseAmount1, 0, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::12");
+            assertGe(deltaBaseAmount2, 0, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::13");
 
-            assertGe((deltaBaseAmount1 + deltaBaseAmount2), -deltaBase0, "test_Fuzz_getDeltaQuoteAmount::14");
+            assertGe(
+                (deltaBaseAmount1 + deltaBaseAmount2), -deltaBase0, "test_Fuzz_GetDeltaQuoteAmountSplitSecondSwap::14"
+            );
         }
     }
 
-    function test_Fuzz_getDeltaBaseAmountSplitFirstSwap(
+    function test_Fuzz_GetDeltaBaseAmountSplitFirstSwap(
         uint256 totalSupply,
         uint256[] memory pricePoints,
         uint256 decimalsBase,
@@ -719,15 +727,19 @@ contract PricePointsTest is Test {
                 -(deltaBaseAmount0 + deltaBaseAmount1)
             );
 
-            assertEq(actualDeltaQuoteAmount0, deltaQuote0, "test_Fuzz_getDeltaBaseAmount::1");
-            assertEq(actualDeltaQuoteAmount1, deltaQuote1, "test_Fuzz_getDeltaBaseAmount::2");
-            assertEq(actualDeltaBaseAmount01, -(deltaBaseAmount0 + deltaBaseAmount1), "test_Fuzz_getDeltaBaseAmount::3");
+            assertEq(actualDeltaQuoteAmount0, deltaQuote0, "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::1");
+            assertEq(actualDeltaQuoteAmount1, deltaQuote1, "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::2");
+            assertEq(
+                actualDeltaBaseAmount01,
+                -(deltaBaseAmount0 + deltaBaseAmount1),
+                "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::3"
+            );
 
-            assertLe(deltaBaseAmount0, 0, "test_Fuzz_getDeltaBaseAmount::4");
-            assertLe(deltaBaseAmount1, 0, "test_Fuzz_getDeltaBaseAmount::5");
-            assertLe(deltaQuoteAmount01, 0, "test_Fuzz_getDeltaBaseAmount::6");
+            assertLe(deltaBaseAmount0, 0, "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::4");
+            assertLe(deltaBaseAmount1, 0, "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::5");
+            assertLe(deltaQuoteAmount01, 0, "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::6");
 
-            assertLe(-deltaQuoteAmount01, deltaQuote0 + deltaQuote1, "test_Fuzz_getDeltaBaseAmount::7");
+            assertLe(-deltaQuoteAmount01, deltaQuote0 + deltaQuote1, "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::7");
         }
 
         // deltaQuote <= 0
@@ -747,25 +759,27 @@ contract PricePointsTest is Test {
                 -(deltaBaseAmount0 + deltaBaseAmount1)
             );
 
-            assertEq(actualDeltaQuoteAmount0, deltaQuote0, "test_Fuzz_getDeltaBaseAmount::8");
-            assertLe(-actualDeltaQuoteAmount1, -deltaQuote1, "test_Fuzz_getDeltaBaseAmount::9");
+            assertEq(actualDeltaQuoteAmount0, deltaQuote0, "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::8");
+            assertLe(-actualDeltaQuoteAmount1, -deltaQuote1, "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::9");
             assertLe(
-                actualDeltaBaseAmount01, -(deltaBaseAmount0 + deltaBaseAmount1), "test_Fuzz_getDeltaBaseAmount::10"
+                actualDeltaBaseAmount01,
+                -(deltaBaseAmount0 + deltaBaseAmount1),
+                "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::10"
             ); // Not always eq due to rounding
 
-            assertGe(deltaBaseAmount0, 0, "test_Fuzz_getDeltaBaseAmount::11");
-            assertGe(deltaBaseAmount1, 0, "test_Fuzz_getDeltaBaseAmount::12");
-            assertGe(deltaQuoteAmount01, 0, "test_Fuzz_getDeltaBaseAmount::13");
+            assertGe(deltaBaseAmount0, 0, "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::11");
+            assertGe(deltaBaseAmount1, 0, "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::12");
+            assertGe(deltaQuoteAmount01, 0, "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::13");
 
             assertGe(
                 deltaQuoteAmount01,
                 -(actualDeltaQuoteAmount0 + actualDeltaQuoteAmount1),
-                "test_Fuzz_getDeltaBaseAmount::14"
+                "test_Fuzz_GetDeltaBaseAmountSplitFirstSwap::14"
             );
         }
     }
 
-    function test_Fuzz_getDeltaBaseAmountSplitSecondSwap(
+    function test_Fuzz_GetDeltaBaseAmountSplitSecondSwap(
         uint256 totalSupply,
         uint256[] memory pricePoints,
         uint256 decimalsBase,
@@ -796,15 +810,17 @@ contract PricePointsTest is Test {
                 uint256(int256(circSupply) - deltaBaseAmount0 - actualDeltaBaseAmount1), -deltaBaseAmount2
             );
 
-            assertEq(actualDeltaQuoteAmount0, deltaQuote0, "test_Fuzz_getDeltaBaseAmount::1");
-            assertEq(actualDeltaBaseAmount1, -deltaBaseAmount1, "test_Fuzz_getDeltaBaseAmount::2");
-            assertEq(actualDeltaBaseAmount2, -deltaBaseAmount2, "test_Fuzz_getDeltaBaseAmount::3");
+            assertEq(actualDeltaQuoteAmount0, deltaQuote0, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::1");
+            assertEq(actualDeltaBaseAmount1, -deltaBaseAmount1, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::2");
+            assertEq(actualDeltaBaseAmount2, -deltaBaseAmount2, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::3");
 
-            assertLe(deltaBaseAmount0, 0, "test_Fuzz_getDeltaBaseAmount::4");
-            assertLe(deltaQuoteAmount1, 0, "test_Fuzz_getDeltaBaseAmount::5");
-            assertLe(deltaQuoteAmount2, 0, "test_Fuzz_getDeltaBaseAmount::6");
+            assertLe(deltaBaseAmount0, 0, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::4");
+            assertLe(deltaQuoteAmount1, 0, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::5");
+            assertLe(deltaQuoteAmount2, 0, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::6");
 
-            assertLe(-(deltaQuoteAmount1 + deltaQuoteAmount2), deltaQuote0, "test_Fuzz_getDeltaBaseAmount::7");
+            assertLe(
+                -(deltaQuoteAmount1 + deltaQuoteAmount2), deltaQuote0, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::7"
+            );
         }
 
         // deltaQuote <= 0
@@ -825,18 +841,19 @@ contract PricePointsTest is Test {
                 uint256(int256(circSupply) - deltaBaseAmount0 - actualDeltaBaseAmount1), -deltaBaseAmount2
             );
 
-            assertEq(actualDeltaQuoteAmount0, deltaQuote0, "test_Fuzz_getDeltaBaseAmount::8");
-            assertLe(-actualDeltaBaseAmount1, deltaBaseAmount1, "test_Fuzz_getDeltaBaseAmount::9");
-            assertLe(-actualDeltaBaseAmount2, deltaBaseAmount2, "test_Fuzz_getDeltaBaseAmount::10"); // Not always eq due to rounding
+            assertEq(actualDeltaQuoteAmount0, deltaQuote0, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::8");
+            // Not always eq due to rounding
+            assertLe(-actualDeltaBaseAmount1, deltaBaseAmount1, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::9");
+            assertLe(-actualDeltaBaseAmount2, deltaBaseAmount2, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::10");
 
-            assertGe(deltaBaseAmount0, 0, "test_Fuzz_getDeltaBaseAmount::11");
-            assertGe(deltaQuoteAmount1, 0, "test_Fuzz_getDeltaBaseAmount::12");
-            assertGe(deltaQuoteAmount2, 0, "test_Fuzz_getDeltaBaseAmount::13");
+            assertGe(deltaBaseAmount0, 0, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::11");
+            assertGe(deltaQuoteAmount1, 0, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::12");
+            assertGe(deltaQuoteAmount2, 0, "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::13");
 
             assertGe(
                 -(deltaBaseAmount1 + deltaBaseAmount2),
                 actualDeltaBaseAmount1 + actualDeltaBaseAmount2,
-                "test_Fuzz_getDeltaBaseAmount::14"
+                "test_Fuzz_GetDeltaBaseAmountSplitSecondSwap::14"
             );
         }
     }
@@ -879,23 +896,26 @@ contract PricePointsTest is Test {
         address baseToken = address(new Decimals(uint8(decimalsBase)));
         address quoteToken = address(new Decimals(uint8(decimalsQuote)));
 
+        uint256[] memory packedPrices = Helper.packPrices(pricePoints, pricePoints);
+
         bytes memory immutableArgs =
-            Helper.getImmutableArgs(baseToken, quoteToken, totalSupply, pricePoints, pricePoints);
+            Helper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
 
         console.log(totalSupply, pricePoints.length);
         _market = MarketTestContract(ImmutableCreate.create2(type(MarketTestContract).runtimeCode, immutableArgs, 0));
 
-        assertEq(_market.getAddress(0), baseToken, "test_deployCurve::1");
-        assertEq(_market.getAddress(20), quoteToken, "test_deployCurve::2");
-        assertEq(_market.get(40, 64), 10 ** decimalsBase, "test_deployCurve::3");
-        assertEq(_market.get(48, 64), 10 ** decimalsQuote, "test_deployCurve::4");
-        assertEq(_market.get(56, 128), totalSupply, "test_deployCurve::5");
-        assertEq(_market.get(72, 128), (totalSupply / nb) * 1e18 / 10 ** decimalsBase, "test_deployCurve::6");
-        assertEq(_market.get(88, 16), pricePoints.length, "test_deployCurve::7");
+        assertEq(_market.getAddress(0), address(this), "_deployCurve::1");
+        assertEq(_market.getAddress(20), baseToken, "_deployCurve::2");
+        assertEq(_market.getAddress(40), quoteToken, "_deployCurve::3");
+        assertEq(_market.get(60, 64), 10 ** decimalsBase, "_deployCurve::4");
+        assertEq(_market.get(68, 64), 10 ** decimalsQuote, "_deployCurve::5");
+        assertEq(_market.get(76, 128), totalSupply, "_deployCurve::6");
+        assertEq(_market.get(92, 128), (totalSupply / nb) * 1e18 / 10 ** decimalsBase, "_deployCurve::7");
+        assertEq(_market.get(108, 16), pricePoints.length, "_deployCurve::8");
 
         for (uint256 i = 0; i < pricePoints.length; i++) {
-            assertEq(_market.get(90 + i * 0x20, 128), pricePoints[i], "test_deployCurve::8");
-            assertEq(_market.get(106 + i * 0x20, 128), pricePoints[i], "test_deployCurve::9");
+            assertEq(_market.get(110 + i * 0x20, 128), pricePoints[i], "_deployCurve::9");
+            assertEq(_market.get(126 + i * 0x20, 128), pricePoints[i], "_deployCurve::10");
         }
 
         _pricePoints = pricePoints;
@@ -905,7 +925,7 @@ contract PricePointsTest is Test {
     }
 }
 
-contract MarketTestContract is Market {
+contract MarketTestContract is TMMarket {
     function getAddress(uint256 i) public pure returns (address) {
         return _getAddress(i);
     }
