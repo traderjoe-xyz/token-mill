@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 import {TMMarket} from "./TMMarket.sol";
 import {ITMFactory} from "./interfaces/ITMFactory.sol";
@@ -12,12 +14,19 @@ import {Helper} from "./libraries/Helper.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
 
 contract TMFactory is Ownable, ITMFactory {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     address private _protocolFeeRecipient;
     uint64 private _protocolShare;
 
     mapping(string symbol => address market) private _registry;
     mapping(address market => MarketParameters) private _parameters;
+
     mapping(address token0 => mapping(address token1 => address market)) private _markets;
+    address[] private _allMarkets;
+
+    mapping(TokenType => address implementation) private _implementations;
+    EnumerableSet.AddressSet private _quoteTokens;
 
     constructor(uint64 protocolShare, address initialOwner) Ownable(initialOwner) {
         _updateProtocolShare(protocolShare);
@@ -48,7 +57,28 @@ contract TMFactory is Ownable, ITMFactory {
         return _registry[symbol];
     }
 
-    function createMarket(
+    function getMarketsLength() external view override returns (uint256) {
+        return _allMarkets.length;
+    }
+
+    function getMarketAt(uint256 index) external view override returns (address) {
+        return _allMarkets[index];
+    }
+
+    function getQuoteTokens() external view override returns (address[] memory) {
+        return _quoteTokens.values();
+    }
+
+    function isQuoteToken(address quoteToken) external view override returns (bool) {
+        return _quoteTokens.contains(quoteToken);
+    }
+
+    function getImplementation(TokenType tokenType) external view override returns (address) {
+        return _implementations[tokenType];
+    }
+
+    function createMarketAndToken(
+        TokenType tokenType,
         string memory name,
         string memory symbol,
         address quoteToken,
@@ -56,9 +86,32 @@ contract TMFactory is Ownable, ITMFactory {
         uint256[] memory bidPrices,
         uint256[] memory askPrices
     ) external override returns (address baseToken, address market) {
-        if (_registry[symbol] != address(0)) revert TMFactory__SymbolAlreadyExists();
+        baseToken = _createToken(tokenType, keccak256(bytes(symbol)));
+        market = _createMarket(name, symbol, baseToken, quoteToken, totalSupply, bidPrices, askPrices);
 
-        baseToken = address(new BasicERC20(name, symbol));
+        return (baseToken, market);
+    }
+
+    function _createToken(TokenType tokenType, bytes32 salt) internal returns (address token) {
+        address implementation = _implementations[tokenType];
+        if (implementation == address(0)) revert TMFactory__InvalidTokenType();
+
+        token = Clones.cloneDeterministic(implementation, salt, 0);
+
+        return token;
+    }
+
+    function _createMarket(
+        string memory name,
+        string memory symbol,
+        address baseToken,
+        address quoteToken,
+        uint256 totalSupply,
+        uint256[] memory bidPrices,
+        uint256[] memory askPrices
+    ) internal returns (address market) {
+        if (!_quoteTokens.contains(quoteToken)) revert TMFactory__InvalidQuoteToken();
+        if (_registry[symbol] != address(0)) revert TMFactory__SymbolAlreadyExists();
 
         uint256[] memory packedPrices = Helper.packPrices(bidPrices, askPrices);
         bytes memory immutableArgs =
@@ -67,27 +120,26 @@ contract TMFactory is Ownable, ITMFactory {
         market = ImmutableCreate.create2(type(TMMarket).runtimeCode, immutableArgs, 0);
         emit MarketCreated(quoteToken, msg.sender, baseToken, market, totalSupply, packedPrices);
 
-        BasicERC20(baseToken).initialize(market, totalSupply);
-
-        if (IERC20(baseToken).balanceOf(market) != totalSupply) revert Market__InvalidTotalSupply();
-
         uint64 protocolShare = _protocolShare;
 
         (address token0, address token1) = _sortTokens(baseToken, quoteToken);
 
-        _registry[symbol] = market;
+        _allMarkets.push(market);
         _markets[token0][token1] = market;
         _parameters[market] = MarketParameters(protocolShare, msg.sender);
+        _registry[symbol] = market;
 
         emit MarketParametersUpdated(market, protocolShare, msg.sender);
 
-        return (baseToken, market);
+        BasicERC20(baseToken).initialize(name, symbol, market, totalSupply);
+
+        if (IERC20(baseToken).balanceOf(market) != totalSupply) revert TMFactory__InvalidTotalSupply();
     }
 
     function updateCreator(address market, address creator) external override {
         MarketParameters storage parameters = _parameters[market];
 
-        if (msg.sender != parameters.creator) revert Market__InvalidCaller();
+        if (msg.sender != parameters.creator) revert TMFactory__InvalidCaller();
 
         parameters.creator = creator;
 
@@ -110,11 +162,33 @@ contract TMFactory is Ownable, ITMFactory {
         emit MarketParametersUpdated(market, protocolShare, parameters.creator);
     }
 
+    function updateTokenImplementation(TokenType tokenType, address implementation) external override onlyOwner {
+        if (tokenType == TokenType.Invalid) revert TMFactory__InvalidTokenType();
+
+        _implementations[tokenType] = implementation;
+
+        emit TokenImplementationUpdated(tokenType, implementation);
+    }
+
+    function addQuoteToken(address quoteToken) external override onlyOwner {
+        if (!_quoteTokens.add(quoteToken)) revert TMFactory__QuoteTokenAlreadyAdded();
+
+        emit QuoteTokenAdded(quoteToken);
+    }
+
+    function removeQuoteToken(address quoteToken) external override onlyOwner {
+        if (!_quoteTokens.remove(quoteToken)) revert TMFactory__QuoteTokenNotFound();
+
+        emit QuoteTokenRemoved(quoteToken);
+    }
+
     function _sortTokens(address tokenA, address tokenB) private pure returns (address, address) {
         return tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
     }
 
     function _updateProtocolShare(uint64 protocolShare) private {
+        if (protocolShare > 1e18) revert TMFactory__InvalidProtocolShare();
+
         _protocolShare = protocolShare;
 
         emit ProtocolShareUpdated(protocolShare);
