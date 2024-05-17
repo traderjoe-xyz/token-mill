@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Math} from "../src/libraries/Math.sol";
+import {Math} from "./Math.sol";
+import {IPricePoints} from "../interfaces/IPricePoints.sol";
 
-abstract contract PricePoints {
-    error PricePoints__TotalSupplyExceeded();
+abstract contract PricePoints is IPricePoints {
 
     function getDeltaQuoteAmount(uint256 supply, int256 deltaBaseAmount)
         public
         view
+        override
         returns (int256 actualDeltaBaseAmount, int256 deltaQuoteAmount)
     {
         if (deltaBaseAmount == 0) return (0, 0);
@@ -27,6 +28,7 @@ abstract contract PricePoints {
     function getDeltaBaseAmount(uint256 supply, int256 deltaQuoteAmount)
         public
         view
+        override
         returns (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount)
     {
         if (deltaQuoteAmount == 0) return (0, 0);

@@ -26,7 +26,7 @@ library Helper {
             revert PricePoints__InvalidLength();
         }
 
-        uint256[] memory packed = new uint256[](length);
+        uint256[] memory packedPrices = new uint256[](length);
 
         uint256 lastAskPrice;
         uint256 lastBidPrice;
@@ -41,7 +41,7 @@ library Helper {
                 revert PricePoints__OnlyIncreasingPrices();
             }
 
-            packed[i] = (askPrice << 128) | bidPrice;
+            packedPrices[i] = (askPrice << 128) | bidPrice;
 
             lastAskPrice = askPrice;
             lastBidPrice = bidPrice;
@@ -49,31 +49,32 @@ library Helper {
 
         if (lastAskPrice > MAX_PRICE) revert PricePoints__PriceTooHigh();
 
-        return packed;
+        return packedPrices;
     }
 
     function getImmutableArgs(
+        address factory,
         address baseToken,
         address quoteToken,
         uint256 totalSupply,
-        uint256[] memory bidPrices,
-        uint256[] memory askPrices
+        uint256[] memory packedPrices
     ) internal view returns (bytes memory) {
-        uint256[] memory packed = packPrices(bidPrices, askPrices);
-
-        uint256 length = packed.length;
+        uint256 length = packedPrices.length;
         uint256 nbIntervals = length - 1;
 
         (uint256 basePrecision, uint256 quotePrecision) = getTokensPrecision(baseToken, quoteToken);
 
-        uint256 width = totalSupply / nbIntervals;
-        uint256 widthScaled = width * 1e18 / basePrecision;
+        uint256 widthScaled = (totalSupply / nbIntervals) * 1e18 / basePrecision;
 
-        if (widthScaled < basePrecision || totalSupply > type(uint128).max || width * nbIntervals != totalSupply) {
+        if (
+            widthScaled < basePrecision || totalSupply > type(uint128).max
+                || (totalSupply / nbIntervals) * nbIntervals != totalSupply
+        ) {
             revert PricePoints__InvalidTotalSupply();
         }
 
         bytes memory args = abi.encodePacked(
+            factory,
             baseToken,
             quoteToken,
             uint64(basePrecision),
@@ -81,7 +82,7 @@ library Helper {
             uint128(totalSupply),
             uint128(widthScaled),
             uint16(length),
-            packed
+            packedPrices
         );
 
         return args;
