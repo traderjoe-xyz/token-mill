@@ -2,51 +2,12 @@
 pragma solidity ^0.8.20;
 
 import "../src/libraries/Math.sol";
+import "../src/libraries/ImmutableContract.sol";
 
-contract PricePoints {
-    uint256 private immutable _totalSupply;
-    uint256 private immutable _widthScaled;
-    uint256[] private _pricePoints; // todo make immutable
-
-    uint256 private immutable _basePrecision;
-    uint256 private immutable _quotePrecision;
-
-    constructor(uint256[] memory pricePoints, uint256 totalSupply, uint256 decimalsBase, uint256 decimalsQuote) {
-        uint256 length = pricePoints.length;
-
-        require(length >= 2 && length <= 100, "PricePoints::constructor: INVALID_LENGTH");
-        require(
-            totalSupply >= 10 ** decimalsBase * (length - 1) && totalSupply <= type(uint128).max,
-            "PricePoints::constructor: INVALID_SUPPLY"
-        );
-        require(decimalsBase <= 18, "PricePoints::constructor: INVALID_BASE_DECIMALS");
-        require(decimalsQuote <= 18, "PricePoints::constructor: INVALID_QUOTE_DECIMALS");
-
-        uint256 last = pricePoints[0];
-        for (uint256 i = 1; i < length; i++) {
-            uint256 current = pricePoints[i];
-            require(current > last, "PricePoints::constructor: UNORDERED_PRICES");
-            last = current;
-        }
-        require(last <= 1e36, "PricePoints::constructor: MAX_PRICE_EXCEEDED");
-
-        uint256 nb = length - 1;
-        uint256 width = totalSupply / nb;
-        uint256 basePrecision = 10 ** decimalsBase;
-        uint256 quotePrecision = 10 ** decimalsQuote;
-
-        require(width * 1e18 / basePrecision < type(uint128).max, "PricePoints::constructor: WIDTH_OVERFLOW");
-
-        _totalSupply = width * nb;
-        _widthScaled = width * 1e18 / basePrecision;
-        _pricePoints = pricePoints;
-        _basePrecision = basePrecision;
-        _quotePrecision = quotePrecision;
-    }
-
+contract PricePoints is ImmutableContract {
     function getDeltaQuoteAmount(uint256 supply, int256 deltaBaseAmount)
         public
-        view
+        pure
         returns (int256 actualDeltaBaseAmount, int256 deltaQuoteAmount)
     {
         if (deltaBaseAmount == 0) return (0, 0);
@@ -64,7 +25,7 @@ contract PricePoints {
 
     function getDeltaBaseAmount(uint256 supply, int256 deltaQuoteAmount)
         public
-        view
+        pure
         returns (int256 deltaBaseAmount, int256 actualDeltaQuoteAmount)
     {
         if (deltaQuoteAmount == 0) return (0, 0);
@@ -80,14 +41,14 @@ contract PricePoints {
 
     function getQuoteAmount(uint256 supply, uint256 baseAmount, bool roundUp)
         public
-        view
+        pure
         returns (uint256 actualBaseAmount, uint256 quoteAmount)
     {
-        uint256 length = _pricePoints.length;
-        require(supply <= _totalSupply, "PricePoints::getAmount: SUPPLY_EXCEEDED");
+        uint256 length = _pricePointsLength();
+        require(supply <= _totalSupply(), "PricePoints::getAmount: SUPPLY_EXCEEDED");
 
-        uint256 basePrecision = _basePrecision;
-        uint256 widthScaled = _widthScaled;
+        uint256 basePrecision = _basePrecision();
+        uint256 widthScaled = _widthScaled();
 
         supply = supply * 1e18 / basePrecision;
         actualBaseAmount = baseAmount;
@@ -97,10 +58,10 @@ contract PricePoints {
         uint256 i = supply / widthScaled;
         supply = supply % widthScaled;
 
-        uint256 p0 = _pricePoints[i];
+        uint256 p0 = _pricePoints(i);
 
         while (baseAmount > 0 && ++i < length) {
-            uint256 p1 = _pricePoints[i];
+            uint256 p1 = _pricePoints(i);
 
             uint256 deltaBase = Math.min(baseAmount, widthScaled - supply);
             uint256 deltaQuote = Math.mulDiv(
@@ -116,22 +77,22 @@ contract PricePoints {
 
         return (
             actualBaseAmount - Math.div((baseAmount) * basePrecision, 1e18, !roundUp),
-            Math.div(quoteAmount * _quotePrecision, 1e18, roundUp)
+            Math.div(quoteAmount * _quotePrecision(), 1e18, roundUp)
         );
     }
 
     function getBaseAmountOut(uint256 supply, uint256 quoteAmount)
         public
-        view
+        pure
         returns (uint256 baseAmount, uint256 actualQuoteAmount)
     {
-        uint256 length = _pricePoints.length;
-        require(supply <= _totalSupply, "PricePoints::getAmount: SUPPLY_EXCEEDED");
+        uint256 length = _pricePointsLength();
+        require(supply <= _totalSupply(), "PricePoints::getAmount: SUPPLY_EXCEEDED");
 
-        uint256 basePrecision = _basePrecision;
-        uint256 quotePrecision = _quotePrecision;
+        uint256 basePrecision = _basePrecision();
+        uint256 quotePrecision = _quotePrecision();
 
-        uint256 widthScaled = _widthScaled;
+        uint256 widthScaled = _widthScaled();
 
         uint256 supplyScaled = supply * 1e18 / basePrecision;
         uint256 remainingQuote = quoteAmount * 1e18 / quotePrecision;
@@ -139,10 +100,10 @@ contract PricePoints {
         uint256 i = supplyScaled / widthScaled;
         uint256 base = supplyScaled % widthScaled;
 
-        uint256 p0 = _pricePoints[i];
+        uint256 p0 = _pricePoints(i);
 
         while (remainingQuote > 0 && ++i < length) {
-            uint256 p1 = _pricePoints[i];
+            uint256 p1 = _pricePoints(i);
 
             (uint256 deltaBase, uint256 deltaQuote) = _getDeltaBaseOut(p0, p1, widthScaled, base, remainingQuote);
 
@@ -161,15 +122,15 @@ contract PricePoints {
 
     function getBaseAmountIn(uint256 supply, uint256 quoteAmount)
         public
-        view
+        pure
         returns (uint256 baseAmount, uint256 actualQuoteAmount)
     {
-        require(supply <= _totalSupply, "PricePoints::getAmount: SUPPLY_EXCEEDED");
+        require(supply <= _totalSupply(), "PricePoints::getAmount: SUPPLY_EXCEEDED");
 
-        uint256 basePrecision = _basePrecision;
-        uint256 quotePrecision = _quotePrecision;
+        uint256 basePrecision = _basePrecision();
+        uint256 quotePrecision = _quotePrecision();
 
-        uint256 widthScaled = _widthScaled;
+        uint256 widthScaled = _widthScaled();
 
         uint256 supplyScaled = supply * 1e18 / basePrecision;
         uint256 remainingQuote = quoteAmount * 1e18 / quotePrecision;
@@ -180,10 +141,10 @@ contract PricePoints {
         if (base == 0) base = widthScaled;
         else ++i;
 
-        uint256 p1 = _pricePoints[i];
+        uint256 p1 = _pricePoints(i);
 
         while (remainingQuote > 0 && i > 0) {
-            uint256 p0 = _pricePoints[--i];
+            uint256 p0 = _pricePoints(--i);
 
             (uint256 deltaBase, uint256 deltaQuote) = _getDeltaBaseIn(p0, p1, widthScaled, base, remainingQuote);
 
@@ -260,5 +221,29 @@ contract PricePoints {
         (uint256 d0, uint256 d1) = Math.add512(dl0, dl1, dr0, dr1);
 
         return Math.sqrt512(d0, d1, roundUp);
+    }
+
+    function _totalSupply() internal pure returns (uint256) {
+        return _getUint256(0x00);
+    }
+
+    function _widthScaled() internal pure returns (uint256) {
+        return _getUint256(0x20);
+    }
+
+    function _basePrecision() internal pure returns (uint256) {
+        return _getUint256(0x40);
+    }
+
+    function _quotePrecision() internal pure returns (uint256) {
+        return _getUint256(0x60);
+    }
+
+    function _pricePointsLength() internal pure returns (uint256) {
+        return _getUint256(0x80);
+    }
+
+    function _pricePoints(uint256 i) internal pure returns (uint256) {
+        return _getUint256(0xa0 + i * 0x20);
     }
 }
