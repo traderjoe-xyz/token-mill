@@ -10,14 +10,18 @@ interface ITMFactory {
     error TMFactory__QuoteTokenAlreadyAdded();
     error TMFactory__QuoteTokenNotFound();
     error TMFactory__InvalidTokenType();
+    error TMFactory__InvalidRecipient();
 
     // packedPrices = `(askPrice << 128) | bidPrice` for each price point
     event MarketCreated(
         address indexed quoteToken,
         address indexed creator,
-        address baseToken,
+        address indexed baseToken,
         address market,
         uint256 totalSupply,
+        string name,
+        string symbol,
+        uint8 decimals,
         uint256[] packedPrices
     );
     event MarketParametersUpdated(address indexed market, uint64 protocolShare, address creator);
@@ -25,6 +29,7 @@ interface ITMFactory {
     event TokenImplementationUpdated(TokenType tokenType, address implementation);
     event QuoteTokenAdded(address quoteToken);
     event QuoteTokenRemoved(address quoteToken);
+    event ProtocolFeeRecipientUpdated(address recipient);
 
     struct MarketParameters {
         uint64 protocolShare;
@@ -70,7 +75,11 @@ interface ITMFactory {
 
     function updateCreator(address market, address creator) external;
 
+    function claimFees(address market, address recipient) external returns (uint256 fees);
+
     function updateProtocolShare(uint64 protocolShare) external;
+
+    function updateProtocolFeeRecipient(address recipient) external;
 
     function updateProtocolShareOf(address market, uint64 protocolShare) external;
 

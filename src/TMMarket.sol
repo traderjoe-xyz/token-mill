@@ -16,8 +16,11 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     bool internal _locked;
     uint128 internal _circulatingSupply;
 
-    uint256 internal _protocolUnclaimedFees;
-    uint256 internal _creatorUnclaimedFees;
+    uint256 internal _protocolClaimedFees;
+    uint256 internal _protocolTotalFees;
+
+    uint256 internal _creatorClaimedFees;
+    uint256 internal _creatorTotalFees;
 
     modifier nonReentrant() {
         if (_locked) revert Market__ReentrantCall();
@@ -75,7 +78,10 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         (uint256 pendingProtocolFees, uint256 pendingCreatorFees) =
             _getPendingFees(ITMFactory(_factory()), IERC20(_quoteToken()));
 
-        return (pendingProtocolFees + _protocolUnclaimedFees, pendingCreatorFees + _creatorUnclaimedFees);
+        return (
+            _protocolTotalFees + pendingProtocolFees - _protocolClaimedFees,
+            _creatorTotalFees + pendingCreatorFees - _creatorClaimedFees
+        );
     }
 
     // TOKEN/USD -> TOKEN is base, USD is quote
@@ -123,39 +129,35 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         emit Swap(msg.sender, recipient, deltaBaseAmount, deltaQuoteAmount);
     }
 
-    function claimFees(address caller, address recipient) external override nonReentrant returns (uint256 fees) {
-        if (recipient == address(0)) revert Market__InvalidRecipient();
-
+    function claimFees(address caller, address recipient, bool isCreator, bool isProtocol)
+        external
+        override
+        nonReentrant
+        returns (uint256 fees)
+    {
         ITMFactory factory = ITMFactory(_factory());
 
         if (msg.sender != address(factory)) revert Market__OnlyFactory();
-
-        bool isCreator = caller == factory.getCreatorOf(address(this));
-        bool isProtocol = caller == factory.getProtocolFeeRecipient();
-
-        if (!isCreator && !isProtocol) revert Market__InvalidCaller();
 
         IERC20 quoteToken = IERC20(_quoteToken());
 
         (uint256 pendingProtocolFees, uint256 pendingCreatorFees) = _getPendingFees(factory, quoteToken);
 
-        if (pendingProtocolFees == 0 && pendingCreatorFees == 0) return 0;
+        uint256 protocolTotalFees = _protocolTotalFees + pendingProtocolFees;
+        uint256 creatorTotalFees = _creatorTotalFees + pendingCreatorFees;
 
-        uint256 protocolUnclaimedFees = _protocolUnclaimedFees + pendingProtocolFees;
-        uint256 creatorUnclaimedFees = _creatorUnclaimedFees + pendingCreatorFees;
+        if (pendingProtocolFees > 0) _protocolTotalFees = protocolTotalFees;
+        if (pendingCreatorFees > 0) _creatorTotalFees = creatorTotalFees;
 
         if (isProtocol) {
-            fees = protocolUnclaimedFees;
-            protocolUnclaimedFees = 0;
+            fees = protocolTotalFees - _protocolClaimedFees;
+            _protocolClaimedFees = protocolTotalFees;
         }
 
         if (isCreator) {
-            fees += creatorUnclaimedFees;
-            creatorUnclaimedFees = 0;
+            fees += creatorTotalFees - _creatorClaimedFees;
+            _creatorClaimedFees = creatorTotalFees;
         }
-
-        _protocolUnclaimedFees = protocolUnclaimedFees;
-        _creatorUnclaimedFees = creatorUnclaimedFees;
 
         if (fees > 0) {
             quoteToken.safeTransfer(recipient, fees);
@@ -172,7 +174,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 quoteBalance = quoteToken.balanceOf(address(this));
         (, uint256 minQuoteAmount) = _getQuoteAmount(0, _circulatingSupply, false);
 
-        if (quoteBalance <= minQuoteAmount) return (_protocolUnclaimedFees, _creatorUnclaimedFees);
+        if (quoteBalance <= minQuoteAmount) return (0, 0);
 
         uint256 totalFees = quoteBalance - minQuoteAmount;
         uint256 protocolShare = factory.getProtocolShareOf(address(this));

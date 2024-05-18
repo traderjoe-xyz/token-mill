@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {IERC20Metadata, IERC20} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import {TMMarket} from "./TMMarket.sol";
 import {ITMFactory} from "./interfaces/ITMFactory.sol";
@@ -118,7 +118,18 @@ contract TMFactory is Ownable, ITMFactory {
             Helper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
 
         market = ImmutableCreate.create2(type(TMMarket).runtimeCode, immutableArgs, 0);
-        emit MarketCreated(quoteToken, msg.sender, baseToken, market, totalSupply, packedPrices);
+
+        emit MarketCreated(
+            quoteToken,
+            msg.sender,
+            baseToken,
+            market,
+            totalSupply,
+            name,
+            symbol,
+            IERC20Metadata(baseToken).decimals(),
+            packedPrices
+        );
 
         uint64 protocolShare = _protocolShare;
 
@@ -146,16 +157,36 @@ contract TMFactory is Ownable, ITMFactory {
         emit MarketParametersUpdated(market, parameters.protocolShare, creator);
     }
 
+    function claimFees(address market, address recipient) external override returns (uint256 fees) {
+        if (recipient == address(0)) revert TMFactory__InvalidRecipient();
+
+        MarketParameters storage parameters = _parameters[market];
+
+        address creator = parameters.creator;
+        address protocolFeeRecipient = _protocolFeeRecipient;
+
+        bool isCreator = msg.sender == creator;
+        bool isProtocol = msg.sender == protocolFeeRecipient;
+
+        if (!isCreator && !isProtocol) revert TMFactory__InvalidCaller();
+
+        fees = ITMMarket(market).claimFees(msg.sender, recipient, isCreator, isProtocol);
+    }
+
     function updateProtocolShare(uint64 protocolShare) external override onlyOwner {
         _updateProtocolShare(protocolShare);
+    }
+
+    function updateProtocolFeeRecipient(address protocolFeeRecipient) external override onlyOwner {
+        _protocolFeeRecipient = protocolFeeRecipient;
+
+        emit ProtocolFeeRecipientUpdated(protocolFeeRecipient);
     }
 
     function updateProtocolShareOf(address market, uint64 protocolShare) external override onlyOwner {
         MarketParameters storage parameters = _parameters[market];
 
-        address protocolFeeRecipient = _protocolFeeRecipient;
-
-        ITMMarket(market).claimFees(protocolFeeRecipient, protocolFeeRecipient);
+        ITMMarket(market).claimFees(address(0), address(0), false, false);
 
         parameters.protocolShare = protocolShare;
 

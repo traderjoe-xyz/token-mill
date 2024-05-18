@@ -10,7 +10,6 @@ interface ITMMarket is IPricePoints {
     error Market__ReentrantCall();
     error Market__InvalidRecipient();
     error Market__OnlyFactory();
-    error Market__InvalidCaller();
 
     event Swap(address indexed sender, address indexed recipient, int256 deltaBaseAmount, int256 deltaQuoteAmount);
     event FeesClaimed(address indexed caller, address indexed recipient, uint256 fees);
@@ -33,5 +32,7 @@ interface ITMMarket is IPricePoints {
         external
         returns (int256 deltaBaseAmount, int256 deltaQuoteAmount);
 
-    function claimFees(address caller, address recipient) external returns (uint256 fees);
+    function claimFees(address caller, address recipient, bool isCreator, bool isProtocol)
+        external
+        returns (uint256 fees);
 }
