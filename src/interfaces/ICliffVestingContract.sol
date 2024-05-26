@@ -10,9 +10,7 @@ interface ICliffVestingContract {
     error CliffVestingContract__InvalidCliffDuration();
 
     event BeneficiarySet(address beneficiary);
-
     event Released(address beneficiary, uint256 amount);
-
     event Revoked();
 
     function factory() external view returns (address);

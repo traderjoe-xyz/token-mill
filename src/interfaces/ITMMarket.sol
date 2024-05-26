@@ -14,6 +14,8 @@ interface ITMMarket is IPricePoints {
     event Swap(address indexed sender, address indexed recipient, int256 deltaBaseAmount, int256 deltaQuoteAmount);
     event FeesClaimed(address indexed caller, address indexed recipient, uint256 fees);
 
+    function initialize() external;
+
     function getBaseToken() external pure returns (address);
 
     function getQuoteToken() external pure returns (address);
@@ -27,6 +29,11 @@ interface ITMMarket is IPricePoints {
     function getPricePoints(bool bid) external pure returns (uint256[] memory);
 
     function getPendingFees() external view returns (uint256 protocolFees, uint256 creatorFees);
+
+    function getDeltaAmounts(int256 deltaAmount, bool fillBid)
+        external
+        view
+        returns (int256 deltaBaseAmount, int256 deltaQuoteAmount);
 
     function swap(address recipient, int256 deltaAmount, bool fillBid, bytes calldata data)
         external

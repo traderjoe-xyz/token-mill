@@ -2,7 +2,6 @@
 pragma solidity ^0.8.20;
 
 interface ITMFactory {
-    error TMFactory__SymbolAlreadyExists();
     error TMFactory__InvalidTotalSupply();
     error TMFactory__InvalidCaller();
     error TMFactory__InvalidQuoteToken();
@@ -49,9 +48,7 @@ interface ITMFactory {
 
     function getProtocolFeeRecipient() external view returns (address);
 
-    function getMarket(address tokenA, address tokenB) external view returns (address);
-
-    function getMarketBySymbol(string memory symbol) external view returns (address);
+    function getMarket(address tokenA, address tokenB) external view returns (bool tokenAisBase, address market);
 
     function getMarketsLength() external view returns (uint256);
 
