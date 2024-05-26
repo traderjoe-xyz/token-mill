@@ -5,7 +5,6 @@ import {Math} from "./Math.sol";
 import {IPricePoints} from "../interfaces/IPricePoints.sol";
 
 abstract contract PricePoints is IPricePoints {
-
     function getDeltaQuoteAmount(uint256 supply, int256 deltaBaseAmount)
         public
         view
