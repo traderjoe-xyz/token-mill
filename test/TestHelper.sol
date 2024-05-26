@@ -4,14 +4,14 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 
 import "../src/TMFactory.sol";
-import "../src/TMRouter.sol";
+import "../src/Router.sol";
 import "../src/TMMarket.sol";
 import "../src/templates/BasicERC20.sol";
 import "./mocks/WNative.sol";
 
 contract TestHelper is Test {
     TMFactory public factory;
-    TMRouter public router;
+    Router public router;
     WNative public wnative;
 
     BasicERC20 public basicToken;
@@ -28,7 +28,7 @@ contract TestHelper is Test {
         wnative = new WNative();
 
         factory = new TMFactory(0.1e18, address(this));
-        router = new TMRouter(address(factory), address(wnative));
+        router = new Router(address(0), address(0), address(0), address(0), address(factory), address(wnative));
 
         basicToken = new BasicERC20();
 
@@ -78,7 +78,7 @@ contract TestHelper is Test {
         );
 
         vm.label(address(factory), "TMFactory");
-        vm.label(address(router), "TMRouter");
+        vm.label(address(router), "Router");
         vm.label(address(wnative), "WNative");
         vm.label(address(basicToken), "BasicERC20 Implementation");
 
