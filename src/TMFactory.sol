@@ -19,10 +19,9 @@ contract TMFactory is Ownable, ITMFactory {
     address private _protocolFeeRecipient;
     uint64 private _protocolShare;
 
-    mapping(string symbol => address market) private _registry;
     mapping(address market => MarketParameters) private _parameters;
 
-    mapping(address token0 => mapping(address token1 => address market)) private _markets;
+    mapping(address token0 => mapping(address token1 => uint256 packedMarket)) private _markets;
     address[] private _allMarkets;
 
     mapping(TokenType => address implementation) private _implementations;
@@ -48,13 +47,10 @@ contract TMFactory is Ownable, ITMFactory {
         return _protocolFeeRecipient;
     }
 
-    function getMarket(address tokenA, address tokenB) external view override returns (address) {
-        (address token0, address token1) = _sortTokens(tokenA, tokenB);
-        return _markets[token0][token1];
-    }
+    function getMarket(address tokenA, address tokenB) external view override returns (bool, address) {
+        uint256 encodedMarket = _markets[tokenA][tokenB];
 
-    function getMarketBySymbol(string memory symbol) external view override returns (address) {
-        return _registry[symbol];
+        return _decodeMarket(encodedMarket);
     }
 
     function getMarketsLength() external view override returns (uint256) {
@@ -111,13 +107,13 @@ contract TMFactory is Ownable, ITMFactory {
         uint256[] memory askPrices
     ) internal returns (address market) {
         if (!_quoteTokens.contains(quoteToken)) revert TMFactory__InvalidQuoteToken();
-        if (_registry[symbol] != address(0)) revert TMFactory__SymbolAlreadyExists();
 
         uint256[] memory packedPrices = Helper.packPrices(bidPrices, askPrices);
         bytes memory immutableArgs =
             Helper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
 
         market = ImmutableCreate.create2(type(TMMarket).runtimeCode, immutableArgs, 0);
+        ITMMarket(market).initialize();
 
         emit MarketCreated(
             quoteToken,
@@ -133,12 +129,10 @@ contract TMFactory is Ownable, ITMFactory {
 
         uint64 protocolShare = _protocolShare;
 
-        (address token0, address token1) = _sortTokens(baseToken, quoteToken);
-
         _allMarkets.push(market);
-        _markets[token0][token1] = market;
+        _markets[baseToken][quoteToken] = _encodeMarket(1, market);
+        _markets[quoteToken][baseToken] = _encodeMarket(0, market);
         _parameters[market] = MarketParameters(protocolShare, msg.sender);
-        _registry[symbol] = market;
 
         emit MarketParametersUpdated(market, protocolShare, msg.sender);
 
@@ -213,8 +207,13 @@ contract TMFactory is Ownable, ITMFactory {
         emit QuoteTokenRemoved(quoteToken);
     }
 
-    function _sortTokens(address tokenA, address tokenB) private pure returns (address, address) {
-        return tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+    function _encodeMarket(uint256 correctOrder, address market) private pure returns (uint256) {
+        return uint256(uint160(market) | correctOrder << 160);
+    }
+
+    function _decodeMarket(uint256 encodedMarket) private pure returns (bool correctOrder, address market) {
+        correctOrder = (encodedMarket >> 160) == 1;
+        market = address(uint160(encodedMarket));
     }
 
     function _updateProtocolShare(uint64 protocolShare) private {
