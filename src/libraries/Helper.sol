@@ -4,12 +4,12 @@ pragma solidity ^0.8.20;
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 library Helper {
-    error PricePoints__InvalidLength();
-    error PricePoints__BidAskMismatch();
-    error PricePoints__OnlyIncreasingPrices();
-    error PricePoints__PriceTooHigh();
-    error PricePoints__InvalidDecimals();
-    error PricePoints__InvalidTotalSupply();
+    error Helper__InvalidLength();
+    error Helper__BidAskMismatch();
+    error Helper__OnlyIncreasingPrices();
+    error Helper__PriceTooHigh();
+    error Helper__InvalidDecimals();
+    error Helper__InvalidTotalSupply();
 
     uint256 constant MIN_LENGTH = 2;
     uint256 constant MAX_LENGTH = 100;
@@ -23,7 +23,7 @@ library Helper {
     {
         uint256 length = bidPrices.length;
         if (length != askPrices.length || length < MIN_LENGTH || length > MAX_LENGTH) {
-            revert PricePoints__InvalidLength();
+            revert Helper__InvalidLength();
         }
 
         uint256[] memory packedPrices = new uint256[](length);
@@ -35,10 +35,10 @@ library Helper {
             uint256 askPrice = askPrices[i];
             uint256 bidPrice = bidPrices[i];
 
-            if (bidPrice > askPrice) revert PricePoints__BidAskMismatch();
+            if (bidPrice > askPrice) revert Helper__BidAskMismatch();
 
             if (i != 0 && (askPrice <= lastAskPrice || bidPrice <= lastBidPrice)) {
-                revert PricePoints__OnlyIncreasingPrices();
+                revert Helper__OnlyIncreasingPrices();
             }
 
             packedPrices[i] = (askPrice << 128) | bidPrice;
@@ -47,7 +47,7 @@ library Helper {
             lastBidPrice = bidPrice;
         }
 
-        if (lastAskPrice > MAX_PRICE) revert PricePoints__PriceTooHigh();
+        if (lastAskPrice > MAX_PRICE) revert Helper__PriceTooHigh();
 
         return packedPrices;
     }
@@ -70,7 +70,7 @@ library Helper {
             widthScaled < basePrecision || totalSupply > type(uint128).max
                 || (totalSupply / nbIntervals) * nbIntervals != totalSupply
         ) {
-            revert PricePoints__InvalidTotalSupply();
+            revert Helper__InvalidTotalSupply();
         }
 
         bytes memory args = abi.encodePacked(
@@ -96,7 +96,7 @@ library Helper {
         uint256 baseDecimals = IERC20Metadata(baseToken).decimals();
         uint256 quoteDecimals = IERC20Metadata(quoteToken).decimals();
 
-        if (baseDecimals > MAX_DECIMALS || quoteDecimals > MAX_DECIMALS) revert PricePoints__InvalidDecimals();
+        if (baseDecimals > MAX_DECIMALS || quoteDecimals > MAX_DECIMALS) revert Helper__InvalidDecimals();
 
         basePrecision = 10 ** baseDecimals;
         quotePrecision = 10 ** quoteDecimals;
