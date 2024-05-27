@@ -61,31 +61,4 @@ library PackedRoute {
             t := and(i, 0xffff)
         }
     }
-
-    // function dequeue(bytes memory route) internal pure returns (bytes memory, address token) {
-    //     uint256 l = route.length;
-    //     if (l < 20) return (route, address(0));
-
-    //     assembly {
-    //         token := shr(0x60, mload(add(route, 0x20)))
-
-    //         route := add(route, 24)
-    //         mstore(route, sub(l, 24))
-    //     }
-
-    //     return (route, token);
-    // }
-
-    // function pop(bytes memory route) internal pure returns (bytes memory, address token) {
-    //     uint256 l = route.length;
-    //     if (l < 20) return (route, address(0));
-
-    //     assembly {
-    //         token := shr(0x60, mload(add(route, add(l, 0x0c))))
-
-    //         mstore(route, sub(l, 24))
-    //     }
-
-    //     return (route, token);
-    // }
 }

@@ -39,9 +39,6 @@ contract Router {
 
     IWNATIVE internal immutable _wnative;
 
-    address internal _market;
-    uint256 internal _amountIn;
-
     constructor(
         address v1Factory,
         address v2_0Router,
