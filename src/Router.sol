@@ -64,8 +64,22 @@ contract Router {
         if (msg.sender != address(_wnative)) revert Router__OnlyWNative();
     }
 
-    function getFactory() external view returns (address) {
-        return address(_tmFactory);
+    function getFactory(uint256 v, uint256 sv) external view returns (address) {
+        if (v == 1) {
+            return address(_v1Factory);
+        } else if (v == 2) {
+            if (sv == 0) {
+                return address(_v2_0Factory);
+            } else if (sv == 1) {
+                return address(_v2_1Factory);
+            } else if (sv == 2) {
+                return address(_v2_2Factory);
+            }
+        } else if (v == 3) {
+            return address(_tmFactory);
+        }
+
+        return address(0);
     }
 
     function getWNative() external view returns (address) {
@@ -207,6 +221,10 @@ contract Router {
                     pair = _v1Factory.getPair(tokenIn, tokenOut);
                     if (pair == address(0)) revert Router__InvalidMarket();
                     if ((sv | t) != 0) revert Router__InvalidId();
+
+                    assembly {
+                        id := or(id, lt(tokenIn, tokenOut))
+                    }
                 } else if (v == 2) {
                     bool swapForY;
 
@@ -275,19 +293,12 @@ contract Router {
 
             if (v == 1) {
                 (uint256 reserveIn, uint256 reserveOut,) = IV1Pair(pair).getReserves();
-                (reserveIn, reserveOut) = tokenIn < tokenOut ? (reserveIn, reserveOut) : (reserveOut, reserveIn);
+                (reserveIn, reserveOut) = t == 1 ? (reserveIn, reserveOut) : (reserveOut, reserveIn);
 
                 uint256 numerator = reserveIn * amount * 1000;
                 uint256 denominator = (reserveOut - amount) * 997;
 
-                uint256 amountIn = Math.div(numerator, denominator, true);
-
-                if ((amountIn | amount) > type(uint112).max) revert Router__InvalidAmounts();
-
-                assembly {
-                    amount := or(shl(128, amountIn), amount)
-                    t := lt(tokenIn, tokenOut)
-                }
+                amount = Math.div(numerator, denominator, true);
             } else if (v == 2) {
                 if (sv == 0) {
                     (amount,) = _v2_0Router.getSwapIn(pair, uint128(amount), t == 1);
@@ -307,11 +318,11 @@ contract Router {
                     if (uint256(-deltaBaseAmount) != amount) revert Router__InvalidAmounts();
                     amount = uint256(deltaQuoteAmount);
                 }
-
-                amounts[i] = amount;
             } else {
                 revert Router__InvalidId();
             }
+
+            amounts[i] = amount;
         }
     }
 
@@ -387,10 +398,19 @@ contract Router {
         returns (uint256)
     {
         if (v == 1) {
-            (uint256 amountIn, uint256 amountOut) = (amount >> 128, uint256(uint128(amount)));
-            (uint256 amount0, uint256 amount1) = t == 1 ? (uint256(0), amountOut) : (amountOut, uint256(0));
+            (uint256 reserveIn, uint256 reserveOut,) = IV1Pair(pair).getReserves();
+            (reserveIn, reserveOut) = t == 1 ? (reserveIn, reserveOut) : (reserveOut, reserveIn);
+
+            {
+                uint256 amountInWithFee = amount * 997;
+                uint256 numerator = amountInWithFee * reserveOut;
+                uint256 denominator = reserveIn * 1000 + amountInWithFee;
+
+                amount = numerator / denominator;
+            }
+
+            (uint256 amount0, uint256 amount1) = t == 1 ? (uint256(0), amount) : (amount, uint256(0));
             IV1Pair(pair).swap(amount0, amount1, recipient, new bytes(0));
-            amount = amountOut;
         } else if (v == 2) {
             if (sv == 0) {
                 bool swapForY = t == 1;

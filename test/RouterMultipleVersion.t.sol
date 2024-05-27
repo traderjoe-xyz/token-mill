@@ -1,0 +1,594 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "./TestHelper.sol";
+
+contract TestRouterMultipleVersion is Test {
+    address v1Factory = 0x9Ad6C38BE94206cA50bb0d90783181662f0Cfa10;
+    address v2_0Factory = 0x6E77932A92582f504FF6c4BdbCef7Da6c198aEEf;
+    address v2_0Router = 0xE3Ffc583dC176575eEA7FD9dF2A7c65F7E23f4C3;
+    address v2_1Factory = 0x8e42f2F4101563bF679975178e880FD87d3eFd4e;
+
+    WNative wavax = WNative(0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7);
+    IERC20 usdc = IERC20(0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E);
+
+    address v1wu = 0xf4003F4efBE8691B60249E6afbD307aBE7758adb;
+    uint32 v1wu_id = PackedRoute.encodeId(1, 0, 0);
+
+    address v2_0wu = 0xB5352A39C11a81FE6748993D586EC448A01f08b5;
+    uint32 v2_0wu_id = PackedRoute.encodeId(2, 0, 20);
+
+    address v2_1wu = 0xD446eb1660F766d533BeCeEf890Df7A69d26f7d1;
+    uint32 v2_1wu_id = PackedRoute.encodeId(2, 1, 20);
+
+    uint256 initialWavaxBalance = 1_000_000e18;
+    uint256 initialUsdcBalance = 10_000_000e6;
+
+    TMFactory public factory;
+    Router public router;
+    BasicERC20 public basicToken;
+
+    address token0;
+    address token1;
+
+    address market0w;
+    address market1u;
+
+    function setUp() public {
+        vm.createSelectFork(StdChains.getChain("avalanche").rpcUrl, 45959572);
+
+        factory = new TMFactory(0.1e18, address(this));
+        router = new Router(v1Factory, v2_0Router, v2_1Factory, address(0), address(factory), address(wavax));
+
+        basicToken = new BasicERC20();
+
+        factory.updateTokenImplementation(ITMFactory.TokenType.BasicERC20, address(basicToken));
+
+        factory.addQuoteToken(address(usdc));
+        factory.addQuoteToken(address(wavax));
+
+        uint256[] memory askPrices = new uint256[](3);
+        askPrices[0] = 0e18;
+        askPrices[1] = 1e18;
+        askPrices[2] = 1000e18;
+
+        uint256[] memory bidPrices = new uint256[](3);
+        bidPrices[0] = 0;
+        bidPrices[1] = 0.1e18;
+        bidPrices[2] = 1000e18;
+
+        (token0, market0w) = factory.createMarketAndToken(
+            ITMFactory.TokenType.BasicERC20, "Token0", "T0", address(wavax), 500_000_000e18, bidPrices, askPrices
+        );
+
+        askPrices[0] = 0.1e18;
+        askPrices[1] = 10e18;
+        askPrices[2] = 11e18;
+
+        bidPrices[0] = 0.1e18;
+        bidPrices[1] = 9e18;
+        bidPrices[2] = 11e18;
+
+        (token1, market1u) = factory.createMarketAndToken(
+            ITMFactory.TokenType.BasicERC20, "Token1", "T1", address(usdc), 100_000_000e18, bidPrices, askPrices
+        );
+
+        deal(address(usdc), address(this), initialUsdcBalance);
+        deal(address(wavax), address(this), initialWavaxBalance);
+
+        usdc.approve(address(router), initialUsdcBalance);
+        wavax.approve(address(router), initialWavaxBalance);
+
+        vm.label(address(factory), "TMFactory");
+        vm.label(address(router), "Router");
+        vm.label(address(basicToken), "BasicERC20 Implementation");
+        vm.label(address(v1Factory), "v1Factory");
+        vm.label(address(v2_0Factory), "v2_0Factory");
+        vm.label(address(v2_0Router), "v2_0Router");
+        vm.label(address(v2_1Factory), "v2_1Factory");
+        vm.label(address(v1wu), "v1wu");
+        vm.label(address(v2_0wu), "v2_0wu");
+        vm.label(address(v2_1wu), "v2_1wu");
+        vm.label(address(token0), "Token0");
+        vm.label(address(token1), "Token1");
+        vm.label(address(usdc), "USDC");
+        vm.label(address(wavax), "WAVAX");
+    }
+
+    receive() external payable {}
+
+    function test_SwapExactInTtoTSingleHopV1() public {
+        bytes memory route = abi.encodePacked(wavax, v1wu_id, usdc);
+
+        uint256 v1UsdcBalance = usdc.balanceOf(v1wu);
+        uint256 v1WavaxBalance = wavax.balanceOf(v1wu);
+
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance, "test_SwapExactInTtoTSingleHopV1::1");
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance, "test_SwapExactInTtoTSingleHopV1::2");
+
+        uint256 amountIn = 10e18;
+        uint256 expectedAmountOut = (v1UsdcBalance * amountIn * 997) / (v1WavaxBalance * 1000 + amountIn * 997);
+
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+
+        assertEq(expectedAmountOut, amountOut, "test_SwapExactInTtoTSingleHopV1::3");
+
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactInTtoTSingleHopV1::4");
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactInTtoTSingleHopV1::5");
+        assertEq(usdc.balanceOf(v1wu), v1UsdcBalance - amountOut, "test_SwapExactInTtoTSingleHopV1::6");
+        assertEq(wavax.balanceOf(v1wu), v1WavaxBalance + amountIn, "test_SwapExactInTtoTSingleHopV1::7");
+    }
+
+    function test_SwapExactInTtoTSingleHopV2_0() public {
+        bytes memory route = abi.encodePacked(wavax, v2_0wu_id, usdc);
+
+        uint256 v2_0UsdcBalance = usdc.balanceOf(v2_0wu);
+        uint256 v2_0WavaxBalance = wavax.balanceOf(v2_0wu);
+
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance, "test_SwapExactInTtoTSingleHopV2_0::1");
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance, "test_SwapExactInTtoTSingleHopV2_0::2");
+
+        uint256 amountIn = 1e15;
+        (uint256 expectedAmountOut,) = IV2_0Router(v2_0Router).getSwapOut(v2_0wu, amountIn, true);
+
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+
+        assertEq(expectedAmountOut, amountOut, "test_SwapExactInTtoTSingleHopV2_0::3");
+
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactInTtoTSingleHopV2_0::4");
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactInTtoTSingleHopV2_0::5");
+        assertEq(usdc.balanceOf(v2_0wu), v2_0UsdcBalance - amountOut, "test_SwapExactInTtoTSingleHopV2_0::6");
+        assertEq(wavax.balanceOf(v2_0wu), v2_0WavaxBalance + amountIn, "test_SwapExactInTtoTSingleHopV2_0::7");
+    }
+
+    function test_SwapExactInTtoTSingleHopV2_1() public {
+        bytes memory route = abi.encodePacked(wavax, v2_1wu_id, usdc);
+
+        uint256 v2_1UsdcBalance = usdc.balanceOf(v2_1wu);
+        uint256 v2_1WavaxBalance = wavax.balanceOf(v2_1wu);
+
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance, "test_SwapExactInTtoTSingleHopV2_1::1");
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance, "test_SwapExactInTtoTSingleHopV2_1::2");
+
+        uint128 amountIn = 10e18;
+        (, uint256 expectedAmountOut,) = IV2_1Pair(v2_1wu).getSwapOut(amountIn, true);
+
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+
+        assertEq(expectedAmountOut, amountOut, "test_SwapExactInTtoTSingleHopV2_1::3");
+
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactInTtoTSingleHopV2_1::4");
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactInTtoTSingleHopV2_1::5");
+        assertEq(usdc.balanceOf(v2_1wu), v2_1UsdcBalance - amountOut, "test_SwapExactInTtoTSingleHopV2_1::6");
+        assertEq(wavax.balanceOf(v2_1wu), v2_1WavaxBalance + amountIn, "test_SwapExactInTtoTSingleHopV2_1::7");
+    }
+
+    function test_SwapExactInTtoTtoTSingleHopV1() public {
+        bytes memory route = abi.encodePacked(wavax, v1wu_id, usdc);
+
+        uint256 v1UsdcBalance = usdc.balanceOf(v1wu);
+        uint256 v1WavaxBalance = wavax.balanceOf(v1wu);
+
+        uint256 amountIn = 1e18;
+        uint256 expectedAmountOut = (v1UsdcBalance * amountIn * 997) / (v1WavaxBalance * 1000 + amountIn * 997);
+
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+
+        assertEq(amountOut, expectedAmountOut, "test_SwapExactInTtoTtoTSingleHopV1::1");
+        assertEq(
+            wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactInTtoTtoTSingleHopV1::2"
+        );
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactInTtoTtoTSingleHopV1::3");
+
+        v1UsdcBalance = usdc.balanceOf(v1wu);
+        v1WavaxBalance = wavax.balanceOf(v1wu);
+
+        uint256 amountIn2 = amountOut;
+        uint256 expectedAmountOut2 = (v1WavaxBalance * amountIn2 * 997) / (v1UsdcBalance * 1000 + amountIn2 * 997);
+
+        route = abi.encodePacked(usdc, v1wu_id, wavax);
+
+        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0);
+
+        assertEq(amountOut2, expectedAmountOut2, "test_SwapExactInTtoTtoTSingleHopV1::4");
+        assertEq(
+            wavax.balanceOf(address(this)),
+            initialWavaxBalance - amountIn + amountOut2,
+            "test_SwapExactInTtoTtoTSingleHopV1::5"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)),
+            initialUsdcBalance + amountOut - amountIn2,
+            "test_SwapExactInTtoTtoTSingleHopV1::6"
+        );
+    }
+
+    function test_SwapExactInTtoTtoTSingleHopV2_0() public {
+        bytes memory route = abi.encodePacked(wavax, v2_0wu_id, usdc);
+
+        uint256 v2_0UsdcBalance = usdc.balanceOf(v2_0wu);
+        uint256 v2_0WavaxBalance = wavax.balanceOf(v2_0wu);
+
+        uint256 amountIn = 1e18;
+        (uint256 expectedAmountOut,) = IV2_0Router(v2_0Router).getSwapOut(v2_0wu, amountIn, true);
+
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+
+        assertEq(expectedAmountOut, amountOut, "test_SwapExactInTtoTtoTSingleHopV2_0::1");
+        assertEq(
+            wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactInTtoTtoTSingleHopV2_0::2"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactInTtoTtoTSingleHopV2_0::3"
+        );
+
+        v2_0UsdcBalance = usdc.balanceOf(v2_0wu);
+        v2_0WavaxBalance = wavax.balanceOf(v2_0wu);
+
+        uint256 amountIn2 = amountOut;
+        (uint256 expectedAmountOut2,) = IV2_0Router(v2_0Router).getSwapOut(v2_0wu, amountIn2, false);
+
+        route = abi.encodePacked(usdc, v2_0wu_id, wavax);
+
+        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0);
+
+        assertEq(expectedAmountOut2, amountOut2, "test_SwapExactInTtoTtoTSingleHopV2_0::4");
+        assertEq(
+            wavax.balanceOf(address(this)),
+            initialWavaxBalance - amountIn + amountOut2,
+            "test_SwapExactInTtoTtoTSingleHopV2_0::5"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)),
+            initialUsdcBalance + amountOut - amountIn2,
+            "test_SwapExactInTtoTtoTSingleHopV2_0::6"
+        );
+    }
+
+    function test_SwapExactInTtoTtoTSingleHopV2_1() public {
+        bytes memory route = abi.encodePacked(wavax, v2_1wu_id, usdc);
+
+        uint256 v2_1UsdcBalance = usdc.balanceOf(v2_1wu);
+        uint256 v2_1WavaxBalance = wavax.balanceOf(v2_1wu);
+
+        uint128 amountIn = 1e18;
+        (, uint256 expectedAmountOut,) = IV2_1Pair(v2_1wu).getSwapOut(amountIn, true);
+
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+
+        assertEq(expectedAmountOut, amountOut, "test_SwapExactInTtoTtoTSingleHopV2_1::1");
+        assertEq(
+            wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactInTtoTtoTSingleHopV2_1::2"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactInTtoTtoTSingleHopV2_1::3"
+        );
+
+        v2_1UsdcBalance = usdc.balanceOf(v2_1wu);
+        v2_1WavaxBalance = wavax.balanceOf(v2_1wu);
+
+        uint128 amountIn2 = uint128(amountOut);
+        (, uint256 expectedAmountOut2,) = IV2_1Pair(v2_1wu).getSwapOut(amountIn2, false);
+
+        route = abi.encodePacked(usdc, v2_1wu_id, wavax);
+
+        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0);
+
+        assertEq(expectedAmountOut2, amountOut2, "test_SwapExactInTtoTtoTSingleHopV2_1::4");
+        assertEq(
+            wavax.balanceOf(address(this)),
+            initialWavaxBalance - amountIn + amountOut2,
+            "test_SwapExactInTtoTtoTSingleHopV2_1::5"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)),
+            initialUsdcBalance + amountOut - amountIn2,
+            "test_SwapExactInTtoTtoTSingleHopV2_1::6"
+        );
+    }
+
+    function test_SwapExactInTtoTtoTMultiHop() public {
+        bytes memory route =
+            abi.encodePacked(wavax, v1wu_id, usdc, v2_1wu_id, wavax, v2_0wu_id, usdc, uint32(3 << 24), token1);
+
+        uint256 v1UsdcBalance = usdc.balanceOf(v1wu);
+        uint256 v1WavaxBalance = wavax.balanceOf(v1wu);
+
+        uint256 amountIn = 1e18;
+        uint256 expectedAmountOut = (v1UsdcBalance * amountIn * 997) / (v1WavaxBalance * 1000 + amountIn * 997);
+        (, expectedAmountOut,) = IV2_1Pair(v2_1wu).getSwapOut(uint128(expectedAmountOut), false);
+        (expectedAmountOut,) = IV2_0Router(v2_0Router).getSwapOut(v2_0wu, expectedAmountOut, true);
+        (int256 deltaBase,) = ITMMarket(market1u).getDeltaAmounts(int256(expectedAmountOut), false);
+
+        expectedAmountOut = uint256(-deltaBase);
+
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+
+        assertEq(amountOut, expectedAmountOut, "test_SwapExactInTtoTtoTMultiHop::1");
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactInTtoTtoTMultiHop::2");
+        assertEq(IERC20(token1).balanceOf(address(this)), amountOut, "test_SwapExactInTtoTtoTMultiHop::3");
+
+        IERC20(token1).approve(address(router), amountOut);
+
+        route = abi.encodePacked(token1, uint32(3 << 24), usdc, v2_0wu_id, wavax, v2_1wu_id, usdc, v1wu_id, wavax);
+
+        v1UsdcBalance = usdc.balanceOf(v1wu);
+        v1WavaxBalance = wavax.balanceOf(v1wu);
+
+        uint256 amountIn2 = amountOut;
+        (, int256 deltaQuote) = ITMMarket(market1u).getDeltaAmounts(int256(amountIn2), true);
+        (uint256 expectedAmountOut2,) = IV2_0Router(v2_0Router).getSwapOut(v2_0wu, uint256(-deltaQuote), false);
+        (, expectedAmountOut2,) = IV2_1Pair(v2_1wu).getSwapOut(uint128(expectedAmountOut2), true);
+        expectedAmountOut2 =
+            (v1WavaxBalance * expectedAmountOut2 * 997) / (v1UsdcBalance * 1000 + expectedAmountOut2 * 997);
+
+        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0);
+
+        assertEq(amountOut2, expectedAmountOut2, "test_SwapExactInTtoTtoTMultiHop::4");
+        assertEq(
+            wavax.balanceOf(address(this)),
+            initialWavaxBalance - amountIn + amountOut2,
+            "test_SwapExactInTtoTtoTMultiHop::5"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)),
+            initialUsdcBalance + amountOut - amountIn2,
+            "test_SwapExactInTtoTtoTMultiHop::6"
+        );
+    }
+
+    function test_SwapExactOutTtoTSingleHopV1() public {
+        bytes memory route = abi.encodePacked(wavax, v1wu_id, usdc);
+
+        uint256 v1UsdcBalance = usdc.balanceOf(v1wu);
+        uint256 v1WavaxBalance = wavax.balanceOf(v1wu);
+
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance, "test_SwapExactOutTtoTSingleHopV1::1");
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance, "test_SwapExactOutTtoTSingleHopV1::2");
+
+        uint256 amountOut = 100e6;
+        uint256 expectedAmountIn = (v1WavaxBalance * amountOut * 1000 - 1) / ((v1UsdcBalance - amountOut) * 997) + 1;
+
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+
+        assertEq(expectedAmountIn, amountIn, "test_SwapExactOutTtoTSingleHopV1::3");
+
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactOutTtoTSingleHopV1::4");
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactOutTtoTSingleHopV1::5");
+        assertEq(usdc.balanceOf(v1wu), v1UsdcBalance - amountOut, "test_SwapExactOutTtoTSingleHopV1::6");
+        assertEq(wavax.balanceOf(v1wu), v1WavaxBalance + amountIn, "test_SwapExactOutTtoTSingleHopV1::7");
+    }
+
+    function test_SwapExactOutTtoTSingleHopV2_0() public {
+        bytes memory route = abi.encodePacked(wavax, v2_0wu_id, usdc);
+
+        uint256 v2_0UsdcBalance = usdc.balanceOf(v2_0wu);
+        uint256 v2_0WavaxBalance = wavax.balanceOf(v2_0wu);
+
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance, "test_SwapExactOutTtoTSingleHopV2_0::1");
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance, "test_SwapExactOutTtoTSingleHopV2_0::2");
+
+        uint256 amountOut = 100e6;
+        (uint256 expectedAmountIn,) = IV2_0Router(v2_0Router).getSwapIn(v2_0wu, amountOut, true);
+
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+
+        assertEq(expectedAmountIn, amountIn, "test_SwapExactOutTtoTSingleHopV2_0::3");
+
+        assertEq(
+            wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactOutTtoTSingleHopV2_0::4"
+        );
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactOutTtoTSingleHopV2_0::5");
+        assertEq(usdc.balanceOf(v2_0wu), v2_0UsdcBalance - amountOut, "test_SwapExactOutTtoTSingleHopV2_0::6");
+        assertEq(wavax.balanceOf(v2_0wu), v2_0WavaxBalance + amountIn, "test_SwapExactOutTtoTSingleHopV2_0::7");
+    }
+
+    function test_SwapExactOutTtoTSingleHopV2_1() public {
+        bytes memory route = abi.encodePacked(wavax, v2_1wu_id, usdc);
+
+        uint256 v2_1UsdcBalance = usdc.balanceOf(v2_1wu);
+        uint256 v2_1WavaxBalance = wavax.balanceOf(v2_1wu);
+
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance, "test_SwapExactOutTtoTSingleHopV2_1::1");
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance, "test_SwapExactOutTtoTSingleHopV2_1::2");
+
+        uint128 amountOut = 100e6;
+        (uint256 expectedAmountIn,,) = IV2_1Pair(v2_1wu).getSwapIn(amountOut, true);
+
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+
+        assertEq(expectedAmountIn, amountIn, "test_SwapExactOutTtoTSingleHopV2_1::3");
+
+        assertEq(
+            wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactOutTtoTSingleHopV2_1::4"
+        );
+        assertEq(usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactOutTtoTSingleHopV2_1::5");
+        assertEq(usdc.balanceOf(v2_1wu), v2_1UsdcBalance - amountOut, "test_SwapExactOutTtoTSingleHopV2_1::6");
+        assertEq(wavax.balanceOf(v2_1wu), v2_1WavaxBalance + amountIn, "test_SwapExactOutTtoTSingleHopV2_1::7");
+    }
+
+    function test_SwapExactOutTtoTtoTSingleHopV1() public {
+        bytes memory route = abi.encodePacked(wavax, v1wu_id, usdc);
+
+        uint256 v1UsdcBalance = usdc.balanceOf(v1wu);
+        uint256 v1WavaxBalance = wavax.balanceOf(v1wu);
+
+        uint256 amountOut = 100e6;
+        uint256 expectedAmountIn = (v1WavaxBalance * amountOut * 1000 - 1) / ((v1UsdcBalance - amountOut) * 997) + 1;
+
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+
+        assertEq(amountIn, expectedAmountIn, "test_SwapExactOutTtoTtoTSingleHopV1::1");
+        assertEq(
+            wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactOutTtoTtoTSingleHopV1::2"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactOutTtoTtoTSingleHopV1::3"
+        );
+
+        v1UsdcBalance = usdc.balanceOf(v1wu);
+        v1WavaxBalance = wavax.balanceOf(v1wu);
+
+        uint256 expectedAmountIn2 = (v1UsdcBalance * amountIn * 1000 - 1) / ((v1WavaxBalance - amountIn) * 997) + 1;
+        uint256 expectedAmountOut2 =
+            (v1WavaxBalance * expectedAmountIn2 * 997) / (v1UsdcBalance * 1000 + expectedAmountIn2 * 997);
+
+        assertGe(expectedAmountOut2, amountIn, "test_SwapExactOutTtoTtoTSingleHopV1::4");
+
+        route = abi.encodePacked(usdc, v1wu_id, wavax);
+
+        (uint256 amountIn2, uint256 amountOut2) =
+            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max);
+
+        assertEq(amountIn2, expectedAmountIn2, "test_SwapExactOutTtoTtoTSingleHopV1::5");
+        assertEq(amountOut2, expectedAmountOut2, "test_SwapExactOutTtoTtoTSingleHopV1::6");
+        assertEq(
+            wavax.balanceOf(address(this)),
+            initialWavaxBalance - amountIn + amountOut2,
+            "test_SwapExactOutTtoTtoTSingleHopV1::7"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)),
+            initialUsdcBalance + amountOut - amountIn2,
+            "test_SwapExactOutTtoTtoTSingleHopV1::8"
+        );
+    }
+
+    function test_SwapExactOutTtoTtoTSingleHopV2_0() public {
+        bytes memory route = abi.encodePacked(wavax, v2_0wu_id, usdc);
+
+        uint256 v2_0UsdcBalance = usdc.balanceOf(v2_0wu);
+        uint256 v2_0WavaxBalance = wavax.balanceOf(v2_0wu);
+
+        uint256 amountOut = 100e6;
+        (uint256 expectedAmountIn,) = IV2_0Router(v2_0Router).getSwapIn(v2_0wu, amountOut, true);
+
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+
+        assertEq(expectedAmountIn, amountIn, "test_SwapExactOutTtoTtoTSingleHopV2_0::1");
+        assertEq(
+            wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactOutTtoTtoTSingleHopV2_0::2"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactOutTtoTtoTSingleHopV2_0::3"
+        );
+
+        v2_0UsdcBalance = usdc.balanceOf(v2_0wu);
+        v2_0WavaxBalance = wavax.balanceOf(v2_0wu);
+
+        uint256 expectedAmountOut2 = amountIn / 2;
+        (uint256 expectedAmountIn2,) = IV2_0Router(v2_0Router).getSwapIn(v2_0wu, expectedAmountOut2, false);
+
+        route = abi.encodePacked(usdc, v2_0wu_id, wavax);
+
+        (uint256 amountIn2, uint256 amountOut2) =
+            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max);
+
+        assertEq(expectedAmountIn2, amountIn2, "test_SwapExactOutTtoTtoTSingleHopV2_0::4");
+        assertGe(amountOut2, expectedAmountOut2, "test_SwapExactOutTtoTtoTSingleHopV2_0::5");
+        assertEq(
+            wavax.balanceOf(address(this)),
+            initialWavaxBalance - amountIn + amountOut2,
+            "test_SwapExactOutTtoTtoTSingleHopV2_0::6"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)),
+            initialUsdcBalance + amountOut - amountIn2,
+            "test_SwapExactOutTtoTtoTSingleHopV2_0::7"
+        );
+    }
+
+    function test_SwapExactOutTtoTtoTSingleHopV2_1() public {
+        bytes memory route = abi.encodePacked(wavax, v2_1wu_id, usdc);
+
+        uint256 v2_1UsdcBalance = usdc.balanceOf(v2_1wu);
+        uint256 v2_1WavaxBalance = wavax.balanceOf(v2_1wu);
+
+        uint128 amountOut = 100e6;
+        (uint256 expectedAmountIn,,) = IV2_1Pair(v2_1wu).getSwapIn(amountOut, true);
+
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+
+        assertEq(expectedAmountIn, amountIn, "test_SwapExactOutTtoTtoTSingleHopV2_1::1");
+        assertEq(
+            wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactOutTtoTtoTSingleHopV2_1::2"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)), initialUsdcBalance + amountOut, "test_SwapExactOutTtoTtoTSingleHopV2_1::3"
+        );
+
+        v2_1UsdcBalance = usdc.balanceOf(v2_1wu);
+        v2_1WavaxBalance = wavax.balanceOf(v2_1wu);
+
+        uint128 expectedAmountOut2 = uint128(amountIn);
+        (uint256 expectedAmountIn2,,) = IV2_1Pair(v2_1wu).getSwapIn(expectedAmountOut2, false);
+
+        route = abi.encodePacked(usdc, v2_1wu_id, wavax);
+
+        (uint256 amountIn2, uint256 amountOut2) =
+            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max);
+
+        assertEq(expectedAmountIn2, amountIn2, "test_SwapExactOutTtoTtoTSingleHopV2_1::4");
+        assertGe(amountOut2, expectedAmountOut2, "test_SwapExactOutTtoTtoTSingleHopV2_1::5");
+        assertEq(
+            wavax.balanceOf(address(this)),
+            initialWavaxBalance - amountIn + amountOut2,
+            "test_SwapExact:OutTtoTtoTSingleHopV2_1::6"
+        );
+        assertEq(
+            usdc.balanceOf(address(this)),
+            initialUsdcBalance + amountOut - amountIn2,
+            "test_SwapExactOutTtoTtoTSingleHopV2_1::7"
+        );
+    }
+
+    function test_SwapExactOutTtoTtoTMultiHop() public {
+        bytes memory route =
+            abi.encodePacked(wavax, v1wu_id, usdc, v2_1wu_id, wavax, v2_0wu_id, usdc, uint32(3 << 24), token1);
+
+        uint256 v1UsdcBalance = usdc.balanceOf(v1wu);
+        uint256 v1WavaxBalance = wavax.balanceOf(v1wu);
+
+        uint256 expectedAmountOut = 100e18;
+        (, int256 deltaQuote) = ITMMarket(market1u).getDeltaAmounts(-int256(expectedAmountOut), false);
+        (uint256 expectedAmountIn,) = IV2_0Router(v2_0Router).getSwapIn(v2_0wu, uint256(deltaQuote), true);
+        (expectedAmountIn,,) = IV2_1Pair(v2_1wu).getSwapIn(uint128(expectedAmountIn), false);
+        expectedAmountIn =
+            (v1WavaxBalance * expectedAmountIn * 1000 - 1) / ((v1UsdcBalance - expectedAmountIn) * 997) + 1;
+
+        (uint256 amountIn, uint256 amountOut) =
+            router.swapExactOut(route, address(this), expectedAmountOut, type(uint256).max);
+
+        assertEq(amountIn, expectedAmountIn, "test_SwapExactOutTtoTtoTMultiHop::1");
+        assertEq(amountOut, expectedAmountOut, "test_SwapExactOutTtoTtoTMultiHop::2");
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactOutTtoTtoTMultiHop::2");
+        assertEq(IERC20(token1).balanceOf(address(this)), amountOut, "test_SwapExactOutTtoTtoTMultiHop::3");
+
+        IERC20(token1).approve(address(router), amountOut);
+
+        route = abi.encodePacked(token1, uint32(3 << 24), usdc, v2_0wu_id, wavax, v2_1wu_id, usdc, v1wu_id, wavax);
+
+        v1UsdcBalance = usdc.balanceOf(v1wu);
+        v1WavaxBalance = wavax.balanceOf(v1wu);
+
+        uint256 expectedAmountOut2 = amountIn / 2;
+        uint256 expectedAmountIn2 =
+            (v1UsdcBalance * expectedAmountOut2 * 1000 - 1) / ((v1WavaxBalance - expectedAmountOut2) * 997) + 1;
+        (expectedAmountIn2,,) = IV2_1Pair(v2_1wu).getSwapIn(uint128(expectedAmountIn2), true);
+        (expectedAmountIn2,) = IV2_0Router(v2_0Router).getSwapIn(v2_0wu, expectedAmountIn2, false);
+        (int256 deltaBase,) = ITMMarket(market1u).getDeltaAmounts(-int256(expectedAmountIn2), true);
+        expectedAmountIn2 = uint256(deltaBase);
+
+        (uint256 amountIn2, uint256 amountOut2) =
+            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max);
+
+        assertGe(expectedAmountIn2, amountIn2, "test_SwapExactOutTtoTtoTMultiHop::4");
+        assertGe(amountOut2, expectedAmountOut2, "test_SwapExactOutTtoTtoTMultiHop::5");
+        assertEq(
+            wavax.balanceOf(address(this)),
+            initialWavaxBalance - amountIn + amountOut2,
+            "test_SwapExactOutTtoTtoTMultiHop::6"
+        );
+        assertEq(IERC20(token1).balanceOf(address(this)), amountOut - amountIn2, "test_SwapExactOutTtoTtoTMultiHop::7");
+    }
+}

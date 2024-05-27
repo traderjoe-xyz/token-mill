@@ -33,6 +33,14 @@ contract TestHelper is Test {
         basicToken = new BasicERC20();
 
         factory.updateTokenImplementation(ITMFactory.TokenType.BasicERC20, address(basicToken));
+
+        vm.label(address(factory), "TMFactory");
+        vm.label(address(router), "Router");
+        vm.label(address(wnative), "WNative");
+        vm.label(address(basicToken), "BasicERC20 Implementation");
+    }
+
+    function setUpTokens() public {
         factory.addQuoteToken(address(wnative));
 
         uint256[] memory askPrices = new uint256[](3);
@@ -76,11 +84,6 @@ contract TestHelper is Test {
         (token2, market21) = factory.createMarketAndToken(
             ITMFactory.TokenType.BasicERC20, "Token2", "T2", address(token1), 50_000_000e18, bidPrices, askPrices
         );
-
-        vm.label(address(factory), "TMFactory");
-        vm.label(address(router), "Router");
-        vm.label(address(wnative), "WNative");
-        vm.label(address(basicToken), "BasicERC20 Implementation");
 
         vm.label(token0, "Token0");
         vm.label(token1, "Token1");

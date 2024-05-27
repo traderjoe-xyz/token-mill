@@ -4,6 +4,11 @@ pragma solidity ^0.8.20;
 import "./TestHelper.sol";
 
 contract TestRouter is TestHelper {
+    function setUp() public override {
+        super.setUp();
+        setUpTokens();
+    }
+
     receive() external payable {}
 
     function test_SwapExactInTtoTSingleHop() public {
