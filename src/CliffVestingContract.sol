@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {ICliffVestingContract} from "./interfaces/ICliffVestingContract.sol";
@@ -15,212 +16,156 @@ import {ICliffVestingContract} from "./interfaces/ICliffVestingContract.sol";
  * - tokens vest linearly from the `start` to the `start + vestingDuration` timestamp
  * - vested tokens can only be claimed after the `start + lockDuration` timestamp
  */
-contract CliffVestingContract is ICliffVestingContract {
+contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     address private immutable _factory;
 
-    IERC20 private immutable _token;
-    uint256 private immutable _start;
-    uint256 private immutable _cliffDuration;
-    uint256 private immutable _vestingDuration;
+    mapping(address token => VestingSchedule[]) private _vestingSchedules;
 
-    uint256 private _released;
-
-    address private _beneficiary;
-    bool private _revoked;
-
-    modifier onlyFactoryOwner() {
-        if (msg.sender != Ownable(factory()).owner()) revert CliffVestingContract__NotFactoryOwner();
-        _;
-    }
-
-    /**
-     * @dev Constructor for the Vesting Contract.
-     * @param factory_ The address of the factory contract.
-     * @param token_ The address of the token contract.
-     * @param start_ The timestamp at which the vesting starts.
-     * @param cliffDuration_ The duration of the lock.
-     * @param vestingDuration_ The duration of the vesting.
-     */
-    constructor(address factory_, IERC20 token_, uint256 start_, uint256 cliffDuration_, uint256 vestingDuration_) {
-        if (cliffDuration_ > vestingDuration_) revert CliffVestingContract__InvalidCliffDuration();
-
-        _factory = factory_;
-        _token = token_;
-        _start = start_;
-        _cliffDuration = cliffDuration_;
-        _vestingDuration = vestingDuration_;
+    constructor(address factory) {
+        _factory = factory;
     }
 
     /**
      * @dev Returns the address of the factory contract.
      * @return The address of the factory contract.
      */
-    function factory() public view virtual override returns (address) {
+    function getFactory() external view override returns (address) {
         return _factory;
     }
 
     /**
-     * @dev Returns the address of the token contract.
-     * @return The address of the token contract.
+     * @dev Returns the number of vestings of the specified token.
+     * @param token The address of the token.
+     * @return The number of vesting schedules of the specified token.
      */
-    function token() public view virtual override returns (IERC20) {
-        return _token;
+    function getNumberOfVestings(address token) public view override returns (uint256) {
+        return _vestingSchedules[token].length;
     }
 
     /**
-     * @dev Returns the timestamp at which the vesting starts.
-     * @return The timestamp at which the vesting starts.
+     * @dev Returns the vesting schedule of the specified token at the specified index.
+     * @param token The address of the token.
+     * @param index The index of the vesting schedule.
+     * @return The vesting schedule of the specified token at the specified index.
      */
-    function start() public view virtual override returns (uint256) {
-        return _start;
+    function getVestingSchedule(address token, uint256 index) public view override returns (VestingSchedule memory) {
+        return _vestingSchedules[token][index];
     }
 
     /**
-     * @dev Returns the duration of the lock.
-     * @return The duration of the lock.
+     * @dev Returns the amount of tokens that can be released by the specified token at the specified index at the
+     * specified timestamp.
+     * @param token The address of the token.
+     * @param index The index of the vesting schedule.
+     * @param timestamp The timestamp at which the amount of releasable tokens will be calculated.
+     * @return The amount of tokens that can be released by the specified token at the specified index at the
      */
-    function cliffDuration() public view virtual override returns (uint256) {
-        return _cliffDuration;
+    function getVestedAmount(address token, uint256 index, uint256 timestamp) public view override returns (uint256) {
+        VestingSchedule storage vesting = _vestingSchedules[token][index];
+
+        return _vestingSchedule(vesting.total, vesting.start, vesting.cliffDuration, vesting.vestingDuration, timestamp);
     }
 
     /**
-     * @dev Returns the duration of the vesting.
-     * @return The duration of the vesting.
+     * @dev Returns the amount of tokens that can be released by the specified token at the specified index.
+     * @param token The address of the token.
+     * @param index The index of the vesting schedule.
+     * @return The amount of tokens that can be released by the specified token at the specified index.
      */
-    function vestingDuration() public view virtual override returns (uint256) {
-        return _vestingDuration;
+    function getReleasableAmount(address token, uint256 index) public view override returns (uint256) {
+        return getVestedAmount(token, index, block.timestamp) - _vestingSchedules[token][index].released;
     }
 
     /**
-     * @dev Returns the timestamp at which the vesting ends.
-     * @return The timestamp at which the vesting ends.
+     * @dev Creates a new vesting schedule for the specified token and beneficiary.
+     * @param token The address of the token.
+     * @param amount The total amount of tokens to be vested.
+     * @param minAmount The minimum amount of tokens to be received.
+     * @param start The timestamp at which the vesting starts.
+     * @param cliffDuration The duration of the cliff.
+     * @param vestingDuration The duration of the vesting.
      */
-    function end() public view virtual override returns (uint256) {
-        return start() + vestingDuration();
+    function createVestingSchedule(
+        address token,
+        address beneficiary,
+        uint128 amount,
+        uint128 minAmount,
+        uint80 start,
+        uint80 cliffDuration,
+        uint80 vestingDuration
+    ) public {
+        if (cliffDuration > vestingDuration) revert CliffVestingContract__InvalidCliffDuration();
+        if (start + vestingDuration <= block.timestamp) revert CliffVestingContract__InvalidVestingSchedule();
+
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        uint256 received = IERC20(token).balanceOf(address(this)) - balance;
+
+        if (received < minAmount) revert CliffVestingContract__InsufficientAmountReceived(received, minAmount);
+
+        _vestingSchedules[token].push(VestingSchedule(beneficiary, amount, 0, start, cliffDuration, vestingDuration));
+
+        emit VestingScheduleCreated(token, msg.sender, beneficiary, amount, start, cliffDuration, vestingDuration);
     }
 
     /**
-     * @dev Returns the address of the beneficiary.
-     * @return The address of the beneficiary.
+     * @dev Releases the vested tokens for the specified token at the specified index for the sender.
+     * @param token The address of the token.
+     * @param index The index of the vesting schedule.
      */
-    function beneficiary() public view virtual override returns (address) {
-        return _beneficiary;
+    function release(address token, uint256 index) public {
+        VestingSchedule storage vesting = _vestingSchedules[token][index];
+
+        if (vesting.beneficiary != msg.sender) revert CliffVestingContract__OnlyBeneficiary();
+
+        uint256 amount = getReleasableAmount(token, index);
+        vesting.released += uint128(amount);
+
+        IERC20(token).safeTransfer(msg.sender, amount);
+
+        emit Released(token, msg.sender, amount);
     }
 
     /**
-     * @dev Returns whether the vesting contract has been revoked.
-     * @return Whether the vesting contract has been revoked.
-     */
-    function revoked() public view virtual override returns (bool) {
-        return _revoked;
-    }
-
-    /**
-     * @dev Returns the amount of tokens that have been released.
-     * @return The amount of tokens that have been released.
-     */
-    function released() public view virtual override returns (uint256) {
-        return _released;
-    }
-
-    /**
-     * @dev Returns the amount of tokens that can be released.
-     * @return The amount of tokens that can be released.
-     */
-    function releasable() public view virtual override returns (uint256) {
-        return vestedAmount(block.timestamp) - released();
-    }
-
-    /**
-     * @dev Returns the amount of tokens that have been vested at the specified timestamp.
-     * @param timestamp The timestamp at which the amount of vested tokens will be calculated.
-     * @return The amount of tokens that have been vested at the specified timestamp.
-     */
-    function vestedAmount(uint256 timestamp) public view virtual override returns (uint256) {
-        return _vestingSchedule(_token.balanceOf(address(this)) + released(), timestamp);
-    }
-
-    /**
-     * @dev Releases the vested tokens to the beneficiary.
-     */
-    function release() public virtual override {
-        if (msg.sender != beneficiary()) revert CliffVestingContract__NotBeneficiary();
-
-        uint256 amount = releasable();
-        _released += amount;
-
-        _token.safeTransfer(msg.sender, amount);
-
-        emit Released(msg.sender, amount);
-    }
-
-    /**
-     * @dev Sets the beneficiary.
+     * @dev Transfers the vesting schedule of the specified token and index to the new beneficiary.
      * @param newBeneficiary The address of the new beneficiary.
      */
-    function setBeneficiary(address newBeneficiary) public virtual override onlyFactoryOwner {
-        _beneficiary = newBeneficiary;
+    function transferVestingSchedule(address token, address newBeneficiary, uint256 index) public {
+        VestingSchedule storage vesting = _vestingSchedules[token][index];
 
-        emit BeneficiarySet(newBeneficiary);
-    }
+        if (vesting.beneficiary != msg.sender) revert CliffVestingContract__OnlyBeneficiary();
 
-    /**
-     * @dev Revokes the vesting contract.
-     */
-    function revoke() public virtual onlyFactoryOwner {
-        if (revoked()) revert CliffVestingContract__AlreadyRevoked();
+        vesting.beneficiary = newBeneficiary;
 
-        uint256 released_ = released();
-        uint256 balance = _token.balanceOf(address(this));
-        uint256 vested = _rawVestingSchedule(balance + released_, start(), vestingDuration(), block.timestamp);
-
-        _revoked = true;
-
-        _token.safeTransfer(msg.sender, balance + released_ - vested);
-
-        emit Revoked();
-    }
-
-    /**
-     * @dev Calculates the amount of tokens that have been vested at the specified timestamp.
-     * @param total The total amount of tokens to be vested.
-     * @param timestamp The timestamp at which the amount of vested tokens will be calculated.
-     * @return The amount of tokens that have been vested at the specified timestamp.
-     */
-    function _vestingSchedule(uint256 total, uint256 timestamp) internal view virtual returns (uint256) {
-        uint256 start_ = start();
-        uint256 cliffDuration_ = cliffDuration();
-        uint256 vestingDuration_ = vestingDuration();
-
-        if (timestamp <= start_ + cliffDuration_) return 0;
-        if (revoked()) return total;
-
-        return _rawVestingSchedule(total, start_, vestingDuration_, timestamp);
+        emit VestingScheduleTransferred(token, msg.sender, newBeneficiary, index);
     }
 
     /**
      * @dev Calculates the amount of tokens that have been vested at the specified timestamp without taking into account
      * whether the vesting contract has a cliff or has been revoked.
      * @param total The total amount of tokens to be vested.
-     * @param start_ The timestamp at which the vesting starts.
-     * @param vestingDuration_ The duration of the vesting.
+     * @param start The timestamp at which the vesting starts.
+     * @param vestingDuration The duration of the vesting.
      * @param timestamp The timestamp at which the amount of vested tokens will be calculated.
      * @return The amount of tokens that have been vested at the specified timestamp.
      */
-    function _rawVestingSchedule(uint256 total, uint256 start_, uint256 vestingDuration_, uint256 timestamp)
-        internal
-        view
-        virtual
-        returns (uint256)
-    {
-        if (timestamp <= start_) {
-            return 0;
-        } else if (timestamp >= start_ + vestingDuration_) {
-            return total;
-        } else {
-            return (total * (timestamp - start_)) / vestingDuration_;
+    function _vestingSchedule(
+        uint256 total,
+        uint256 start,
+        uint256 cliffDuration,
+        uint256 vestingDuration,
+        uint256 timestamp
+    ) internal view virtual returns (uint256) {
+        unchecked {
+            if (timestamp <= start + cliffDuration) {
+                return 0;
+            } else if (timestamp >= start + vestingDuration) {
+                return total;
+            } else {
+                return (total * (timestamp - start)) / vestingDuration;
+            }
         }
     }
 }
