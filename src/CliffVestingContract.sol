@@ -105,9 +105,12 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
 
         if (received < minAmount) revert CliffVestingContract__InsufficientAmountReceived(received, minAmount);
 
+        uint256 index = _vestingSchedules[token].length;
         _vestingSchedules[token].push(VestingSchedule(beneficiary, amount, 0, start, cliffDuration, vestingDuration));
 
-        emit VestingScheduleCreated(token, msg.sender, beneficiary, amount, start, cliffDuration, vestingDuration);
+        emit VestingScheduleCreated(
+            token, msg.sender, beneficiary, index, amount, start, cliffDuration, vestingDuration
+        );
     }
 
     /**

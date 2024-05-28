@@ -13,6 +13,7 @@ interface ICliffVestingContract {
         address indexed token,
         address indexed sender,
         address indexed beneficiary,
+        uint256 vesting,
         uint128 amount,
         uint80 start,
         uint80 cliffDuration,
