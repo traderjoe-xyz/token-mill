@@ -98,6 +98,7 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
     ) public {
         if (cliffDuration > vestingDuration) revert CliffVestingContract__InvalidCliffDuration();
         if (start + vestingDuration <= block.timestamp) revert CliffVestingContract__InvalidVestingSchedule();
+        if (minAmount == 0) revert CliffVestingContract__ZeroMinAmount();
 
         uint256 balance = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -124,11 +125,14 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
         if (vesting.beneficiary != msg.sender) revert CliffVestingContract__OnlyBeneficiary();
 
         uint256 amount = getReleasableAmount(token, index);
-        vesting.released += uint128(amount);
 
-        IERC20(token).safeTransfer(msg.sender, amount);
+        if (amount > 0) {
+            vesting.released += uint128(amount);
 
-        emit Released(token, msg.sender, amount);
+            IERC20(token).safeTransfer(msg.sender, amount);
+
+            emit Released(token, msg.sender, amount);
+        }
     }
 
     /**

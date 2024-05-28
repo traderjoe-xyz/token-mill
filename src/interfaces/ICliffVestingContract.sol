@@ -8,6 +8,7 @@ interface ICliffVestingContract {
     error CliffVestingContract__OnlyBeneficiary();
     error CliffVestingContract__OnlyFactoryOwner();
     error CliffVestingContract__ExceedsReserves();
+    error CliffVestingContract__ZeroMinAmount();
 
     event VestingScheduleCreated(
         address indexed token,
