@@ -34,15 +34,7 @@ contract CliffVestingContractTest is Test {
         token0 = new MockERC20("token0", "TKN0", 18);
         token1 = new MockERC20("token1", "TKN1", 6);
 
-        vesting = new CliffVestingContract(address(this));
-    }
-
-    function owner() public view returns (address) {
-        return address(this);
-    }
-
-    function test_Constructor() public view {
-        assertEq(vesting.getFactory(), address(this), "test_Constructor::1");
+        vesting = new CliffVestingContract();
     }
 
     function test_Release() public {

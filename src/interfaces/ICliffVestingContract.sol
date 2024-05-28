@@ -6,8 +6,6 @@ interface ICliffVestingContract {
     error CliffVestingContract__InvalidVestingSchedule();
     error CliffVestingContract__InsufficientAmountReceived(uint256 received, uint256 minAmount);
     error CliffVestingContract__OnlyBeneficiary();
-    error CliffVestingContract__OnlyFactoryOwner();
-    error CliffVestingContract__ExceedsReserves();
     error CliffVestingContract__ZeroMinAmount();
 
     event VestingScheduleCreated(
@@ -33,8 +31,6 @@ interface ICliffVestingContract {
         uint80 cliffDuration;
         uint80 vestingDuration;
     }
-
-    function getFactory() external view returns (address);
 
     function getNumberOfVestings(address token) external view returns (uint256);
 

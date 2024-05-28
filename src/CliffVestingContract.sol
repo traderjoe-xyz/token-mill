@@ -3,7 +3,6 @@ pragma solidity ^0.8.20;
 
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {ICliffVestingContract} from "./interfaces/ICliffVestingContract.sol";
 
@@ -19,21 +18,7 @@ import {ICliffVestingContract} from "./interfaces/ICliffVestingContract.sol";
 contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    address private immutable _factory;
-
     mapping(address token => VestingSchedule[]) private _vestingSchedules;
-
-    constructor(address factory) {
-        _factory = factory;
-    }
-
-    /**
-     * @dev Returns the address of the factory contract.
-     * @return The address of the factory contract.
-     */
-    function getFactory() external view override returns (address) {
-        return _factory;
-    }
 
     /**
      * @dev Returns the number of vestings of the specified token.
@@ -95,7 +80,7 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
         uint80 start,
         uint80 cliffDuration,
         uint80 vestingDuration
-    ) public {
+    ) public nonReentrant {
         if (cliffDuration > vestingDuration) revert CliffVestingContract__InvalidCliffDuration();
         if (start + vestingDuration <= block.timestamp) revert CliffVestingContract__InvalidVestingSchedule();
         if (minAmount == 0) revert CliffVestingContract__ZeroMinAmount();
@@ -119,7 +104,7 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
      * @param token The address of the token.
      * @param index The index of the vesting schedule.
      */
-    function release(address token, uint256 index) public {
+    function release(address token, uint256 index) public nonReentrant {
         VestingSchedule storage vesting = _vestingSchedules[token][index];
 
         if (vesting.beneficiary != msg.sender) revert CliffVestingContract__OnlyBeneficiary();
@@ -131,7 +116,7 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
 
             IERC20(token).safeTransfer(msg.sender, amount);
 
-            emit Released(token, index, msg.sender, amount);
+            emit Released(token, msg.sender, index, amount);
         }
     }
 
@@ -139,7 +124,7 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
      * @dev Transfers the vesting schedule of the specified token and index to the new beneficiary.
      * @param newBeneficiary The address of the new beneficiary.
      */
-    function transferVestingSchedule(address token, address newBeneficiary, uint256 index) public {
+    function transferVestingSchedule(address token, address newBeneficiary, uint256 index) public nonReentrant {
         VestingSchedule storage vesting = _vestingSchedules[token][index];
 
         if (vesting.beneficiary != msg.sender) revert CliffVestingContract__OnlyBeneficiary();
