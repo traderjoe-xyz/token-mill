@@ -11,7 +11,7 @@ contract MathTest is Test {
     using Math for uint256;
     using Math for int256;
 
-    function test_Fuzz_Min(uint256 x, uint256 y) public {
+    function test_Fuzz_Min(uint256 x, uint256 y) public pure {
         uint256 z = x.min(y);
 
         if (x < y) {
@@ -21,7 +21,7 @@ contract MathTest is Test {
         }
     }
 
-    function test_Fuzz_Max(uint256 x, uint256 y) public {
+    function test_Fuzz_Max(uint256 x, uint256 y) public pure {
         uint256 z = x.max(y);
 
         if (x > y) {
@@ -31,7 +31,7 @@ contract MathTest is Test {
         }
     }
 
-    function test_Fuzz_Abs(int256 x) public {
+    function test_Fuzz_Abs(int256 x) public pure {
         uint256 y = x.abs();
 
         if (x < 0) {
@@ -45,7 +45,7 @@ contract MathTest is Test {
         }
     }
 
-    function test_Fuzz_AddDelta(uint256 x, int256 delta) public {
+    function test_Fuzz_AddDelta(uint256 x, int256 delta) public pure {
         x = bound(x, 0, uint256(type(int256).max));
         delta = bound(delta, -int256(x), type(int256).max - int256(x));
 
@@ -72,7 +72,7 @@ contract MathTest is Test {
         x1.addDelta(delta1);
     }
 
-    function test_Fuzz_Div(uint256 x, uint256 y) public {
+    function test_Fuzz_Div(uint256 x, uint256 y) public pure {
         y = bound(y, 1, type(uint256).max);
 
         uint256 z = x.div(y, true);
@@ -89,7 +89,7 @@ contract MathTest is Test {
         x.div(0, roundUp);
     }
 
-    function test_Fuzz_MostSignificantBit(uint256 x) public {
+    function test_Fuzz_MostSignificantBit(uint256 x) public pure {
         x = bound(x, 1, type(uint256).max);
 
         uint256 msb = x.mostSignificantBit();
@@ -129,7 +129,7 @@ contract MathTest is Test {
         x.mulDiv(y, 0, roundUp);
     }
 
-    function test_Fuzz_Sqrt(uint256 x) public {
+    function test_Fuzz_Sqrt(uint256 x) public pure {
         x = bound(x, 0, type(uint256).max);
 
         uint256 yDown = x.sqrt(false);
@@ -143,7 +143,7 @@ contract MathTest is Test {
         if (yUp > 0) assertLt((yUp - 1) * (yUp - 1), x);
     }
 
-    function test_Fuzz_Sqrt512(uint256 x, uint256 y) public {
+    function test_Fuzz_Sqrt512(uint256 x, uint256 y) public pure {
         (uint256 xy0, uint256 xy1) = Math.mul512(x, y);
 
         uint256 sxyDown = Math.sqrt512(xy0, xy1, false);

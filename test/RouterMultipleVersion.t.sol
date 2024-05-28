@@ -533,7 +533,7 @@ contract TestRouterMultipleVersion is Test {
         assertEq(
             wavax.balanceOf(address(this)),
             initialWavaxBalance - amountIn + amountOut2,
-            "test_SwapExact:OutTtoTtoTSingleHopV2_1::6"
+            "test_SwapExactOutTtoTtoTSingleHopV2_1::6"
         );
         assertEq(
             usdc.balanceOf(address(this)),
@@ -561,8 +561,8 @@ contract TestRouterMultipleVersion is Test {
 
         assertEq(amountIn, expectedAmountIn, "test_SwapExactOutTtoTtoTMultiHop::1");
         assertEq(amountOut, expectedAmountOut, "test_SwapExactOutTtoTtoTMultiHop::2");
-        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactOutTtoTtoTMultiHop::2");
-        assertEq(IERC20(token1).balanceOf(address(this)), amountOut, "test_SwapExactOutTtoTtoTMultiHop::3");
+        assertEq(wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactOutTtoTtoTMultiHop::3");
+        assertEq(IERC20(token1).balanceOf(address(this)), amountOut, "test_SwapExactOutTtoTtoTMultiHop::4");
 
         IERC20(token1).approve(address(router), amountOut);
 
@@ -582,13 +582,13 @@ contract TestRouterMultipleVersion is Test {
         (uint256 amountIn2, uint256 amountOut2) =
             router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max);
 
-        assertGe(expectedAmountIn2, amountIn2, "test_SwapExactOutTtoTtoTMultiHop::4");
-        assertGe(amountOut2, expectedAmountOut2, "test_SwapExactOutTtoTtoTMultiHop::5");
+        assertGe(expectedAmountIn2, amountIn2, "test_SwapExactOutTtoTtoTMultiHop::5");
+        assertGe(amountOut2, expectedAmountOut2, "test_SwapExactOutTtoTtoTMultiHop::6");
         assertEq(
             wavax.balanceOf(address(this)),
             initialWavaxBalance - amountIn + amountOut2,
-            "test_SwapExactOutTtoTtoTMultiHop::6"
+            "test_SwapExactOutTtoTtoTMultiHop::7"
         );
-        assertEq(IERC20(token1).balanceOf(address(this)), amountOut - amountIn2, "test_SwapExactOutTtoTtoTMultiHop::7");
+        assertEq(IERC20(token1).balanceOf(address(this)), amountOut - amountIn2, "test_SwapExactOutTtoTtoTMultiHop::8");
     }
 }

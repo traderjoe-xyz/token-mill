@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 import "../src/libraries/PackedRoute.sol";
 
 contract PackedRouteTest is Test {
-    function test_Fuzz_Id(uint256 v, uint256 sv, uint256 t) public {
+    function test_Fuzz_Id(uint256 v, uint256 sv, uint256 t) public pure {
         v = bound(v, 0, type(uint8).max);
         sv = bound(sv, 0, type(uint8).max);
         t = bound(t, 0, type(uint16).max);
@@ -52,7 +52,7 @@ contract PackedRouteTest is Test {
         PackedRoute.decodeId(i);
     }
 
-    function test_Fuzz_Length(uint256 l) public {
+    function test_Fuzz_Length(uint256 l) public pure {
         l = bound(l, 1, 10);
 
         bytes memory route = new bytes(20 + l * 24);
@@ -68,7 +68,7 @@ contract PackedRouteTest is Test {
         PackedRoute.length(route);
     }
 
-    function test_Fuzz_FirstAndLast(address token0, address token1) public {
+    function test_Fuzz_FirstAndLast(address token0, address token1) public pure {
         bytes memory route = abi.encodePacked(token0, PackedRoute.encodeId(0, 0, 0), token1);
         vm.toString(route);
 
@@ -89,7 +89,7 @@ contract PackedRouteTest is Test {
         PackedRoute.last(route);
     }
 
-    function test_Fuzz_AtAndId(address[] memory tokens, uint32[] memory ids) public {
+    function test_Fuzz_AtAndId(address[] memory tokens, uint32[] memory ids) public pure {
         vm.assume(tokens.length > 2 && ids.length > 1);
 
         uint256 lt = tokens.length - 1;

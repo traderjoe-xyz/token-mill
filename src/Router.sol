@@ -101,7 +101,7 @@ contract Router {
         address recipient = lastToken == address(0) ? address(this) : to;
 
         uint256 balanceBefore = _balanceOf(lastToken, recipient);
-        _swapExactIn(recipient, pairs, ids, tokens, amountIn);
+        _swapExactIn(recipient, pairs, ids, amountIn);
         uint256 balanceAfter = _balanceOf(lastToken, recipient);
 
         if (balanceBefore + amountOutMin > balanceAfter) revert Router__InsufficientOutputAmount();
@@ -173,7 +173,7 @@ contract Router {
 
         {
             uint256 balanceBefore = _balanceOf(lastToken, recipient);
-            _swapExactOut(recipient, pairs, ids, tokens, amounts);
+            _swapExactOut(recipient, pairs, ids, amounts);
             uint256 balanceAfter = _balanceOf(lastToken, recipient);
 
             if (balanceBefore + amountOut > balanceAfter) revert Router__InsufficientOutputAmount();
@@ -284,12 +284,9 @@ contract Router {
         uint256 i = length - 1;
         amounts[i] = amount;
 
-        address tokenOut = tokens[i];
-
         for (; i > 0;) {
             (uint256 v, uint256 sv, uint256 t) = PackedRoute.decodeId(ids[--i]);
             address pair = pairs[i];
-            address tokenIn = tokens[i];
 
             if (v == 1) {
                 (uint256 reserveIn, uint256 reserveOut,) = IV1Pair(pair).getReserves();
@@ -326,13 +323,7 @@ contract Router {
         }
     }
 
-    function _swapExactIn(
-        address to,
-        address[] memory pairs,
-        uint256[] memory ids,
-        address[] memory tokens,
-        uint256 amount
-    ) internal {
+    function _swapExactIn(address to, address[] memory pairs, uint256[] memory ids, uint256 amount) internal {
         uint256 length = pairs.length;
         address pair = pairs[0];
 
@@ -371,13 +362,9 @@ contract Router {
         return amount;
     }
 
-    function _swapExactOut(
-        address to,
-        address[] memory pairs,
-        uint256[] memory ids,
-        address[] memory tokens,
-        uint256[] memory amounts
-    ) internal {
+    function _swapExactOut(address to, address[] memory pairs, uint256[] memory ids, uint256[] memory amounts)
+        internal
+    {
         uint256 length = pairs.length;
         address pair = pairs[0];
 
@@ -457,11 +444,7 @@ contract Router {
                 IERC20(address(_wnative)).safeTransfer(to, amount);
             }
         } else {
-            if (from == address(this)) {
-                IERC20(token).safeTransfer(to, amount);
-            } else {
-                IERC20(token).safeTransferFrom(from, to, amount);
-            }
+            IERC20(token).safeTransferFrom(from, to, amount);
         }
     }
 

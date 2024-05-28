@@ -272,17 +272,19 @@ library Math {
             let q := div(nom, denom) // q = floor(nom / denom)
             let u := mod(nom, denom) // u = nom % denom
 
-            // The nominator can be bigger than 2**256. We know that rp < (sp+1) * (sp+1). As sp can be
-            // at most floor(sqrt(2**256 - 1)) we can conclude that the nominator has at most 513 bits
-            // set. An expensive 512x256 bit division can be avoided by treating the bit at position 513 manually
-            let carry := shr(128, rp)
-            let x := mul(carry, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
-            q := add(q, div(x, denom))
-            u := add(u, add(carry, mod(x, denom)))
-            q := add(q, div(u, denom))
-            u := mod(u, denom)
+            {
+                // The nominator can be bigger than 2**256. We know that rp < (sp+1) * (sp+1). As sp can be
+                // at most floor(sqrt(2**256 - 1)) we can conclude that the nominator has at most 513 bits
+                // set. An expensive 512x256 bit division can be avoided by treating the bit at position 513 manually
+                let carry := shr(128, rp)
+                let x := mul(carry, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+                q := add(q, div(x, denom))
+                u := add(u, add(carry, mod(x, denom)))
+                q := add(q, div(u, denom))
+                u := mod(u, denom)
 
-            s := add(shl(128, sp), q) // s'b + q
+                s := add(shl(128, sp), q) // s'b + q
+            }
 
             // r = u'b + a_0 - q^2
             // r = (u_1 * b + u_0) * b + a_0 - (q_1 * b + q_0)^2
