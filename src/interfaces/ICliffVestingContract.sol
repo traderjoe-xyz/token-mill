@@ -23,7 +23,7 @@ interface ICliffVestingContract {
 
     event VestingScheduleTransferred(address indexed token, address indexed from, address indexed to, uint256 index);
 
-    event Released(address indexed token, address indexed beneficiary, uint256 amount);
+    event Released(address indexed token, address indexed beneficiary, uint256 index, uint256 amount);
 
     struct VestingSchedule {
         address beneficiary;

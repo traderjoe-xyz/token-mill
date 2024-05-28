@@ -131,7 +131,7 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
 
             IERC20(token).safeTransfer(msg.sender, amount);
 
-            emit Released(token, msg.sender, amount);
+            emit Released(token, index, msg.sender, amount);
         }
     }
 
