@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import "../src/TMMarket.sol";
 import "../src/libraries/ImmutableCreate.sol";
-import "../src/libraries/Helper.sol";
+import "../src/libraries/ImmutableHelper.sol";
 
 contract PricePointsTest is Test {
     MarketTestContract _market;
@@ -896,10 +896,10 @@ contract PricePointsTest is Test {
         address baseToken = address(new Decimals(uint8(decimalsBase)));
         address quoteToken = address(new Decimals(uint8(decimalsQuote)));
 
-        uint256[] memory packedPrices = Helper.packPrices(pricePoints, pricePoints);
+        uint256[] memory packedPrices = ImmutableHelper.packPrices(pricePoints, pricePoints);
 
         bytes memory immutableArgs =
-            Helper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
+            ImmutableHelper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
 
         console.log(totalSupply, pricePoints.length);
         _market = MarketTestContract(ImmutableCreate.create2(type(MarketTestContract).runtimeCode, immutableArgs, 0));

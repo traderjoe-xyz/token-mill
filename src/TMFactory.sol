@@ -10,7 +10,7 @@ import {TMMarket} from "./TMMarket.sol";
 import {ITMFactory} from "./interfaces/ITMFactory.sol";
 import {BasicERC20} from "./templates/BasicERC20.sol";
 import {ImmutableCreate} from "./libraries/ImmutableCreate.sol";
-import {Helper} from "./libraries/Helper.sol";
+import {ImmutableHelper} from "./libraries/ImmutableHelper.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
 
 contract TMFactory is Ownable, ITMFactory {
@@ -108,9 +108,9 @@ contract TMFactory is Ownable, ITMFactory {
     ) internal returns (address market) {
         if (!_quoteTokens.contains(quoteToken)) revert TMFactory__InvalidQuoteToken();
 
-        uint256[] memory packedPrices = Helper.packPrices(bidPrices, askPrices);
+        uint256[] memory packedPrices = ImmutableHelper.packPrices(bidPrices, askPrices);
         bytes memory immutableArgs =
-            Helper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
+            ImmutableHelper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
 
         market = ImmutableCreate.create2(type(TMMarket).runtimeCode, immutableArgs, 0);
         ITMMarket(market).initialize();
