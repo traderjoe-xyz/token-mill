@@ -112,7 +112,7 @@ contract TMFactory is Ownable, ITMFactory {
         bytes memory immutableArgs =
             ImmutableHelper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
 
-        market = ImmutableCreate.create2(type(TMMarket).runtimeCode, immutableArgs, 0);
+        market = ImmutableCreate.create(type(TMMarket).runtimeCode, immutableArgs);
         ITMMarket(market).initialize();
 
         emit MarketCreated(
