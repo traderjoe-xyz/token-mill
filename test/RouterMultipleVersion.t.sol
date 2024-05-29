@@ -40,9 +40,9 @@ contract TestRouterMultipleVersion is Test {
         factory = new TMFactory(0.1e18, address(this));
         router = new Router(v1Factory, v2_0Router, v2_1Factory, address(0), address(factory), address(wavax));
 
-        basicToken = new BasicERC20();
+        basicToken = new BasicERC20(address(factory));
 
-        factory.updateTokenImplementation(ITMFactory.TokenType.BasicERC20, address(basicToken));
+        factory.updateTokenImplementation(1, address(basicToken));
 
         factory.addQuoteToken(address(usdc));
         factory.addQuoteToken(address(wavax));
@@ -58,7 +58,7 @@ contract TestRouterMultipleVersion is Test {
         bidPrices[2] = 1000e18;
 
         (token0, market0w) = factory.createMarketAndToken(
-            ITMFactory.TokenType.BasicERC20, "Token0", "T0", address(wavax), 500_000_000e18, bidPrices, askPrices
+            1, "Token0", "T0", address(wavax), 500_000_000e18, bidPrices, askPrices, abi.encode(18)
         );
 
         askPrices[0] = 0.1e18;
@@ -70,7 +70,7 @@ contract TestRouterMultipleVersion is Test {
         bidPrices[2] = 11e18;
 
         (token1, market1u) = factory.createMarketAndToken(
-            ITMFactory.TokenType.BasicERC20, "Token1", "T1", address(usdc), 100_000_000e18, bidPrices, askPrices
+            1, "Token1", "T1", address(usdc), 100_000_000e18, bidPrices, askPrices, abi.encode(18)
         );
 
         deal(address(usdc), address(this), initialUsdcBalance);

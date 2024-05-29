@@ -23,26 +23,23 @@ interface ITMFactory {
         uint8 decimals,
         uint256[] packedPrices
     );
-    event MarketParametersUpdated(address indexed market, uint64 protocolShare, address creator);
-    event ProtocolShareUpdated(uint64 protocolShare);
-    event TokenImplementationUpdated(TokenType tokenType, address implementation);
+    event MarketParametersUpdated(address indexed market, uint256 protocolShare, address creator);
+    event ProtocolShareUpdated(uint256 protocolShare);
+    event TokenImplementationUpdated(uint256 tokenType, address implementation);
     event QuoteTokenAdded(address quoteToken);
     event QuoteTokenRemoved(address quoteToken);
     event ProtocolFeeRecipientUpdated(address recipient);
 
     struct MarketParameters {
-        uint64 protocolShare;
+        uint96 protocolShare;
         address creator;
-    }
-
-    enum TokenType {
-        Invalid,
-        BasicERC20
     }
 
     function getCreatorOf(address market) external view returns (address);
 
     function getProtocolShareOf(address market) external view returns (uint256);
+
+    function getTokenType(address token) external view returns (uint256);
 
     function getProtocolShare() external view returns (uint256);
 
@@ -58,16 +55,17 @@ interface ITMFactory {
 
     function isQuoteToken(address quoteToken) external view returns (bool);
 
-    function getImplementation(TokenType tokenType) external view returns (address);
+    function getImplementation(uint256 tokenType) external view returns (address);
 
     function createMarketAndToken(
-        TokenType tokenType,
+        uint256 tokenType,
         string memory name,
         string memory symbol,
         address quoteToken,
         uint256 totalSupply,
         uint256[] memory bidPrices,
-        uint256[] memory askPrices
+        uint256[] memory askPrices,
+        bytes memory args
     ) external returns (address baseToken, address market);
 
     function updateCreator(address market, address creator) external;
@@ -80,7 +78,7 @@ interface ITMFactory {
 
     function updateProtocolShareOf(address market, uint64 protocolShare) external;
 
-    function updateTokenImplementation(TokenType tokenType, address implementation) external;
+    function updateTokenImplementation(uint256 tokenType, address implementation) external;
 
     function addQuoteToken(address quoteToken) external;
 

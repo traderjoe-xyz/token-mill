@@ -8,7 +8,7 @@ import {IERC20Metadata, IERC20} from "@openzeppelin/contracts/token/ERC20/extens
 
 import {TMMarket} from "./TMMarket.sol";
 import {ITMFactory} from "./interfaces/ITMFactory.sol";
-import {BasicERC20} from "./templates/BasicERC20.sol";
+import {IBaseToken} from "./interfaces/IBaseToken.sol";
 import {ImmutableCreate} from "./libraries/ImmutableCreate.sol";
 import {ImmutableHelper} from "./libraries/ImmutableHelper.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
@@ -20,11 +20,12 @@ contract TMFactory is Ownable, ITMFactory {
     uint64 private _protocolShare;
 
     mapping(address market => MarketParameters) private _parameters;
+    mapping(address token => uint256) private _tokenTypes;
 
     mapping(address token0 => mapping(address token1 => uint256 packedMarket)) private _markets;
     address[] private _allMarkets;
 
-    mapping(TokenType => address implementation) private _implementations;
+    mapping(uint256 => address implementation) private _implementations;
     EnumerableSet.AddressSet private _quoteTokens;
 
     constructor(uint64 protocolShare, address initialOwner) Ownable(initialOwner) {
@@ -37,6 +38,10 @@ contract TMFactory is Ownable, ITMFactory {
 
     function getProtocolShareOf(address market) external view override returns (uint256) {
         return _parameters[market].protocolShare;
+    }
+
+    function getTokenType(address token) external view override returns (uint256) {
+        return _tokenTypes[token];
     }
 
     function getProtocolShare() external view override returns (uint256) {
@@ -69,32 +74,40 @@ contract TMFactory is Ownable, ITMFactory {
         return _quoteTokens.contains(quoteToken);
     }
 
-    function getImplementation(TokenType tokenType) external view override returns (address) {
+    function getImplementation(uint256 tokenType) external view override returns (address) {
         return _implementations[tokenType];
     }
 
     function createMarketAndToken(
-        TokenType tokenType,
+        uint256 tokenType,
         string memory name,
         string memory symbol,
         address quoteToken,
         uint256 totalSupply,
         uint256[] memory bidPrices,
-        uint256[] memory askPrices
+        uint256[] memory askPrices,
+        bytes memory args
     ) external override returns (address baseToken, address market) {
-        baseToken = _createToken(tokenType, keccak256(bytes(symbol)));
-        market = _createMarket(name, symbol, baseToken, quoteToken, totalSupply, bidPrices, askPrices);
+        baseToken = _createToken(tokenType, name, symbol, args);
+
+        uint256[] memory packedPrices = ImmutableHelper.packPrices(bidPrices, askPrices);
+        market = _createMarket(name, symbol, baseToken, quoteToken, totalSupply, packedPrices);
 
         return (baseToken, market);
     }
 
-    function _createToken(TokenType tokenType, bytes32 salt) internal returns (address token) {
+    function _createToken(uint256 tokenType, string memory name, string memory symbol, bytes memory args)
+        internal
+        returns (address token)
+    {
         address implementation = _implementations[tokenType];
         if (implementation == address(0)) revert TMFactory__InvalidTokenType();
 
-        token = Clones.cloneDeterministic(implementation, salt, 0);
+        token = Clones.clone(implementation);
 
-        return token;
+        _tokenTypes[token] = tokenType;
+
+        IBaseToken(token).initialize(name, symbol, args);
     }
 
     function _createMarket(
@@ -103,17 +116,14 @@ contract TMFactory is Ownable, ITMFactory {
         address baseToken,
         address quoteToken,
         uint256 totalSupply,
-        uint256[] memory bidPrices,
-        uint256[] memory askPrices
+        uint256[] memory packedPrices
     ) internal returns (address market) {
         if (!_quoteTokens.contains(quoteToken)) revert TMFactory__InvalidQuoteToken();
 
-        uint256[] memory packedPrices = ImmutableHelper.packPrices(bidPrices, askPrices);
         bytes memory immutableArgs =
             ImmutableHelper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
 
         market = ImmutableCreate.create(type(TMMarket).runtimeCode, immutableArgs);
-        ITMMarket(market).initialize();
 
         emit MarketCreated(
             quoteToken,
@@ -136,7 +146,8 @@ contract TMFactory is Ownable, ITMFactory {
 
         emit MarketParametersUpdated(market, protocolShare, msg.sender);
 
-        BasicERC20(baseToken).initialize(name, symbol, market, totalSupply);
+        ITMMarket(market).initialize();
+        IBaseToken(baseToken).factoryMint(market, totalSupply);
 
         if (IERC20(baseToken).balanceOf(market) != totalSupply) revert TMFactory__InvalidTotalSupply();
     }
@@ -187,8 +198,8 @@ contract TMFactory is Ownable, ITMFactory {
         emit MarketParametersUpdated(market, protocolShare, parameters.creator);
     }
 
-    function updateTokenImplementation(TokenType tokenType, address implementation) external override onlyOwner {
-        if (tokenType == TokenType.Invalid) revert TMFactory__InvalidTokenType();
+    function updateTokenImplementation(uint256 tokenType, address implementation) external override onlyOwner {
+        if (tokenType == 0) revert TMFactory__InvalidTokenType();
 
         _implementations[tokenType] = implementation;
 

@@ -30,9 +30,9 @@ contract TestHelper is Test {
         factory = new TMFactory(0.1e18, address(this));
         router = new Router(address(0), address(0), address(0), address(0), address(factory), address(wnative));
 
-        basicToken = new BasicERC20();
+        basicToken = new BasicERC20(address(factory));
 
-        factory.updateTokenImplementation(ITMFactory.TokenType.BasicERC20, address(basicToken));
+        factory.updateTokenImplementation(1, address(basicToken));
 
         vm.label(address(factory), "TMFactory");
         vm.label(address(router), "Router");
@@ -54,7 +54,7 @@ contract TestHelper is Test {
         bidPrices[2] = askPrices[2] * 95 / 100;
 
         (token0, market0w) = factory.createMarketAndToken(
-            ITMFactory.TokenType.BasicERC20, "Token0", "T0", address(wnative), 500_000_000e18, bidPrices, askPrices
+            1, "Token0", "T0", address(wnative), 500_000_000e18, bidPrices, askPrices, abi.encode(18)
         );
 
         factory.addQuoteToken(address(token0));
@@ -68,7 +68,7 @@ contract TestHelper is Test {
         bidPrices[2] = askPrices[2];
 
         (token1, market10) = factory.createMarketAndToken(
-            ITMFactory.TokenType.BasicERC20, "Token1", "T1", address(token0), 100_000_000e18, bidPrices, askPrices
+            1, "Token1", "T1", address(token0), 100_000_000e18, bidPrices, askPrices, abi.encode(18)
         );
 
         factory.addQuoteToken(address(token1));
@@ -82,7 +82,7 @@ contract TestHelper is Test {
         bidPrices[2] = 20e18;
 
         (token2, market21) = factory.createMarketAndToken(
-            ITMFactory.TokenType.BasicERC20, "Token2", "T2", address(token1), 50_000_000e18, bidPrices, askPrices
+            1, "Token2", "T2", address(token1), 50_000_000e18, bidPrices, askPrices, abi.encode(18)
         );
 
         vm.label(token0, "Token0");
