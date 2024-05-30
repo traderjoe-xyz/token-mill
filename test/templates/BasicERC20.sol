@@ -38,11 +38,11 @@ contract BasicERC20Test is Test {
         BasicERC20 token = BasicERC20(Clones.clone(implementation));
         token.initialize("Test", "TST", abi.encode(18));
 
-        assertEq(address(this), token.factory(), "test_Fuzz_FactoryMint::0");
+        assertEq(address(this), token.factory(), "test_Fuzz_FactoryMint::1");
 
         token.factoryMint(to, amount);
 
-        assertEq(amount, token.balanceOf(to), "test_Fuzz_FactoryMint::1");
+        assertEq(amount, token.balanceOf(to), "test_Fuzz_FactoryMint::2");
 
         if (to == address(this)) to = address(1);
 

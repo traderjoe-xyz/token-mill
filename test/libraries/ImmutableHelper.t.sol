@@ -285,7 +285,7 @@ contract ImmutableHelperTest is Test {
                     ptr := add(ptr, 32)
                 }
 
-                assertEq(price, packedPrices[i], "test_Fuzz_GetImmutableArgs::9");
+                assertEq(price, packedPrices[i], "test_Fuzz_GetImmutableArgs::8");
             }
         }
     }

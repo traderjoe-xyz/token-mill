@@ -266,13 +266,13 @@ contract CliffVestingContractTest is Test {
         assertEq(
             vesting0B.released, releasable0B_3 + releasable0B_2 + releasable0B_1 + releasable0B_0, "test_Release::54"
         );
-        assertEq(vesting1A.released, releasable1A_1 + releasable1A_0, "test_Release::56");
+        assertEq(vesting1A.released, releasable1A_1 + releasable1A_0, "test_Release::55");
 
-        assertEq(token0.balanceOf(alice), 0, "test_Release::57");
+        assertEq(token0.balanceOf(alice), 0, "test_Release::56");
         assertEq(
-            token0.balanceOf(bob), releasable0B_3 + releasable0B_2 + releasable0B_1 + releasable0B_0, "test_Release::58"
+            token0.balanceOf(bob), releasable0B_3 + releasable0B_2 + releasable0B_1 + releasable0B_0, "test_Release::57"
         );
-        assertEq(token1.balanceOf(alice), releasable1A_0, "test_Release::59");
+        assertEq(token1.balanceOf(alice), releasable1A_0, "test_Release::58");
 
         vm.warp(start0A + cliffDuration0A + vestingDuration0A);
 
@@ -289,14 +289,14 @@ contract CliffVestingContractTest is Test {
         vesting0B = vesting.getVestingSchedule(address(token0), 1);
         vesting1A = vesting.getVestingSchedule(address(token1), 0);
 
-        assertEq(vesting0A.released, total0A, "test_Release::60");
-        assertEq(vesting0B.released, total0B, "test_Release::61");
-        assertEq(vesting1A.released, total1A, "test_Release::62");
+        assertEq(vesting0A.released, total0A, "test_Release::59");
+        assertEq(vesting0B.released, total0B, "test_Release::60");
+        assertEq(vesting1A.released, total1A, "test_Release::61");
 
-        assertEq(token0.balanceOf(alice), total0A, "test_Release::63");
-        assertEq(token0.balanceOf(bob), total0B, "test_Release::64");
-        assertEq(token1.balanceOf(alice), releasable1A_0, "test_Release::65");
-        assertEq(token1.balanceOf(bob), total1A - releasable1A_0, "test_Release::66");
+        assertEq(token0.balanceOf(alice), total0A, "test_Release::62");
+        assertEq(token0.balanceOf(bob), total0B, "test_Release::63");
+        assertEq(token1.balanceOf(alice), releasable1A_0, "test_Release::64");
+        assertEq(token1.balanceOf(bob), total1A - releasable1A_0, "test_Release::65");
     }
 
     function test_Fuzz_Revert_CreateVestingSchedule(
