@@ -6,7 +6,7 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 import {IBaseToken} from "../interfaces/IBaseToken.sol";
 
 abstract contract BaseERC20 is ERC20Upgradeable, IBaseToken {
-    error BasicERC20__OnlyFactory();
+    error BaseERC20__OnlyFactory();
 
     address private immutable _factory;
 
@@ -14,8 +14,12 @@ abstract contract BaseERC20 is ERC20Upgradeable, IBaseToken {
         _factory = factory_;
     }
 
-    function initialize(string memory name, string memory symbol, bytes calldata args) external override initializer {
-        __ERC20_init(name, symbol);
+    function initialize(string memory name_, string memory symbol_, bytes calldata args)
+        external
+        override
+        initializer
+    {
+        __ERC20_init(name_, symbol_);
 
         _initialize(args);
     }
@@ -25,7 +29,7 @@ abstract contract BaseERC20 is ERC20Upgradeable, IBaseToken {
     }
 
     function factoryMint(address to, uint256 amount) external {
-        if (msg.sender != _factory) revert BasicERC20__OnlyFactory();
+        if (msg.sender != _factory) revert BaseERC20__OnlyFactory();
         _mint(to, amount);
     }
 
