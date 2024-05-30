@@ -6,11 +6,11 @@ library ImmutableCreate {
     error ImmutableCreate__MaxLengthExceeded();
 
     function create(bytes memory runtimecode, bytes memory immutableArgs) internal returns (address c) {
-        if (runtimecode.length + immutableArgs.length > 0xfffd) revert ImmutableCreate__MaxLengthExceeded();
+        uint256 runtimecodeLength = runtimecode.length;
+        if (runtimecodeLength + immutableArgs.length > 0xfffd) revert ImmutableCreate__MaxLengthExceeded();
 
         bytes memory code = bytes.concat(runtimecode, immutableArgs);
 
-        uint256 runtimecodeLength = runtimecode.length;
         uint256 codeLength = code.length;
 
         assembly {

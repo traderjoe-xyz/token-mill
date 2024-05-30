@@ -14,6 +14,9 @@ contract ImmutableContractTest is Test {
 
         MockImmutableContract immutableContract = MockImmutableContract(ImmutableCreate.create(runtimecode, data));
 
+        vm.expectRevert(ImmutableCreate.ImmutableCreate__DeploymentFailed.selector);
+        this.create{gas: 100_000}(runtimecode, data);
+
         assertEq(uint256(immutableContract.getOffset()), runtimecode.length, "test_Fuzz_GetImmutableData::1");
 
         for (uint256 i; i < data.length; ++i) {
@@ -98,7 +101,11 @@ contract ImmutableContractTest is Test {
         }
 
         vm.expectRevert(ImmutableCreate.ImmutableCreate__MaxLengthExceeded.selector);
-        ImmutableCreate.create(runtimecode, data);
+        ImmutableCreate.create2(runtimecode, data, 0);
+    }
+
+    function create(bytes memory runtimecode, bytes memory immutableArgs) external returns (address) {
+        return ImmutableCreate.create(runtimecode, immutableArgs);
     }
 
     function create2(bytes memory runtimecode, bytes memory immutableArgs, bytes32 salt) external returns (address) {

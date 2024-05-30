@@ -143,6 +143,37 @@ contract MathTest is Test {
         if (yUp > 0) assertLt((yUp - 1) * (yUp - 1), x);
     }
 
+    function test_Add512(uint256 x0, uint256 x1, uint256 y0, uint256 y1) public pure {
+        uint256 remainder = x0 > type(uint256).max - y0 ? 1 : 0;
+
+        x1 = bound(x1, 0, type(uint256).max - remainder);
+        y1 = bound(y1, 0, type(uint256).max - remainder - x1);
+
+        (uint256 z0, uint256 z1) = Math.add512(x0, x1, y0, y1);
+
+        unchecked {
+            assertEq(z0, x0 + y0, "test_Add512::1");
+        }
+
+        assertEq(z1, x1 + y1 + remainder, "test_Add512::2");
+    }
+
+    function test_Revert_Add512(uint256 x0, uint256 x1, uint256 y0, uint256 y1) public {
+        uint256 remainder = x0 > type(uint256).max - y0 ? 1 : 0;
+
+        x1 = bound(x1, 1, type(uint256).max - remainder);
+        y1 = bound(y1, type(uint256).max - x1 + 1 - remainder, type(uint256).max);
+
+        string memory m = string(abi.encodePacked(vm.toString(x0), " + ", vm.toString(y0)));
+
+        console.log("((%s + %s) << 256) + %s", x1, y1, m);
+
+        vm.expectRevert(Math.Math__UnderOverflow.selector);
+        Math.add512(x0, x1, y0, y1);
+
+        Math.add512(x0, x1, y0, y1 - 1);
+    }
+
     function test_Fuzz_Sqrt512(uint256 x, uint256 y) public pure {
         (uint256 xy0, uint256 xy1) = Math.mul512(x, y);
 
@@ -163,6 +194,14 @@ contract MathTest is Test {
         } else {
             assertGe(xyUp1, xy1, "test_Fuzz_Sqrt512::4");
         }
+    }
+
+    function test_Revert_Sqrt512() public {
+        vm.expectRevert(Math.Math__UnderOverflow.selector);
+        Math.sqrt512(0, type(uint256).max, false);
+
+        vm.expectRevert(Math.Math__UnderOverflow.selector);
+        Math.sqrt512(0, type(uint256).max, true);
     }
 
     function OZMulDiv(uint256 x, uint256 y, uint256 z, bool roundUp) external pure returns (uint256) {

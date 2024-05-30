@@ -205,12 +205,16 @@ library Math {
     }
 
     function add512(uint256 x0, uint256 x1, uint256 y0, uint256 y1) internal pure returns (uint256 z0, uint256 z1) {
+        uint256 success;
+
         assembly {
             z0 := add(x0, y0)
             z1 := add(add(x1, y1), lt(z0, x0))
+
+            success := or(gt(z1, x1), iszero(y1))
         }
 
-        if (z1 < x1) revert Math__UnderOverflow();
+        if (success == 0) revert Math__UnderOverflow();
     }
 
     /**
@@ -223,7 +227,7 @@ library Math {
      */
     function sqrt512(uint256 x0, uint256 x1, bool roundUp) internal pure returns (uint256 s) {
         if (x1 == 0) return sqrt(x0, roundUp);
-        if (x1 > 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe) revert Math__UnderOverflow(); // max allowed is sqrt((2^256-1)^2), orelse round up would overflow
+        if (x1 == type(uint256).max) revert Math__UnderOverflow(); // max allowed is sqrt((2^256-1)^2), orelse round up would overflow
 
         uint256 shift;
 
