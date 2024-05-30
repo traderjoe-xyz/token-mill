@@ -24,14 +24,14 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     uint256 internal _creatorTotalFees;
 
     modifier nonReentrant() {
-        if (_locked) revert Market__ReentrantCall();
+        if (_locked) revert TMMarket__ReentrantCall();
         _locked = true;
         _;
         _locked = false;
     }
 
     function initialize() external override {
-        if (msg.sender != _factory()) revert Market__OnlyFactory();
+        if (msg.sender != _factory()) revert TMMarket__OnlyFactory();
 
         _baseReserve = uint128(_totalSupply());
     }
@@ -118,8 +118,8 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         nonReentrant
         returns (int256 deltaBaseAmount, int256 deltaQuoteAmount)
     {
-        if (recipient == address(0)) revert Market__InvalidRecipient();
-        if (deltaAmount == 0) revert Market__ZeroAmount();
+        if (recipient == address(0)) revert TMMarket__InvalidRecipient();
+        if (deltaAmount == 0) revert TMMarket__ZeroAmount();
 
         (uint256 baseReserve, uint256 quoteReserve) = _getReserves();
         uint256 circulatingSupply = _totalSupply() - baseReserve;
@@ -138,7 +138,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
                 && ITokenMillCallback(msg.sender).tokenMillSwapCallback(deltaBaseAmount, deltaQuoteAmount, data)
                     != ITokenMillCallback.tokenMillSwapCallback.selector
         ) {
-            revert Market__InvalidSwapCallback();
+            revert TMMarket__InvalidSwapCallback();
         }
 
         uint256 balance = tokenToReceive.balanceOf(address(this));
@@ -158,7 +158,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     {
         ITMFactory factory = ITMFactory(_factory());
 
-        if (msg.sender != address(factory)) revert Market__OnlyFactory();
+        if (msg.sender != address(factory)) revert TMMarket__OnlyFactory();
 
         IERC20 quoteToken = IERC20(_quoteToken());
 
@@ -220,7 +220,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 toReceive,
         uint256 baseBalance
     ) internal {
-        if (baseReserve + toReceive > baseBalance) revert Market__InsufficientAmount();
+        if (baseReserve + toReceive > baseBalance) revert TMMarket__InsufficientAmount();
 
         _baseReserve = uint128(baseBalance);
         _quoteReserve = quoteReserve - toSend;
@@ -233,7 +233,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 toReceive,
         uint256 quoteBalance
     ) internal {
-        if (quoteReserve + toReceive > quoteBalance) revert Market__InsufficientAmount();
+        if (quoteReserve + toReceive > quoteBalance) revert TMMarket__InsufficientAmount();
 
         _baseReserve = uint128(baseReserve - toSend);
         _quoteReserve = quoteBalance;

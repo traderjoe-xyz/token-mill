@@ -4,12 +4,12 @@ pragma solidity ^0.8.20;
 import {IPricePoints} from "./IPricePoints.sol";
 
 interface ITMMarket is IPricePoints {
-    error Market__ZeroAmount();
-    error Market__InsufficientAmount();
-    error Market__InvalidSwapCallback();
-    error Market__ReentrantCall();
-    error Market__InvalidRecipient();
-    error Market__OnlyFactory();
+    error TMMarket__ZeroAmount();
+    error TMMarket__InsufficientAmount();
+    error TMMarket__InvalidSwapCallback();
+    error TMMarket__ReentrantCall();
+    error TMMarket__InvalidRecipient();
+    error TMMarket__OnlyFactory();
 
     event Swap(address indexed sender, address indexed recipient, int256 deltaBaseAmount, int256 deltaQuoteAmount);
     event FeesClaimed(address indexed caller, address indexed recipient, uint256 fees);
