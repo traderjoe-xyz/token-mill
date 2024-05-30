@@ -33,5 +33,5 @@ abstract contract BaseERC20 is ERC20Upgradeable, IBaseToken {
         _mint(to, amount);
     }
 
-    function _initialize(bytes calldata args) internal virtual;
+    function _initialize(bytes calldata args) internal virtual {}
 }
