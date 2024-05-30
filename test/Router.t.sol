@@ -433,4 +433,211 @@ contract TestRouter is TestHelper {
             IERC20(token2).balanceOf(market21), 50_000_000e18 - token2Balance, "test_SwapExactOutNtoTtoNMultiHop::4"
         );
     }
+
+    function test_SwapExactInNtoTSingleHopExcessNative() public {
+        bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
+
+        uint256 balance = address(this).balance;
+        assertEq(wnative.balanceOf(market0w), 0, "test_SwapExactInNtoTSingleHopExcessNative::1");
+        assertEq(IERC20(token0).balanceOf(address(this)), 0, "test_SwapExactInNtoTSingleHopExcessNative::2");
+        assertEq(IERC20(token0).balanceOf(market0w), 500_000_000e18, "test_SwapExactInNtoTSingleHopExcessNative::3");
+
+        (, uint256 amountOut) = router.swapExactIn{value: 10e18}(route, address(this), 1e18, 1e18);
+
+        assertEq(address(this).balance, balance - 1e18, "test_SwapExactInNtoTSingleHopExcessNative::4");
+        assertEq(wnative.balanceOf(market0w), 1e18, "test_SwapExactInNtoTSingleHopExcessNative::5");
+        assertEq(IERC20(token0).balanceOf(address(this)), amountOut, "test_SwapExactInNtoTSingleHopExcessNative::6");
+        assertEq(
+            IERC20(token0).balanceOf(market0w),
+            500_000_000e18 - amountOut,
+            "test_SwapExactInNtoTSingleHopExcessNative::7"
+        );
+    }
+
+    function test_SwapExactInTtoTtoTMultiHopTransferTaxTokens() public {
+        wnative.deposit{value: 1e18}();
+        wnative.approve(address(router), 1e18);
+
+        uint256[] memory prices = new uint256[](2);
+
+        prices[0] = 1e18;
+        prices[1] = 1e18 + 1;
+
+        factory.updateTokenImplementation(2, address(new TransferTaxToken(address(factory), 0.1e18)));
+        (address taxToken, address market) = factory.createMarketAndToken(
+            2, "TaxToken", "TT", address(wnative), 500_000_000e18, prices, prices, new bytes(0)
+        );
+
+        bytes memory route = abi.encodePacked(wnative, uint32(3 << 24), taxToken);
+
+        (uint256 amountIn, uint256 amountOut) =
+            router.swapExactInSupportingFeeOnTransferTokens(route, address(this), 1e18, 0);
+
+        assertEq(amountIn, 1e18, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::1");
+        assertApproxEqAbs(amountOut, 0.9e18, 1, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::2");
+
+        assertEq(
+            IERC20(taxToken).balanceOf(address(this)), amountOut, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::3"
+        );
+        assertEq(IERC20(wnative).balanceOf(market), 1e18, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::4");
+
+        IERC20(taxToken).approve(address(router), amountOut);
+
+        route = abi.encodePacked(taxToken, uint32(3 << 24), wnative);
+
+        vm.expectRevert(ITMMarket.TMMarket__InsufficientAmount.selector);
+        router.swapExactIn(route, address(this), amountOut, 0);
+
+        uint256 balance = address(this).balance;
+
+        (uint256 amountIn2, uint256 amountOut2) =
+            router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(route, address(this), amountOut, 0);
+
+        assertEq(amountIn2, amountOut, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::5");
+        assertApproxEqAbs(amountOut2, 0.9e18 * 0.9e18 / 1e18, 1, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::6");
+
+        assertEq(address(this).balance, balance, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::7");
+        assertEq(wnative.balanceOf(address(this)), amountOut2, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::8");
+        assertEq(wnative.balanceOf(market), 1e18 - amountOut2, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::9");
+        assertEq(IERC20(taxToken).balanceOf(address(this)), 0, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::10");
+        assertGt(
+            IERC20(taxToken).balanceOf(market),
+            500_000_000e18 - amountOut,
+            "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::11"
+        );
+    }
+
+    function test_SwapExactInNtoTtoNMultiHopTransferTaxTokens() public {
+        uint256[] memory prices = new uint256[](2);
+
+        prices[0] = 1e18;
+        prices[1] = 1e18 + 1;
+
+        factory.updateTokenImplementation(2, address(new TransferTaxToken(address(factory), 0.1e18)));
+        (address taxToken, address market) = factory.createMarketAndToken(
+            2, "TaxToken", "TT", address(wnative), 500_000_000e18, prices, prices, new bytes(0)
+        );
+
+        uint256 balance = address(this).balance;
+
+        bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), taxToken);
+
+        (uint256 amountIn, uint256 amountOut) =
+            router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(route, address(this), 1e18, 0);
+
+        assertEq(amountIn, 1e18, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::1");
+        assertApproxEqAbs(amountOut, 0.9e18, 1, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::2");
+
+        assertEq(
+            IERC20(taxToken).balanceOf(address(this)), amountOut, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::3"
+        );
+        assertEq(address(this).balance, balance - amountIn, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::4");
+
+        IERC20(taxToken).approve(address(router), amountOut);
+
+        route = abi.encodePacked(taxToken, uint32(3 << 24), address(0));
+
+        vm.expectRevert(ITMMarket.TMMarket__InsufficientAmount.selector);
+        router.swapExactIn(route, address(this), amountOut, 0);
+
+        (uint256 amountIn2, uint256 amountOut2) =
+            router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(route, address(this), amountOut, 0);
+
+        assertEq(amountIn2, amountOut, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::5");
+        assertApproxEqAbs(amountOut2, 0.9e18 * 0.9e18 / 1e18, 1, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::6");
+
+        assertEq(
+            address(this).balance,
+            balance - amountIn + amountOut2,
+            "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::7"
+        );
+        assertEq(wnative.balanceOf(address(this)), 0, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::8");
+        assertEq(wnative.balanceOf(market), 1e18 - amountOut2, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::9");
+        assertEq(IERC20(taxToken).balanceOf(address(this)), 0, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::10");
+        assertGt(
+            IERC20(taxToken).balanceOf(market),
+            500_000_000e18 - amountOut,
+            "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::11"
+        );
+    }
+
+    function test_Revert_SwapExactIn() public {
+        bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
+
+        vm.expectRevert(Router.Router__InvalidRecipient.selector);
+        router.swapExactIn{value: 1e18}(new bytes(0), address(router), 0, 0);
+
+        vm.expectRevert(Router.Router__InvalidRecipient.selector);
+        router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(new bytes(0), address(router), 0, 0);
+
+        vm.expectRevert(Router.Router__InsufficientOutputAmount.selector);
+        router.swapExactIn{value: 1e18}(route, address(this), 1e18, type(uint256).max);
+
+        vm.expectRevert(Router.Router__InsufficientOutputAmount.selector);
+        router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(route, address(this), 1e18, type(uint256).max);
+
+        route = abi.encodePacked(token0, uint32(3 << 24), token1);
+        deal(token0, address(this), 500_000_000e18 + 1);
+        IERC20(token0).approve(address(router), 500_000_000e18 + 1);
+
+        vm.expectRevert(Router.Router__InvalidAmounts.selector);
+        router.swapExactIn(route, address(this), 500_000_000e18 + 1, 1e18);
+
+        vm.expectRevert(Router.Router__InvalidAmounts.selector);
+        router.swapExactInSupportingFeeOnTransferTokens(route, address(this), 500_000_000e18 + 1, 1e18);
+    }
+
+    function test_Revert_SwapExactOut() public {
+        bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
+
+        vm.expectRevert(Router.Router__InvalidRecipient.selector);
+        router.swapExactOut(new bytes(0), address(router), 0, 0);
+
+        vm.expectRevert(Router.Router__InvalidAmounts.selector);
+        router.swapExactOut{value: 1e18}(route, address(this), 500_000_000e18 + 1, 0);
+
+        route = abi.encodePacked(token0, uint32(3 << 24), address(0));
+
+        vm.expectRevert(Router.Router__InvalidAmounts.selector);
+        router.swapExactOut(route, address(this), type(uint128).max, 0);
+
+        route = abi.encodePacked(address(0), uint32(3 << 24), token0);
+
+        vm.expectRevert(Router.Router__ExceedsMaxInputAmount.selector);
+        router.swapExactOut(route, address(this), 1, 0);
+
+        uint256[] memory prices = new uint256[](2);
+
+        prices[0] = 1e18;
+        prices[1] = 1e18 + 1;
+
+        factory.updateTokenImplementation(2, address(new TransferTaxToken(address(factory), 0.1e18)));
+        (address taxToken,) = factory.createMarketAndToken(
+            2, "TaxToken", "TT", address(wnative), 500_000_000e18, prices, prices, new bytes(0)
+        );
+
+        route = abi.encodePacked(address(0), uint32(3 << 24), taxToken);
+
+        vm.expectRevert(Router.Router__InsufficientOutputAmount.selector);
+        router.swapExactOut{value: 1e18}(route, address(this), 1e18 - 1, 1e18);
+    }
+}
+
+contract TransferTaxToken is BaseERC20 {
+    uint256 public immutable tax;
+
+    constructor(address factory_, uint256 tax_) BaseERC20(factory_) {
+        require(tax_ <= 1e18, "TransferTaxToken: invalid tax");
+        tax = tax_;
+    }
+
+    function _update(address from, address to, uint256 value) internal override {
+        if (from != address(0)) {
+            uint256 taxAmount = value * tax / 1e18;
+            super._update(from, address(0), taxAmount);
+
+            value -= taxAmount;
+        }
+        super._update(from, to, value);
+    }
 }

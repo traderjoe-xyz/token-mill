@@ -591,4 +591,26 @@ contract TestRouterMultipleVersion is Test {
         );
         assertEq(IERC20(token1).balanceOf(address(this)), amountOut - amountIn2, "test_SwapExactOutTtoTtoTMultiHop::8");
     }
+
+    function test_Fuzz_GetFactory(uint256 sv) public {
+        address v2_2Factory = makeAddr("v2_2Factory");
+
+        router = new Router(v1Factory, v2_0Router, v2_1Factory, v2_2Factory, address(factory), address(wavax));
+
+        assertEq(router.getFactory(1, 0), address(v1Factory), "test_Fuzz_GetFactory::1");
+        assertEq(router.getFactory(2, 0), address(v2_0Factory), "test_Fuzz_GetFactory::2");
+        assertEq(router.getFactory(2, 1), address(v2_1Factory), "test_Fuzz_GetFactory::3");
+        assertEq(router.getFactory(2, 2), v2_2Factory, "test_Fuzz_GetFactory::4");
+        assertEq(router.getFactory(3, 0), address(factory), "test_Fuzz_GetFactory::5");
+
+        assertEq(router.getFactory(0, sv), address(0), "test_Fuzz_GetFactory::6");
+        assertEq(router.getFactory(1, bound(sv, 1, type(uint256).max)), address(0), "test_Fuzz_GetFactory::7");
+        assertEq(router.getFactory(2, bound(sv, 3, type(uint256).max)), address(0), "test_Fuzz_GetFactory::8");
+        assertEq(router.getFactory(3, bound(sv, 1, 2)), address(0), "test_Fuzz_GetFactory::9");
+        assertEq(router.getFactory(bound(sv, 4, type(uint256).max), sv), address(0), "test_Fuzz_GetFactory::10");
+    }
+
+    function test_GetWNative() public view {
+        assertEq(router.getWNative(), address(wavax), "test_GetWNative::1");
+    }
 }

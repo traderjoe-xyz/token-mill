@@ -66,7 +66,9 @@ contract Router {
 
     function getFactory(uint256 v, uint256 sv) external view returns (address) {
         if (v == 1) {
-            return address(_v1Factory);
+            if (sv == 0) {
+                return address(_v1Factory);
+            }
         } else if (v == 2) {
             if (sv == 0) {
                 return address(_v2_0Factory);
@@ -76,7 +78,9 @@ contract Router {
                 return address(_v2_2Factory);
             }
         } else if (v == 3) {
-            return address(_tmFactory);
+            if (sv == 0) {
+                return address(_tmFactory);
+            }
         }
 
         return address(0);
@@ -129,18 +133,21 @@ contract Router {
 
         (address[] memory pairs, uint256[] memory ids, address[] memory tokens) = _getPairsAndIds(route);
 
-        uint256 balanceBefore = _balanceOf(tokens[0], msg.sender);
-        _transfer(tokens[0], msg.sender, pairs[0], amountIn);
-        amountIn = _balanceOf(tokens[0], msg.sender) - balanceBefore;
+        address token = tokens[0];
+        address recipient = pairs[0];
 
-        address lastToken = tokens[pairs.length];
-        address recipient = lastToken == address(0) ? address(this) : to;
+        uint256 balanceBefore = _balanceOf(token, recipient);
+        _transfer(token, msg.sender, recipient, amountIn);
+        uint256 effectiveAmountIn = _balanceOf(token, recipient) - balanceBefore;
 
-        uint256 amountOut = _swapExactInSupportingFeeOnTransferTokens(recipient, pairs, ids, tokens, amountIn);
+        token = tokens[pairs.length];
+        recipient = token == address(0) ? address(this) : to;
+
+        uint256 amountOut = _swapExactInSupportingFeeOnTransferTokens(recipient, pairs, ids, tokens, effectiveAmountIn);
 
         if (amountOut < amountOutMin) revert Router__InsufficientOutputAmount();
 
-        if (recipient == address(this)) _transfer(lastToken, recipient, to, amountOut);
+        if (recipient == address(this)) _transfer(token, recipient, to, amountOut);
 
         if (msg.value > 0) {
             uint256 leftOver = address(this).balance;
