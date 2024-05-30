@@ -298,4 +298,60 @@ contract CliffVestingContractTest is Test {
         assertEq(token1.balanceOf(alice), releasable1A_0, "test_Release::65");
         assertEq(token1.balanceOf(bob), total1A - releasable1A_0, "test_Release::66");
     }
+
+    function test_Fuzz_Revert_CreateVestingSchedule(
+        address beneficiary,
+        uint128 amount,
+        uint80 start,
+        uint80 cliffDuration,
+        uint80 vestingDuration
+    ) public {
+        start = uint80(bound(start, block.timestamp, type(uint80).max - 1));
+        vestingDuration = uint80(bound(vestingDuration, 1, type(uint80).max - start));
+        cliffDuration = uint80(bound(cliffDuration, 0, vestingDuration));
+        amount = uint128(bound(amount, 1, type(uint128).max));
+
+        (uint80 badCliffDuration, uint80 badVestingDuration) = vestingDuration == type(uint80).max
+            ? (type(uint80).max, 0)
+            : (uint80(bound(cliffDuration, vestingDuration + 1, type(uint80).max)), vestingDuration);
+
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__InvalidCliffDuration.selector);
+        vesting.createVestingSchedule(
+            address(token0), beneficiary, amount, amount, start, badCliffDuration, badVestingDuration
+        );
+
+        uint80 badStart = uint80(bound(start, 0, block.timestamp - 1));
+        badVestingDuration = uint80(bound(vestingDuration, 0, badStart));
+
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__InvalidVestingSchedule.selector);
+        vesting.createVestingSchedule(address(token0), beneficiary, amount, amount, badStart, 0, badVestingDuration);
+
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__ZeroMinAmount.selector);
+        vesting.createVestingSchedule(address(token0), beneficiary, amount, 0, start, cliffDuration, vestingDuration);
+    }
+
+    function test_Fuzz_Revert_TransferVestingSchedule(address newBeneficiary, uint256 amount) public {
+        amount = bound(amount, 1, type(uint128).max);
+
+        token0.mint(address(this), amount);
+
+        token0.approve(address(vesting), amount);
+
+        vesting.createVestingSchedule(
+            address(token0), alice, uint128(amount), uint128(amount), uint80(block.timestamp), 0, 1
+        );
+
+        newBeneficiary = newBeneficiary == alice ? bob : newBeneficiary;
+
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__OnlyBeneficiary.selector);
+        vm.prank(newBeneficiary);
+        vesting.transferVestingSchedule(address(token0), newBeneficiary, 0);
+
+        vm.prank(alice);
+        vesting.transferVestingSchedule(address(token0), newBeneficiary, 0);
+
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__OnlyBeneficiary.selector);
+        vm.prank(alice);
+        vesting.transferVestingSchedule(address(token0), newBeneficiary, 0);
+    }
 }
