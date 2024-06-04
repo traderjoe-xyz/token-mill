@@ -1,12 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title Math Library
+ * @dev A library for performing various math operations
+ */
 library Math {
     error Math__UnderOverflow();
     error Math__DivisionByZero();
 
     uint256 internal constant MAX_INT256 = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
 
+    /**
+     * @notice Adds a uint256 to an int256 with overflow and underflow protection
+     * @param x The first number, as uint256
+     * @param delta The second number, as int256
+     * @return y The sum of the two numbers, as uint256
+     */
     function addDelta(uint256 x, int256 delta) internal pure returns (uint256 y) {
         uint256 success;
 
@@ -19,6 +29,12 @@ library Math {
         if (success == 0) revert Math__UnderOverflow();
     }
 
+    /**
+     * @notice Returns the most significant bit of x
+     * @dev Credit to OpenZeppelin's Math library under MIT license
+     * @param x The number to find the most significant bit of
+     * @return msb The most significant bit of x
+     */
     function mostSignificantBit(uint256 x) internal pure returns (uint256 msb) {
         assembly {
             let n := mul(128, gt(x, 0xffffffffffffffffffffffffffffffff))
@@ -56,6 +72,9 @@ library Math {
     /**
      * @notice Calculates the square root of x
      * @dev Credit to OpenZeppelin's Math library under MIT license
+     * @param x The number to find the square root of
+     * @param roundUp Whether to round up the result
+     * @return sqrtX The square root of x
      */
     function sqrt(uint256 x, bool roundUp) internal pure returns (uint256 sqrtX) {
         if (x == 0) return 0;
@@ -78,18 +97,35 @@ library Math {
         }
     }
 
+    /**
+     * @notice Returns the minimum of two numbers
+     * @param x The first number
+     * @param y The second number
+     * @return r The minimum of the two numbers
+     */
     function min(uint256 x, uint256 y) internal pure returns (uint256 r) {
         assembly {
             r := xor(y, mul(xor(x, y), lt(x, y)))
         }
     }
 
+    /**
+     * @notice Returns the maximum of two numbers
+     * @param x The first number
+     * @param y The second number
+     * @return r The maximum of the two numbers
+     */
     function max(uint256 x, uint256 y) internal pure returns (uint256 r) {
         assembly {
             r := xor(y, mul(xor(x, y), gt(x, y)))
         }
     }
 
+    /**
+     * @notice Returns the absolute value of x
+     * @param x The number to find the absolute value of
+     * @return r The absolute value of x
+     */
     function abs(int256 x) internal pure returns (uint256 r) {
         assembly {
             let mask := sar(255, x)
@@ -97,6 +133,13 @@ library Math {
         }
     }
 
+    /**
+     * @notice Calculates x/y rounding up if roundUp is true
+     * @param x The numerator as an uint256
+     * @param y The denominator as an uint256
+     * @param roundUp Whether to round up the result
+     * @return z The result as an uint256
+     */
     function div(uint256 x, uint256 y, bool roundUp) internal pure returns (uint256 z) {
         if (y == 0) revert Math__DivisionByZero();
 
@@ -196,6 +239,13 @@ library Math {
         }
     }
 
+    /**
+     * @notice Calculates `x * y` as a 512 bit number
+     * @param x The first number
+     * @param y The second number
+     * @return z0 The lower 256 bits of the result
+     * @return z1 The higher 256 bits of the result
+     */
     function mul512(uint256 x, uint256 y) internal pure returns (uint256 z0, uint256 z1) {
         assembly {
             let mm := mulmod(x, y, not(0))
@@ -204,6 +254,15 @@ library Math {
         }
     }
 
+    /**
+     * @notice Adds two 512 bit numbers with overflow protection
+     * @param x0 The lower 256 bits of the first number
+     * @param x1 The higher 256 bits of the first number
+     * @param y0 The lower 256 bits of the second number
+     * @param y1 The higher 256 bits of the second number
+     * @return z0 The lower 256 bits of the sum
+     * @return z1 The higher 256 bits of the sum
+     */
     function add512(uint256 x0, uint256 x1, uint256 y0, uint256 y1) internal pure returns (uint256 z0, uint256 z1) {
         uint256 success;
 
@@ -224,6 +283,10 @@ library Math {
      * n = (a_3 * b + a_2) * b^2 + a_1 * b + a_0
      * n = x1 * b^2 + x0
      * where x1 = a_3 * b + a_2 and x0 = a_1 * b + a_0
+     * @param x0 The lower 256 bits of the number
+     * @param x1 The higher 256 bits of the number
+     * @param roundUp Whether to round up the result
+     * @return s The square root of the number
      */
     function sqrt512(uint256 x0, uint256 x1, bool roundUp) internal pure returns (uint256 s) {
         if (x1 == 0) return sqrt(x0, roundUp);

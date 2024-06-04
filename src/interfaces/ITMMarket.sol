@@ -3,6 +3,10 @@ pragma solidity ^0.8.20;
 
 import {IPricePoints} from "./IPricePoints.sol";
 
+/**
+ * @title Market Interface
+ * @dev Interface of the market contract.
+ */
 interface ITMMarket is IPricePoints {
     error TMMarket__ZeroAmount();
     error TMMarket__InsufficientAmount();

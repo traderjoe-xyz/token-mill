@@ -18,6 +18,11 @@ import {ITMFactory} from "./interfaces/ITMFactory.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
 import {IWNATIVE} from "./interfaces/IWNATIVE.sol";
 
+/**
+ * @title Router Contract
+ * @dev The contract that routes swaps through the different versions of the contracts.
+ * Uses the packed route to determine the path of the swap. See `PackedRoute.sol` for more information.
+ */
 contract Router {
     using SafeERC20 for IERC20;
 
@@ -39,6 +44,15 @@ contract Router {
 
     IWNATIVE internal immutable _wnative;
 
+    /**
+     * @dev Constructor for the Router contract.
+     * @param v1Factory The address of the V1 factory contract.
+     * @param v2_0Router The address of the V2.0 router contract.
+     * @param v2_1Factory The address of the V2.1 factory contract.
+     * @param v2_2Factory The address of the V2.2 factory contract.
+     * @param tmFactory The address of the TM factory contract.
+     * @param wnative The address of the WNative contract.
+     */
     constructor(
         address v1Factory,
         address v2_0Router,
@@ -60,10 +74,18 @@ contract Router {
         _wnative = IWNATIVE(wnative);
     }
 
+    /**
+     * @dev Allows the contract to receive native tokens only from the WNative contract.
+     */
     receive() external payable {
         if (msg.sender != address(_wnative)) revert Router__OnlyWNative();
     }
 
+    /**
+     * @dev Returns the factory contract for the specified version and sub-version.
+     * @param v The version of the factory contract.
+     * @param sv The sub-version of the factory contract.
+     */
     function getFactory(uint256 v, uint256 sv) external view returns (address) {
         if (v == 1) {
             if (sv == 0) {
@@ -86,10 +108,22 @@ contract Router {
         return address(0);
     }
 
+    /**
+     * @dev Returns the WNative contract.
+     */
     function getWNative() external view returns (address) {
         return address(_wnative);
     }
 
+    /**
+     * @dev Swaps the exact amount of tokens in the route for the maximum amount of tokens out.
+     * Will always make sure that the user receives at least `amountOutMin` tokens.
+     * @param route The packed route of the tokens to be swapped.
+     * @param to The address to which the tokens will be transferred.
+     * @param amountIn The amount of tokens to be swapped.
+     * @param amountOutMin The minimum amount of tokens to be received.
+     * @return The amount of tokens in and out.
+     */
     function swapExactIn(bytes memory route, address to, uint256 amountIn, uint256 amountOutMin)
         external
         payable
@@ -123,6 +157,15 @@ contract Router {
         return (amountIn, amountOut);
     }
 
+    /**
+     * @dev Swaps the exact amount of tokens in the route for the maximum amount of tokens out supporting fee-on-transfer tokens.
+     * Will always make sure that the user receives at least `amountOutMin` tokens.
+     * @param route The packed route of the tokens to be swapped.
+     * @param to The address to which the tokens will be transferred.
+     * @param amountIn The amount of tokens to be swapped.
+     * @param amountOutMin The minimum amount of tokens to be received.
+     * @return The amount of tokens in and out.
+     */
     function swapExactInSupportingFeeOnTransferTokens(
         bytes memory route,
         address to,
@@ -159,6 +202,15 @@ contract Router {
         return (amountIn, amountOut);
     }
 
+    /**
+     * @dev Swaps the minimum amount of tokens in the route for the exact (or greater) amount of tokens out.
+     * Will always make sure that the user swaps at most `amountInMax` tokens.
+     * @param route The packed route of the tokens to be swapped.
+     * @param to The address to which the tokens will be transferred.
+     * @param amountOut The amount of tokens to be received.
+     * @param amountInMax The maximum amount of tokens to be swapped.
+     * @return The amount of tokens in and out.
+     */
     function swapExactOut(bytes memory route, address to, uint256 amountOut, uint256 amountInMax)
         external
         payable
@@ -199,6 +251,13 @@ contract Router {
         return (amountIn, amountOut);
     }
 
+    /**
+     * @dev Get the pairs and ids of the route.
+     * @param route The packed route of the tokens to be swapped.
+     * @return pairs The pairs of the route.
+     * @return ids The ids of the route.
+     * @return tokens The tokens of the route.
+     */
     function _getPairsAndIds(bytes memory route)
         internal
         view
@@ -280,6 +339,14 @@ contract Router {
         }
     }
 
+    /**
+     * @dev Get the amounts in of the route.
+     * @param pairs The pairs of the route.
+     * @param ids The ids of the route.
+     * @param tokens The tokens of the route.
+     * @param amount The amount of tokens to be swapped.
+     * @return amounts The amounts of the route.
+     */
     function _getAmounts(address[] memory pairs, uint256[] memory ids, address[] memory tokens, uint256 amount)
         internal
         view
@@ -330,6 +397,13 @@ contract Router {
         }
     }
 
+    /**
+     * @dev Swaps the exact amount of tokens in the route for the maximum amount of tokens out.
+     * @param to The address to which the tokens will be transferred.
+     * @param pairs The pairs of the route.
+     * @param ids The ids of the route.
+     * @param amount The amount of tokens to be swapped.
+     */
     function _swapExactIn(address to, address[] memory pairs, uint256[] memory ids, uint256 amount) internal {
         uint256 length = pairs.length;
         address pair = pairs[0];
@@ -344,6 +418,15 @@ contract Router {
         }
     }
 
+    /**
+     * @dev Swaps the exact amount of tokens in the route for the maximum amount of tokens out supporting fee-on-transfer tokens.
+     * @param to The address to which the tokens will be transferred.
+     * @param pairs The pairs of the route.
+     * @param ids The ids of the route.
+     * @param tokens The tokens of the route.
+     * @param amount The amount of tokens to be swapped.
+     * @return The amount of tokens out.
+     */
     function _swapExactInSupportingFeeOnTransferTokens(
         address to,
         address[] memory pairs,
@@ -369,6 +452,13 @@ contract Router {
         return amount;
     }
 
+    /**
+     * @dev Swaps the minimum amount of tokens in the route for the exact (or greater) amount of tokens out.
+     * @param to The address to which the tokens will be transferred.
+     * @param pairs The pairs of the route.
+     * @param ids The ids of the route.
+     * @param amounts The amounts of the route.
+     */
     function _swapExactOut(address to, address[] memory pairs, uint256[] memory ids, uint256[] memory amounts)
         internal
     {
@@ -387,6 +477,16 @@ contract Router {
         }
     }
 
+    /**
+     * @dev Swaps the tokens in the pair.
+     * @param pair The pair to swap the tokens in.
+     * @param recipient The address to which the tokens will be transferred.
+     * @param amount The amount of tokens to be swapped.
+     * @param v The version of the pair contract.
+     * @param sv The sub-version of the pair contract.
+     * @param t The type of the pair contract.
+     * @return The amount of tokens out.
+     */
     function _swap(address pair, address recipient, uint256 amount, uint256 v, uint256 sv, uint256 t)
         internal
         returns (uint256)
@@ -431,6 +531,13 @@ contract Router {
         return amount;
     }
 
+    /**
+     * @dev Get the balance of the account.
+     * If the token is `address(0)`, it will return the native balance. Otherwise, it will return the token balance.
+     * @param token The token to get the balance of.
+     * @param account The account to get the balance of.
+     * @return The balance of the account.
+     */
     function _balanceOf(address token, address account) internal view returns (uint256) {
         if (token == address(0)) {
             return _wnative.balanceOf(account);
@@ -439,6 +546,14 @@ contract Router {
         }
     }
 
+    /**
+     * @dev Transfers `amount` of `token` from `from` to `to`.
+     * If `token` is `address(0)`, it will transfer the native token.
+     * @param token The token to transfer.
+     * @param from The account to transfer the token from.
+     * @param to The account to transfer the token to.
+     * @param amount The amount of tokens to transfer.
+     */
     function _transfer(address token, address from, address to, uint256 amount) internal {
         if (amount == 0) return;
 
@@ -455,6 +570,11 @@ contract Router {
         }
     }
 
+    /**
+     * @dev Transfers `amount` of native tokens to `to`.
+     * @param to The account to transfer the native tokens to.
+     * @param amount The amount of native tokens to transfer.
+     */
     function _transferNative(address to, uint256 amount) internal {
         (bool success,) = to.call{value: amount}(new bytes(0));
         if (!success) revert Router__NativeTransferFailed();

@@ -1,10 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title Immutable Create
+ * @dev Library for deploying contracts with immutable arguments.
+ */
 library ImmutableCreate {
     error ImmutableCreate__DeploymentFailed();
     error ImmutableCreate__MaxLengthExceeded();
 
+    /**
+     * @dev Create a new contract with the specified runtime code and immutable arguments.
+     * It is very important that the contract doesn't have any constructor as it will be ignored.
+     * If the contract needs to be initialized, it should be done using an `initialize` function.
+     * @param runtimecode Runtime code of the contract.
+     * @param immutableArgs Immutable arguments of the contract.
+     * @return c Address of the deployed contract.
+     */
     function create(bytes memory runtimecode, bytes memory immutableArgs) internal returns (address c) {
         uint256 runtimecodeLength = runtimecode.length;
         if (runtimecodeLength + immutableArgs.length > 0xfffd) revert ImmutableCreate__MaxLengthExceeded();
@@ -31,6 +43,15 @@ library ImmutableCreate {
         if (c == address(0)) revert ImmutableCreate__DeploymentFailed();
     }
 
+    /**
+     * @dev Create a new contract with the specified runtime code, immutable arguments, and salt.
+     * It is very important that the contract doesn't have any constructor as it will be ignored.
+     * If the contract needs to be initialized, it should be done using an `initialize` function.
+     * @param runtimecode Runtime code of the contract.
+     * @param immutableArgs Immutable arguments of the contract.
+     * @param salt Salt for the contract creation.
+     * @return c Address of the deployed contract.
+     */
     function create2(bytes memory runtimecode, bytes memory immutableArgs, bytes32 salt) internal returns (address c) {
         uint256 runtimecodeLength = runtimecode.length;
 

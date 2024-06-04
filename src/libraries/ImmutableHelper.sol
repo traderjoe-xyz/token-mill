@@ -3,6 +3,10 @@ pragma solidity ^0.8.20;
 
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+/**
+ * @title Immutable Helper Library
+ * @dev Library for immutable contract initialization.
+ */
 library ImmutableHelper {
     error ImmutableHelper__InvalidLength(uint256 lengthBid, uint256 lengthAsk);
     error ImmutableHelper__BidAskMismatch(uint256 i, uint256 bidPrice, uint256 askPrice);
@@ -18,6 +22,17 @@ library ImmutableHelper {
     uint256 constant MAX_PRICE = 1e36;
     uint256 constant MAX_DECIMALS = 18;
 
+    /**
+     * @dev Pack bid and ask prices into a single array.
+     * Each price is packed into a single uint256 as follows:
+     * - The first 128 bits are the ask price.
+     * - The last 128 bits are the bid price.
+     * It can be calculated as follows:
+     * packedPrice = (askPrice << 128) | bidPrice
+     * @param bidPrices Bid prices.
+     * @param askPrices Ask prices.
+     * @return packedPrices Packed prices.
+     */
     function packPrices(uint256[] memory bidPrices, uint256[] memory askPrices)
         internal
         pure
@@ -56,6 +71,15 @@ library ImmutableHelper {
         return packedPrices;
     }
 
+    /**
+     * @dev Get immutable arguments for the contract initialization.
+     * @param factory Factory address.
+     * @param baseToken Base token address.
+     * @param quoteToken Quote token address.
+     * @param totalSupply Total supply of the market.
+     * @param packedPrices Packed prices. Use `packPrices` to pack bid and ask prices.
+     * @return args Immutable arguments.
+     */
     function getImmutableArgs(
         address factory,
         address baseToken,
@@ -100,6 +124,13 @@ library ImmutableHelper {
         }
     }
 
+    /**
+     * @dev Get the precision of the tokens.
+     * @param baseToken Base token address.
+     * @param quoteToken Quote token address.
+     * @return basePrecision Precision of the base token.
+     * @return quotePrecision Precision of the quote token.
+     */
     function getTokensPrecision(address baseToken, address quoteToken)
         internal
         view

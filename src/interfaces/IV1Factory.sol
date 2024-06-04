@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title V1 Factory Interface
+ * @dev Interface of the V1 factory contract.
+ */
 interface IV1Factory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint256);
 

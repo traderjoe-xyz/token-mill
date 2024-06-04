@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title V2.0 Factory Interface
+ * @dev Interface of the V2.0 factory contract.
+ */
 interface IV2_0Factory {
     struct LBPairInformation {
         uint16 binStep;

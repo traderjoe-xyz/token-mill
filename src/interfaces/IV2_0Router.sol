@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title V2.0 Router Interface
+ * @dev Interface of the V2.0 router contract.
+ */
 interface IV2_0Router {
     struct LiquidityParameters {
         address tokenX;

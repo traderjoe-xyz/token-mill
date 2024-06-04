@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title V2.2 Factory Interface
+ * @dev Interface of the V2.2 factory contract.
+ */
 interface IV2_2Factory {
     error LBFactory__IdenticalAddresses(address token);
     error LBFactory__QuoteAssetNotWhitelisted(address quoteAsset);

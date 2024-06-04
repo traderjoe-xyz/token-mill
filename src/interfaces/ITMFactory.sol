@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title TMFactory Interface
+ * @dev Interface of the factory contract.
+ */
 interface ITMFactory {
     error TMFactory__InvalidBalance();
     error TMFactory__InvalidCaller();

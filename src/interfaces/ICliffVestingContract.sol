@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+/**
+ * @title Cliff Vesting Contract Interface
+ * @dev Interface of the cliff vesting contract.
+ */
 interface ICliffVestingContract {
     error CliffVestingContract__InvalidCliffDuration();
     error CliffVestingContract__InvalidVestingSchedule();

@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title V2 Pair Interface
+ * @dev Interface of the V2 pair contract.
+ */
 interface IV2_0Pair {
     struct FeeParameters {
         uint16 binStep;

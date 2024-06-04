@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title V2.1 Pair Interface
+ * @dev Interface of the V2.1 pair contract.
+ */
 interface IV2_1Pair {
     error LBPair__ZeroBorrowAmount();
     error LBPair__AddressZero();

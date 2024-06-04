@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/**
+ * @title Price Points Interface
+ * @dev Interface of the price points contract.
+ */
 interface IPricePoints {
     error PricePoints__TotalSupplyExceeded();
 

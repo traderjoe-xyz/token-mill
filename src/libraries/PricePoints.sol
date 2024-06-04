@@ -4,7 +4,25 @@ pragma solidity ^0.8.20;
 import {Math} from "./Math.sol";
 import {IPricePoints} from "../interfaces/IPricePoints.sol";
 
+/**
+ * @title Price Points Abstract Contract
+ * @dev Abstract contract that provides helper functions to calculate prices and amounts.
+ * This contract is used to calculate how much of one token can be bought/sold for another token following
+ * a price curve defined by price points.
+ * The curve is defined by a series of price points. Between each price point, the price is linearly interpolated.
+ * The price points are defined by the price of the base token in the quote token in 1e18, without decimals.
+ * For example, if the price of 1 base token (12 decimals) is 1 quote tokens (6 decimals), the price point is 1e18.
+ * Each segment of the curve will contain `width = totalSupply / (pricePoints.length - 1)` base tokens.
+ * When the segment is fully bought/sold, the prices will move to the next/previous price points.
+ */
 abstract contract PricePoints is IPricePoints {
+    /**
+     * @dev Returns the amount of quote tokens that should be sent (< 0) or received (> 0) for the specified base amount.
+     * @param supply The current supply of the base token.
+     * @param deltaBaseAmount The amount of base tokens to be sent (< 0) or received (> 0).
+     * @return actualDeltaBaseAmount The actual amount of base tokens to be sent (< 0) or received (> 0).
+     * @return deltaQuoteAmount The amount of quote tokens to be sent (< 0) or received (> 0).
+     */
     function getDeltaQuoteAmount(uint256 supply, int256 deltaBaseAmount)
         public
         view
@@ -24,6 +42,13 @@ abstract contract PricePoints is IPricePoints {
             : (-int256(baseAmount), int256(quoteAmount));
     }
 
+    /**
+     * @dev Returns the amount of base tokens that should be sent (< 0) or received (> 0) for the specified quote amount.
+     * @param supply The current supply of the base token.
+     * @param deltaQuoteAmount The amount of quote tokens to be sent (< 0) or received (> 0).
+     * @return deltaBaseAmount The amount of base tokens to be sent (< 0) or received (> 0).
+     * @return actualDeltaQuoteAmount The actual amount of quote tokens to be sent (< 0) or received (> 0).
+     */
     function getDeltaBaseAmount(uint256 supply, int256 deltaQuoteAmount)
         public
         view
@@ -41,6 +66,15 @@ abstract contract PricePoints is IPricePoints {
         }
     }
 
+    /**
+     * @dev Returns the amount of base tokens and quote tokens that should be sent (< 0) or received (> 0) for the
+     * specified base amount.
+     * @param supply The current supply of the base token.
+     * @param baseAmount The amount of base tokens to be sent (< 0) or received (> 0).
+     * @param roundUp Whether to round up the base amount.
+     * @return actualBaseAmount The actual amount of base tokens to be sent (< 0) or received (> 0).
+     * @return quoteAmount The amount of quote tokens to be sent (< 0) or received (> 0).
+     */
     function _getQuoteAmount(uint256 supply, uint256 baseAmount, bool roundUp)
         internal
         view
@@ -84,6 +118,14 @@ abstract contract PricePoints is IPricePoints {
         );
     }
 
+    /**
+     * @dev Returns the amount of base tokens and quote tokens that should be sent (< 0) or received (> 0) for the
+     * specified quote amount.
+     * @param supply The current supply of the base token.
+     * @param quoteAmount The amount of quote tokens to be sent (< 0) or received (> 0).
+     * @return baseAmount The amount of base tokens to be sent (< 0) or received (> 0).
+     * @return actualQuoteAmount The actual amount of quote tokens to be sent (< 0) or received (> 0).
+     */
     function _getBaseAmountOut(uint256 supply, uint256 quoteAmount)
         internal
         view
@@ -124,6 +166,14 @@ abstract contract PricePoints is IPricePoints {
         );
     }
 
+    /**
+     * @dev Returns the amount of base tokens and quote tokens that should be sent (< 0) or received (> 0) for the
+     * specified quote amount.
+     * @param supply The current supply of the base token.
+     * @param quoteAmount The amount of quote tokens to be sent (< 0) or received (> 0).
+     * @return baseAmount The amount of base tokens to be sent (< 0) or received (> 0).
+     * @return actualQuoteAmount The actual amount of quote tokens to be sent (< 0) or received (> 0).
+     */
     function _getBaseAmountIn(uint256 supply, uint256 quoteAmount)
         internal
         view
@@ -165,6 +215,16 @@ abstract contract PricePoints is IPricePoints {
         );
     }
 
+    /**
+     * @dev Returns the delta base and quote amounts for the specified price points and remaining quote amount.
+     * @param p0 The price of the base token in the quote token at the current price point.
+     * @param p1 The price of the base token in the quote token at the next price point.
+     * @param widthScaled The width of the segment in scaled base tokens.
+     * @param base The remaining base tokens.
+     * @param remainingQuote The remaining quote tokens.
+     * @return deltaBase The amount of base tokens to be sent (< 0) or received (> 0).
+     * @return deltaQuote The amount of quote tokens to be sent (< 0) or received (> 0).
+     */
     function _getDeltaBaseOut(uint256 p0, uint256 p1, uint256 widthScaled, uint256 base, uint256 remainingQuote)
         internal
         pure
@@ -191,6 +251,16 @@ abstract contract PricePoints is IPricePoints {
         }
     }
 
+    /**
+     * @dev Returns the delta base and quote amounts for the specified price points and remaining quote amount.
+     * @param p0 The price of the base token in the quote token at the current price point.
+     * @param p1 The price of the base token in the quote token at the next price point.
+     * @param widthScaled The width of the segment in scaled base tokens.
+     * @param base The remaining base tokens.
+     * @param remainingQuote The remaining quote tokens.
+     * @return deltaBase The amount of base tokens to be sent (< 0) or received (> 0).
+     * @return deltaQuote The amount of quote tokens to be sent (< 0) or received (> 0).
+     */
     function _getDeltaBaseIn(uint256 p0, uint256 p1, uint256 widthScaled, uint256 base, uint256 remainingQuote)
         internal
         pure
@@ -214,6 +284,16 @@ abstract contract PricePoints is IPricePoints {
         }
     }
 
+    /**
+     * @dev Returns the square root of the discriminant for the specified price points and remaining quote amount.
+     * @param dp The difference between the price of the base token in the quote token at the next price point and the
+     * current price point.
+     * @param p0 The price of the base token in the quote token at the current price point.
+     * @param widthScaled The width of the segment in scaled base tokens.
+     * @param currentQuote The current quote amount.
+     * @param roundUp Whether to round up the result.
+     * @return sqrtDiscriminant The square root of the discriminant.
+     */
     function _getSqrtDiscriminant(uint256 dp, uint256 p0, uint256 widthScaled, uint256 currentQuote, bool roundUp)
         internal
         pure
@@ -227,15 +307,36 @@ abstract contract PricePoints is IPricePoints {
         return Math.sqrt512(d0, d1, roundUp);
     }
 
+    /**
+     * @dev Returns the total supply of the base token.
+     */
     function _totalSupply() internal view virtual returns (uint256);
 
+    /**
+     * @dev Returns the width of the segment in scaled base tokens.
+     */
     function _widthScaled() internal view virtual returns (uint256);
 
+    /**
+     * @dev Returns the precision of the base token.
+     */
     function _basePrecision() internal view virtual returns (uint256);
 
+    /**
+     * @dev Returns the precision of the quote token.
+     */
     function _quotePrecision() internal view virtual returns (uint256);
 
+    /**
+     * @dev Returns the number of price points.
+     */
     function _pricePointsLength() internal view virtual returns (uint256);
 
+    /**
+     * @dev Returns the price of the base token in the quote token at the specified index.
+     * @param i The index of the price point.
+     * @param bid Whether to get the bid price.
+     * @return The price of the base token in the quote token at the specified index.
+     */
     function _pricePoints(uint256 i, bool bid) internal view virtual returns (uint256);
 }
