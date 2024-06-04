@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import "./TestHelper.sol";
 
+import "./mocks/TransferTaxToken.sol";
+
 contract TestRouter is TestHelper {
     function setUp() public override {
         super.setUp();
@@ -620,24 +622,5 @@ contract TestRouter is TestHelper {
 
         vm.expectRevert(Router.Router__InsufficientOutputAmount.selector);
         router.swapExactOut{value: 1e18}(route, address(this), 1e18 - 1, 1e18);
-    }
-}
-
-contract TransferTaxToken is BaseERC20 {
-    uint256 public immutable tax;
-
-    constructor(address factory_, uint256 tax_) BaseERC20(factory_) {
-        require(tax_ <= 1e18, "TransferTaxToken: invalid tax");
-        tax = tax_;
-    }
-
-    function _update(address from, address to, uint256 value) internal override {
-        if (from != address(0)) {
-            uint256 taxAmount = value * tax / 1e18;
-            super._update(from, address(0), taxAmount);
-
-            value -= taxAmount;
-        }
-        super._update(from, to, value);
     }
 }
