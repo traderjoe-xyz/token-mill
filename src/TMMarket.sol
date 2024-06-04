@@ -17,11 +17,8 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     uint128 internal _baseReserve;
     uint256 internal _quoteReserve;
 
-    uint256 internal _protocolClaimedFees;
-    uint256 internal _protocolTotalFees;
-
-    uint256 internal _creatorClaimedFees;
-    uint256 internal _creatorTotalFees;
+    uint256 internal _protocolUnclaimedFees;
+    uint256 internal _creatorUnclaimedFees;
 
     modifier nonReentrant() {
         if (_locked) revert TMMarket__ReentrantCall();
@@ -82,13 +79,9 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     }
 
     function getPendingFees() external view override returns (uint256 protocolFees, uint256 creatorFees) {
-        (, uint256 pendingProtocolFees, uint256 pendingCreatorFees) =
-            _getPendingFees(ITMFactory(_factory()), IERC20(_quoteToken()));
+        (, uint256 pendingProtocolFees, uint256 pendingCreatorFees) = _getPendingFees(ITMFactory(_factory()));
 
-        return (
-            _protocolTotalFees + pendingProtocolFees - _protocolClaimedFees,
-            _creatorTotalFees + pendingCreatorFees - _creatorClaimedFees
-        );
+        return (pendingProtocolFees, pendingCreatorFees);
     }
 
     function getDeltaAmounts(int256 deltaAmount, bool fillBid)
@@ -160,53 +153,55 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
 
         if (msg.sender != address(factory)) revert TMMarket__OnlyFactory();
 
-        IERC20 quoteToken = IERC20(_quoteToken());
-
-        (uint256 quoteBalance, uint256 pendingProtocolFees, uint256 pendingCreatorFees) =
-            _getPendingFees(factory, quoteToken);
-
-        uint256 protocolTotalFees = _protocolTotalFees + pendingProtocolFees;
-        uint256 creatorTotalFees = _creatorTotalFees + pendingCreatorFees;
-
-        if (pendingProtocolFees > 0) _protocolTotalFees = protocolTotalFees;
-        if (pendingCreatorFees > 0) _creatorTotalFees = creatorTotalFees;
+        (uint256 quoteReserve, uint256 pendingProtocolFees, uint256 pendingCreatorFees) = _getPendingFees(factory);
 
         if (isProtocol) {
-            fees = protocolTotalFees - _protocolClaimedFees;
-            _protocolClaimedFees = protocolTotalFees;
+            fees = pendingProtocolFees;
+
+            pendingProtocolFees = 0;
+            _protocolUnclaimedFees = 0;
         }
 
         if (isCreator) {
-            fees += creatorTotalFees - _creatorClaimedFees;
-            _creatorClaimedFees = creatorTotalFees;
+            fees += pendingCreatorFees;
+
+            pendingCreatorFees = 0;
+            _creatorUnclaimedFees = 0;
         }
 
-        if (fees > 0) {
-            _quoteReserve = quoteBalance - fees;
+        if (pendingProtocolFees > 0) _protocolUnclaimedFees = pendingProtocolFees;
+        if (pendingCreatorFees > 0) _creatorUnclaimedFees = pendingCreatorFees;
 
-            quoteToken.safeTransfer(recipient, fees);
+        if (fees > 0) {
+            _quoteReserve = quoteReserve - fees;
+
+            IERC20(_quoteToken()).safeTransfer(recipient, fees);
 
             emit FeesClaimed(caller, recipient, fees);
         }
     }
 
-    function _getPendingFees(ITMFactory factory, IERC20 quoteToken)
-        internal
-        view
-        returns (uint256 quoteBalance, uint256 protocolFees, uint256 creatorFees)
-    {
-        quoteBalance = quoteToken.balanceOf(address(this));
+    function _getPendingFees(ITMFactory factory) internal view returns (uint256, uint256, uint256) {
+        uint256 protocolUnclaimedFees = _protocolUnclaimedFees;
+        uint256 creatorUnclaimedFees = _creatorUnclaimedFees;
+
+        uint256 quoteReserve = _quoteReserve;
         (, uint256 minQuoteAmount) = _getQuoteAmount(0, _totalSupply() - _baseReserve, false);
 
-        if (quoteBalance <= minQuoteAmount) return (quoteBalance, 0, 0);
+        if (quoteReserve > minQuoteAmount) {
+            uint256 totalUnclaimedFees = protocolUnclaimedFees + creatorUnclaimedFees;
+            uint256 totalFees = quoteReserve - minQuoteAmount;
 
-        uint256 totalFees = quoteBalance - minQuoteAmount;
-        uint256 protocolShare = factory.getProtocolShareOf(address(this));
+            if (totalFees > totalUnclaimedFees) {
+                uint256 protocolShare = factory.getProtocolShareOf(address(this));
+                uint256 protocolFees = totalFees * protocolShare / 1e18;
 
-        uint256 pendingProtocolFees = totalFees * protocolShare / 1e18;
-        uint256 pendingCreatorFees = totalFees - pendingProtocolFees;
+                protocolUnclaimedFees += protocolFees;
+                creatorUnclaimedFees += totalFees - protocolFees;
+            }
+        }
 
-        return (quoteBalance, pendingProtocolFees, pendingCreatorFees);
+        return (quoteReserve, protocolUnclaimedFees, creatorUnclaimedFees);
     }
 
     function _getReserves() internal view returns (uint256, uint256) {
