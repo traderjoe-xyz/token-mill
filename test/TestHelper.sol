@@ -24,6 +24,9 @@ contract TestHelper is Test {
     address public market10;
     address public market21;
 
+    uint256[] public askPrices0w;
+    uint256[] public bidPrices0w;
+
     function setUp() public virtual {
         wnative = new WNative();
 
@@ -43,26 +46,26 @@ contract TestHelper is Test {
     function setUpTokens() public {
         factory.addQuoteToken(address(wnative));
 
-        uint256[] memory askPrices = new uint256[](3);
-        askPrices[0] = 0e18;
-        askPrices[1] = 10e18;
-        askPrices[2] = 100e18;
+        askPrices0w.push(0e18);
+        askPrices0w.push(10e18);
+        askPrices0w.push(100e18);
 
-        uint256[] memory bidPrices = new uint256[](3);
-        bidPrices[0] = askPrices[0] * 80 / 100;
-        bidPrices[1] = askPrices[1] * 90 / 100;
-        bidPrices[2] = askPrices[2] * 95 / 100;
+        bidPrices0w.push(askPrices0w[0] * 80 / 100);
+        bidPrices0w.push(askPrices0w[1] * 90 / 100);
+        bidPrices0w.push(askPrices0w[2] * 95 / 100);
 
         (token0, market0w) = factory.createMarketAndToken(
-            1, "Token0", "T0", address(wnative), 500_000_000e18, bidPrices, askPrices, abi.encode(18)
+            1, "Token0", "T0", address(wnative), 500_000_000e18, bidPrices0w, askPrices0w, abi.encode(18)
         );
 
         factory.addQuoteToken(address(token0));
 
+        uint256[] memory askPrices = new uint256[](3);
         askPrices[0] = 0.1e18;
         askPrices[1] = 0.5e18;
         askPrices[2] = 0.9e18;
 
+        uint256[] memory bidPrices = new uint256[](3);
         bidPrices[0] = askPrices[0];
         bidPrices[1] = askPrices[1] * 90 / 100;
         bidPrices[2] = askPrices[2];
