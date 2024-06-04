@@ -16,11 +16,14 @@ import {ITMMarket} from "./interfaces/ITMMarket.sol";
 contract TMFactory is Ownable, ITMFactory {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    uint256 private constant MAX_QUOTE_TOKENS = 64;
+    uint64 private constant MAX_PROTOCOL_SHARE = 1e18;
+
     address private _protocolFeeRecipient;
     uint64 private _protocolShare;
 
     mapping(address market => MarketParameters) private _parameters;
-    mapping(address token => uint256) private _tokenTypes;
+    mapping(address token => uint256 packedToken) private _tokens;
 
     mapping(address token0 => mapping(address token1 => uint256 packedMarket)) private _markets;
     address[] private _allMarkets;
@@ -41,7 +44,13 @@ contract TMFactory is Ownable, ITMFactory {
     }
 
     function getTokenType(address token) external view override returns (uint256) {
-        return _tokenTypes[token];
+        (uint96 tokenType,) = _decodeToken(_tokens[token]);
+        return tokenType;
+    }
+
+    function getMarketOf(address token) external view override returns (address) {
+        (, address market) = _decodeToken(_tokens[token]);
+        return market;
     }
 
     function getProtocolShare() external view override returns (uint256) {
@@ -74,12 +83,12 @@ contract TMFactory is Ownable, ITMFactory {
         return _quoteTokens.contains(quoteToken);
     }
 
-    function getImplementation(uint256 tokenType) external view override returns (address) {
+    function getTokenImplementation(uint96 tokenType) external view override returns (address) {
         return _implementations[tokenType];
     }
 
     function createMarketAndToken(
-        uint256 tokenType,
+        uint96 tokenType,
         string memory name,
         string memory symbol,
         address quoteToken,
@@ -91,12 +100,12 @@ contract TMFactory is Ownable, ITMFactory {
         baseToken = _createToken(tokenType, name, symbol, args);
 
         uint256[] memory packedPrices = ImmutableHelper.packPrices(bidPrices, askPrices);
-        market = _createMarket(name, symbol, baseToken, quoteToken, totalSupply, packedPrices);
+        market = _createMarket(tokenType, name, symbol, baseToken, quoteToken, totalSupply, packedPrices);
 
         return (baseToken, market);
     }
 
-    function _createToken(uint256 tokenType, string memory name, string memory symbol, bytes memory args)
+    function _createToken(uint96 tokenType, string memory name, string memory symbol, bytes memory args)
         internal
         returns (address token)
     {
@@ -105,12 +114,11 @@ contract TMFactory is Ownable, ITMFactory {
 
         token = Clones.clone(implementation);
 
-        _tokenTypes[token] = tokenType;
-
         IBaseToken(token).initialize(name, symbol, args);
     }
 
     function _createMarket(
+        uint96 tokenType,
         string memory name,
         string memory symbol,
         address baseToken,
@@ -142,6 +150,7 @@ contract TMFactory is Ownable, ITMFactory {
         _allMarkets.push(market);
         _markets[baseToken][quoteToken] = _encodeMarket(1, market);
         _markets[quoteToken][baseToken] = _encodeMarket(0, market);
+        _tokens[baseToken] = _encodeToken(tokenType, market);
         _parameters[market] = MarketParameters(protocolShare, msg.sender);
 
         emit MarketParametersUpdated(market, protocolShare, msg.sender);
@@ -149,7 +158,7 @@ contract TMFactory is Ownable, ITMFactory {
         ITMMarket(market).initialize();
         IBaseToken(baseToken).factoryMint(market, totalSupply);
 
-        if (IERC20(baseToken).balanceOf(market) != totalSupply) revert TMFactory__InvalidTotalSupply();
+        if (IERC20(baseToken).balanceOf(market) != totalSupply) revert TMFactory__InvalidBalance();
     }
 
     function updateCreator(address market, address creator) external override {
@@ -189,6 +198,8 @@ contract TMFactory is Ownable, ITMFactory {
     }
 
     function updateProtocolShareOf(address market, uint64 protocolShare) external override onlyOwner {
+        if (protocolShare > MAX_PROTOCOL_SHARE) revert TMFactory__InvalidProtocolShare();
+
         MarketParameters storage parameters = _parameters[market];
 
         ITMMarket(market).claimFees(address(0), address(0), false, false);
@@ -198,7 +209,7 @@ contract TMFactory is Ownable, ITMFactory {
         emit MarketParametersUpdated(market, protocolShare, parameters.creator);
     }
 
-    function updateTokenImplementation(uint256 tokenType, address implementation) external override onlyOwner {
+    function updateTokenImplementation(uint96 tokenType, address implementation) external override onlyOwner {
         if (tokenType == 0) revert TMFactory__InvalidTokenType();
 
         _implementations[tokenType] = implementation;
@@ -208,6 +219,7 @@ contract TMFactory is Ownable, ITMFactory {
 
     function addQuoteToken(address quoteToken) external override onlyOwner {
         if (!_quoteTokens.add(quoteToken)) revert TMFactory__QuoteTokenAlreadyAdded();
+        if (_quoteTokens.length() > MAX_QUOTE_TOKENS) revert TMFactory__MaxQuoteTokensExceeded();
 
         emit QuoteTokenAdded(quoteToken);
     }
@@ -222,13 +234,22 @@ contract TMFactory is Ownable, ITMFactory {
         return uint256(uint160(market) | correctOrder << 160);
     }
 
+    function _encodeToken(uint96 tokenType, address market) private pure returns (uint256) {
+        return uint256(uint160(market) | uint256(tokenType) << 160);
+    }
+
     function _decodeMarket(uint256 encodedMarket) private pure returns (bool correctOrder, address market) {
         correctOrder = (encodedMarket >> 160) == 1;
         market = address(uint160(encodedMarket));
     }
 
+    function _decodeToken(uint256 encodedToken) private pure returns (uint96 tokenType, address market) {
+        tokenType = uint96(encodedToken >> 160);
+        market = address(uint160(encodedToken));
+    }
+
     function _updateProtocolShare(uint64 protocolShare) private {
-        if (protocolShare > 1e18) revert TMFactory__InvalidProtocolShare();
+        if (protocolShare > MAX_PROTOCOL_SHARE) revert TMFactory__InvalidProtocolShare();
 
         _protocolShare = protocolShare;
 

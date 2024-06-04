@@ -2,14 +2,16 @@
 pragma solidity ^0.8.20;
 
 interface ITMFactory {
-    error TMFactory__InvalidTotalSupply();
+    error TMFactory__InvalidBalance();
     error TMFactory__InvalidCaller();
     error TMFactory__InvalidQuoteToken();
     error TMFactory__InvalidProtocolShare();
     error TMFactory__QuoteTokenAlreadyAdded();
     error TMFactory__QuoteTokenNotFound();
+    error TMFactory__MaxQuoteTokensExceeded();
     error TMFactory__InvalidTokenType();
     error TMFactory__InvalidRecipient();
+    error TMFactory__AddressZero();
 
     // packedPrices = `(askPrice << 128) | bidPrice` for each price point
     event MarketCreated(
@@ -25,7 +27,7 @@ interface ITMFactory {
     );
     event MarketParametersUpdated(address indexed market, uint256 protocolShare, address creator);
     event ProtocolShareUpdated(uint256 protocolShare);
-    event TokenImplementationUpdated(uint256 tokenType, address implementation);
+    event TokenImplementationUpdated(uint96 tokenType, address implementation);
     event QuoteTokenAdded(address quoteToken);
     event QuoteTokenRemoved(address quoteToken);
     event ProtocolFeeRecipientUpdated(address recipient);
@@ -41,6 +43,8 @@ interface ITMFactory {
 
     function getTokenType(address token) external view returns (uint256);
 
+    function getMarketOf(address token) external view returns (address);
+
     function getProtocolShare() external view returns (uint256);
 
     function getProtocolFeeRecipient() external view returns (address);
@@ -55,10 +59,10 @@ interface ITMFactory {
 
     function isQuoteToken(address quoteToken) external view returns (bool);
 
-    function getImplementation(uint256 tokenType) external view returns (address);
+    function getTokenImplementation(uint96 tokenType) external view returns (address);
 
     function createMarketAndToken(
-        uint256 tokenType,
+        uint96 tokenType,
         string memory name,
         string memory symbol,
         address quoteToken,
@@ -78,7 +82,7 @@ interface ITMFactory {
 
     function updateProtocolShareOf(address market, uint64 protocolShare) external;
 
-    function updateTokenImplementation(uint256 tokenType, address implementation) external;
+    function updateTokenImplementation(uint96 tokenType, address implementation) external;
 
     function addQuoteToken(address quoteToken) external;
 
