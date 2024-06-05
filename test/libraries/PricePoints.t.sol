@@ -34,6 +34,8 @@ contract PricePointsTest is Test {
 
             assertEq(actualBaseAmount, baseAmount, "test_GetAmount::1");
             assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::2");
+            assertEq(baseAmount, base, "test_GetAmount::3");
+            assertEq(quoteAmount, 10.5e6 * _quotePrecision, "test_GetAmount::4");
         }
 
         {
@@ -45,6 +47,8 @@ contract PricePointsTest is Test {
 
             assertEq(actualBaseAmount, baseAmount, "test_GetAmount::3");
             assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::4");
+            assertEq(baseAmount, base, "test_GetAmount::5");
+            assertEq(quoteAmount, 21e6 * _quotePrecision, "test_GetAmount::6");
         }
 
         {
@@ -56,6 +60,8 @@ contract PricePointsTest is Test {
 
             assertEq(actualBaseAmount, baseAmount, "test_GetAmount::5");
             assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::6");
+            assertEq(baseAmount, base, "test_GetAmount::7");
+            assertEq(quoteAmount, 31e6 * _quotePrecision, "test_GetAmount::8");
         }
 
         {
@@ -67,6 +73,8 @@ contract PricePointsTest is Test {
 
             assertEq(actualBaseAmount, baseAmount, "test_GetAmount::7");
             assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::8");
+            assertEq(baseAmount, base, "test_GetAmount::9");
+            assertEq(quoteAmount, 175e6 * _quotePrecision, "test_GetAmount::10");
         }
 
         {
@@ -78,6 +86,8 @@ contract PricePointsTest is Test {
 
             assertEq(actualBaseAmount, baseAmount, "test_GetAmount::9");
             assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::10");
+            assertEq(baseAmount, base, "test_GetAmount::11");
+            assertEq(quoteAmount, 250e6 * _quotePrecision, "test_GetAmount::12");
         }
 
         {
@@ -89,6 +99,8 @@ contract PricePointsTest is Test {
 
             assertEq(actualBaseAmount, baseAmount, "test_GetAmount::11");
             assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::12");
+            assertEq(baseAmount, base, "test_GetAmount::13");
+            assertEq(quoteAmount, 425e6 * _quotePrecision, "test_GetAmount::14");
         }
 
         {
@@ -100,6 +112,8 @@ contract PricePointsTest is Test {
 
             assertEq(actualBaseAmount, baseAmount, "test_GetAmount::13");
             assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::14");
+            assertEq(baseAmount, base, "test_GetAmount::15");
+            assertEq(quoteAmount, 4650e6 * _quotePrecision, "test_GetAmount::16");
         }
 
         {
@@ -111,6 +125,8 @@ contract PricePointsTest is Test {
 
             assertEq(actualBaseAmount, baseAmount, "test_GetAmount::15");
             assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::16");
+            assertEq(baseAmount, base - 1, "test_GetAmount::17");
+            assertEq(quoteAmount, 4650e6 * _quotePrecision, "test_GetAmount::18");
         }
     }
 

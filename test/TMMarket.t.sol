@@ -99,7 +99,7 @@ contract TestTMMarket is TestHelper {
         assertEq(creatorFees, 0, "test_ClaimFees::2");
 
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
-        router.swapExactIn{value: 10e18}(route, address(this), 10e18, 0);
+        (, uint256 amountOut) = router.swapExactIn{value: 10e18}(route, address(this), 10e18, 0);
 
         (protocolFees, creatorFees) = ITMMarket(market0w).getPendingFees();
 
@@ -115,6 +115,13 @@ contract TestTMMarket is TestHelper {
 
         assertEq(protocolFees, 0, "test_ClaimFees::6");
         assertEq(creatorFees, 0, "test_ClaimFees::7");
+
+        IERC20(token0).approve(address(router), amountOut);
+        route = abi.encodePacked(token0, uint32(3 << 24), address(wnative));
+
+        router.swapExactIn(route, address(this), amountOut, 0);
+
+        assertEq(IERC20(wnative).balanceOf(market0w), 0, "test_ClaimFees::8");
     }
 
     function test_Revert_ClaimFees() external {
