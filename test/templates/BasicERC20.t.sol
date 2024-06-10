@@ -35,6 +35,8 @@ contract BasicERC20Test is Test {
     }
 
     function test_Fuzz_FactoryMint(address to, uint256 amount) public {
+        if (to == address(0)) to = address(this);
+
         BasicERC20 token = BasicERC20(Clones.clone(implementation));
         token.initialize("Test", "TST", abi.encode(18));
 

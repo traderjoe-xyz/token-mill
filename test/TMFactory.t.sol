@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract TMFactoryTest is Test {
     TMFactory factory;
     address wnative;
+    address proxyAdmin;
 
     address alice = makeAddr("Alice");
     address bob = makeAddr("Bob");
@@ -25,6 +26,8 @@ contract TMFactoryTest is Test {
                 )
             )
         );
+
+        proxyAdmin = address(uint160(uint256(vm.load(address(factory), ERC1967Utils.ADMIN_SLOT))));
     }
 
     function test_Constructor() public view {
@@ -171,6 +174,8 @@ contract TMFactoryTest is Test {
         uint8 decimals,
         uint256 amount
     ) public {
+        vm.assume(sender != proxyAdmin);
+
         decimals = uint8(bound(decimals, 0, 18));
 
         BasicERC20 implementation = new BasicERC20(address(factory));
@@ -210,6 +215,8 @@ contract TMFactoryTest is Test {
         token = address(uint160(bound(uint160(token), 0x0a, type(uint160).max)));
         tokenType = uint96(bound(tokenType, 1, type(uint96).max));
 
+        vm.assume(token != address(factory));
+
         vm.expectRevert(ITMFactory.TMFactory__InvalidTokenType.selector);
         factory.createMarketAndToken(tokenType, "", "", address(0), 0, new uint256[](2), new uint256[](2), new bytes(0));
 
@@ -224,14 +231,15 @@ contract TMFactoryTest is Test {
         vm.expectRevert(ITMFactory.TMFactory__InvalidQuoteToken.selector);
         factory.createMarketAndToken(tokenType, "", "", token, 0, prices, prices, new bytes(0));
 
-        factory.addQuoteToken(token);
-        vm.etch(token, badToken.code);
+        factory.addQuoteToken(wnative);
 
         vm.expectRevert(ITMFactory.TMFactory__InvalidBalance.selector);
-        factory.createMarketAndToken(tokenType, "", "", token, 1e18, prices, prices, new bytes(0));
+        factory.createMarketAndToken(tokenType, "", "", wnative, 1e18, prices, prices, new bytes(0));
     }
 
     function test_Fuzz_UpdateCreator(address sender, address other) public {
+        vm.assume(sender != proxyAdmin);
+
         if (sender == other) {
             unchecked {
                 other = address(uint160(sender) + 1);
