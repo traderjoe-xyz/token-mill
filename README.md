@@ -127,7 +127,7 @@ m = \max_{i \in I}(i)
 $$
 
 $$
-I = \Biggl \{ i \in [0; n] \ \Big| \ \sum_{i=0}^{i-1} \frac{p_{i+1} + p_i}{2}w \le y \Biggr \}
+I = \Biggl \lbrace i \in [0; n] \ \Big| \ \sum_{i=0}^{i-1} \frac{p_{i+1} + p_i}{2}w \le y \Biggr \rbrace
 $$
 
 $$
