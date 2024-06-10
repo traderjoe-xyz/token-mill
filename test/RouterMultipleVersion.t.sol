@@ -37,7 +37,15 @@ contract TestRouterMultipleVersion is Test {
     function setUp() public {
         vm.createSelectFork(StdChains.getChain("avalanche").rpcUrl, 45959572);
 
-        factory = new TMFactory(0.1e18, address(this));
+        address factoryImp = address(new TMFactory());
+        factory = TMFactory(
+            address(
+                new TransparentUpgradeableProxy(
+                    factoryImp, address(this), abi.encodeCall(TMFactory.initialize, (0.1e18, address(this)))
+                )
+            )
+        );
+
         router = new Router(v1Factory, v2_0Router, v2_1Factory, address(0), address(factory), address(wavax));
 
         basicToken = new BasicERC20(address(factory));

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {IERC20Metadata, IERC20} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -17,7 +17,7 @@ import {ITMMarket} from "./interfaces/ITMMarket.sol";
  * @title TokenMill Factory Contract
  * @dev Factory contract for creating markets and tokens.
  */
-contract TMFactory is Ownable, ITMFactory {
+contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 private constant MAX_QUOTE_TOKENS = 64;
@@ -35,12 +35,18 @@ contract TMFactory is Ownable, ITMFactory {
     mapping(uint256 => address implementation) private _implementations;
     EnumerableSet.AddressSet private _quoteTokens;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
-     * @dev Constructor for the TokenMill Factory contract.
+     * @dev Initializer for the TokenMill Factory contract.
      * @param protocolShare The protocol share percentage.
      * @param initialOwner The initial owner of the contract.
      */
-    constructor(uint64 protocolShare, address initialOwner) Ownable(initialOwner) {
+    function initialize(uint64 protocolShare, address initialOwner) external initializer {
+        __Ownable_init(initialOwner);
+
         _updateProtocolShare(protocolShare);
     }
 

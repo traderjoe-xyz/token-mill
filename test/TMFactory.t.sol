@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Test.sol";
+import "./TestHelper.sol";
 
-import "../src/Router.sol";
-import "../src/TMFactory.sol";
-import "../src/templates/BasicERC20.sol";
-import "./mocks/WNative.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TMFactoryTest is Test {
     TMFactory factory;
@@ -19,7 +16,15 @@ contract TMFactoryTest is Test {
 
     function setUp() public {
         wnative = address(new WNative());
-        factory = new TMFactory(0.1e18, address(this));
+
+        address factoryImp = address(new TMFactory());
+        factory = TMFactory(
+            address(
+                new TransparentUpgradeableProxy(
+                    factoryImp, address(this), abi.encodeCall(TMFactory.initialize, (0.1e18, address(this)))
+                )
+            )
+        );
     }
 
     function test_Constructor() public view {

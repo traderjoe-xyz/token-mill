@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+
 import "../src/TMFactory.sol";
 import "../src/Router.sol";
 import "../src/TMMarket.sol";
@@ -30,7 +32,15 @@ contract TestHelper is Test {
     function setUp() public virtual {
         wnative = new WNative();
 
-        factory = new TMFactory(0.1e18, address(this));
+        address factoryImp = address(new TMFactory());
+        factory = TMFactory(
+            address(
+                new TransparentUpgradeableProxy(
+                    factoryImp, address(this), abi.encodeCall(TMFactory.initialize, (0.1e18, address(this)))
+                )
+            )
+        );
+
         router = new Router(address(0), address(0), address(0), address(0), address(factory), address(wnative));
 
         basicToken = new BasicERC20(address(factory));
