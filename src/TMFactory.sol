@@ -191,81 +191,6 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     }
 
     /**
-     * @dev Creates a new token.
-     * @param tokenType The token type.
-     * @param name The name of the token.
-     * @param symbol The symbol of the token.
-     * @param args The additional arguments to be passed to the token.
-     * @return token The address of the token.
-     */
-    function _createToken(uint96 tokenType, string memory name, string memory symbol, bytes memory args)
-        internal
-        returns (address token)
-    {
-        address implementation = _implementations[tokenType];
-        if (implementation == address(0)) revert TMFactory__InvalidTokenType();
-
-        token = Clones.clone(implementation);
-
-        IBaseToken(token).initialize(name, symbol, args);
-    }
-
-    /**
-     * @dev Creates a new market.
-     * @param tokenType The token type.
-     * @param name The name of the market.
-     * @param symbol The symbol of the market.
-     * @param baseToken The address of the base token.
-     * @param quoteToken The address of the quote token.
-     * @param totalSupply The total supply of the market.
-     * @param packedPrices The packed prices of the market.
-     * @return market The address of the market.
-     */
-    function _createMarket(
-        uint96 tokenType,
-        string memory name,
-        string memory symbol,
-        address baseToken,
-        address quoteToken,
-        uint256 totalSupply,
-        uint256[] memory packedPrices
-    ) internal returns (address market) {
-        if (!_quoteTokens.contains(quoteToken)) revert TMFactory__InvalidQuoteToken();
-
-        bytes memory immutableArgs =
-            ImmutableHelper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
-
-        market = ImmutableCreate.create(type(TMMarket).runtimeCode, immutableArgs);
-
-        emit MarketCreated(
-            quoteToken,
-            msg.sender,
-            baseToken,
-            market,
-            totalSupply,
-            name,
-            symbol,
-            IERC20Metadata(baseToken).decimals(),
-            packedPrices
-        );
-
-        uint64 protocolShare = _protocolShare;
-
-        _allMarkets.push(market);
-        _markets[baseToken][quoteToken] = _encodeMarket(1, market);
-        _markets[quoteToken][baseToken] = _encodeMarket(0, market);
-        _tokens[baseToken] = _encodeToken(tokenType, market);
-        _parameters[market] = MarketParameters(protocolShare, msg.sender);
-
-        emit MarketParametersUpdated(market, protocolShare, msg.sender);
-
-        ITMMarket(market).initialize();
-        IBaseToken(baseToken).factoryMint(market, totalSupply);
-
-        if (IERC20(baseToken).balanceOf(market) != totalSupply) revert TMFactory__InvalidBalance();
-    }
-
-    /**
      * @dev Updates the creator of the specified market.
      * @param market The address of the market.
      * @param creator The address of the creator.
@@ -423,5 +348,80 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         _protocolShare = protocolShare;
 
         emit ProtocolShareUpdated(protocolShare);
+    }
+
+    /**
+     * @dev Creates a new token.
+     * @param tokenType The token type.
+     * @param name The name of the token.
+     * @param symbol The symbol of the token.
+     * @param args The additional arguments to be passed to the token.
+     * @return token The address of the token.
+     */
+    function _createToken(uint96 tokenType, string memory name, string memory symbol, bytes memory args)
+        internal
+        returns (address token)
+    {
+        address implementation = _implementations[tokenType];
+        if (implementation == address(0)) revert TMFactory__InvalidTokenType();
+
+        token = Clones.clone(implementation);
+
+        IBaseToken(token).initialize(name, symbol, args);
+    }
+
+    /**
+     * @dev Creates a new market.
+     * @param tokenType The token type.
+     * @param name The name of the market.
+     * @param symbol The symbol of the market.
+     * @param baseToken The address of the base token.
+     * @param quoteToken The address of the quote token.
+     * @param totalSupply The total supply of the market.
+     * @param packedPrices The packed prices of the market.
+     * @return market The address of the market.
+     */
+    function _createMarket(
+        uint96 tokenType,
+        string memory name,
+        string memory symbol,
+        address baseToken,
+        address quoteToken,
+        uint256 totalSupply,
+        uint256[] memory packedPrices
+    ) internal returns (address market) {
+        if (!_quoteTokens.contains(quoteToken)) revert TMFactory__InvalidQuoteToken();
+
+        bytes memory immutableArgs =
+            ImmutableHelper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
+
+        market = ImmutableCreate.create(type(TMMarket).runtimeCode, immutableArgs);
+
+        emit MarketCreated(
+            quoteToken,
+            msg.sender,
+            baseToken,
+            market,
+            totalSupply,
+            name,
+            symbol,
+            IERC20Metadata(baseToken).decimals(),
+            packedPrices
+        );
+
+        uint64 protocolShare = _protocolShare;
+
+        _allMarkets.push(market);
+        _markets[baseToken][quoteToken] = _encodeMarket(1, market);
+        _markets[quoteToken][baseToken] = _encodeMarket(0, market);
+        _tokens[baseToken] = _encodeToken(tokenType, market);
+        _parameters[market] = MarketParameters(protocolShare, msg.sender);
+
+        emit MarketParametersUpdated(market, protocolShare, msg.sender);
+
+        ITMMarket(market).initialize();
+        IBaseToken(baseToken).factoryMint(market, totalSupply);
+
+        if (IERC20(baseToken).balanceOf(market) != totalSupply) revert TMFactory__InvalidBalance();
     }
 }
