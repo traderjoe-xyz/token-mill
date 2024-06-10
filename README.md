@@ -107,7 +107,7 @@ m = \biggl \lfloor \frac{x}{w} \biggr \rfloor
 $$
 
 $$
-r_x = x \pmod m
+r_x = x \quad \text{(mod } m \text{)}
 $$
 
 ### Quote to Base
