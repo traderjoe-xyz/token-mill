@@ -52,7 +52,7 @@ Current templates:
 
 The PricePoints Library is one of the most important libraries in the TokenMill ecosystem. It is used to calculate the price of a token based on the bonding curves and how many tokens to give or receive based on the amount of tokens being bought or sold.
 
-Each price points are distributed evenly between the total supply of the token, starting from 0 to the total supply. The price is calculated using a linear interpolation between each price point.
+Each price points is distributed evenly between the total supply of the token, starting from 0 to the total supply. The price is calculated using a linear interpolation between each price point.
 
 The curve is defined by the following parameters:
 
