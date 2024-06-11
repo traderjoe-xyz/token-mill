@@ -8,10 +8,9 @@ import {ICliffVestingContract} from "./interfaces/ICliffVestingContract.sol";
 
 /**
  * @title Cliff Vesting Contract
- * @dev This contract implements a vesting contract. Only the owner of the factory contract can set the beneficiary
- * and only the beneficiary can release the vested tokens.
- * The vesting contract can be revoked by the owner of the factory contract.
- * The vesting schedule is as follows:
+ * @dev This contract implements a vesting contract. Users can create vesting schedules for tokens and claim vested
+ * tokens after the vesting period has passed. The vesting contract supports multiple vesting schedules for each token.
+ * Each vesting schedule is as follows:
  * - tokens vest linearly from the `start` to the `start + vestingDuration` timestamp
  * - vested tokens can only be claimed after the `start + lockDuration` timestamp
  */
@@ -66,6 +65,7 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
     /**
      * @dev Creates a new vesting schedule for the specified token and beneficiary.
      * @param token The address of the token.
+     * @param beneficiary The address of the beneficiary.
      * @param amount The total amount of tokens to be vested.
      * @param minAmount The minimum amount of tokens to be received.
      * @param start The timestamp at which the vesting starts.
@@ -122,7 +122,9 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
 
     /**
      * @dev Transfers the vesting schedule of the specified token and index to the new beneficiary.
+     * @param token The address of the token.
      * @param newBeneficiary The address of the new beneficiary.
+     * @param index The index of the vesting schedule.
      */
     function transferVestingSchedule(address token, address newBeneficiary, uint256 index) public nonReentrant {
         VestingSchedule storage vesting = _vestingSchedules[token][index];
@@ -135,10 +137,10 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
     }
 
     /**
-     * @dev Calculates the amount of tokens that have been vested at the specified timestamp without taking into account
-     * whether the vesting contract has a cliff or has been revoked.
+     * @dev Calculates the amount of tokens that have been vested at the specified timestamp
      * @param total The total amount of tokens to be vested.
      * @param start The timestamp at which the vesting starts.
+     * @param cliffDuration The duration of the cliff.
      * @param vestingDuration The duration of the vesting.
      * @param timestamp The timestamp at which the amount of vested tokens will be calculated.
      * @return The amount of tokens that have been vested at the specified timestamp.
