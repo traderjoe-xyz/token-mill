@@ -6,22 +6,22 @@ import "forge-std/Test.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
-import {BasicERC20, BaseERC20} from "../../src/templates/BasicERC20.sol";
+import {TMERC20, TMBaseERC20} from "../../src/templates/TMERC20.sol";
 
-contract BasicERC20Test is Test {
+contract TMERC20Test is Test {
     address implementation;
 
     function setUp() public {
-        implementation = address(new BasicERC20(address(this)));
+        implementation = address(new TMERC20(address(this)));
     }
 
     function test_Fuzz_Initialize(string memory name, string memory symbol, uint8 decimals) public {
-        BasicERC20 token = BasicERC20(Clones.clone(implementation));
+        TMERC20 token = TMERC20(Clones.clone(implementation));
 
-        vm.expectRevert(BasicERC20.BasicERC20__InvalidArgsLength.selector);
+        vm.expectRevert(TMERC20.TMERC20__InvalidArgsLength.selector);
         token.initialize(name, symbol, new bytes(0));
 
-        vm.expectRevert(BasicERC20.BasicERC20__InvalidArgsLength.selector);
+        vm.expectRevert(TMERC20.TMERC20__InvalidArgsLength.selector);
         token.initialize(name, symbol, new bytes(31));
 
         token.initialize(name, symbol, abi.encode(decimals));
@@ -37,7 +37,7 @@ contract BasicERC20Test is Test {
     function test_Fuzz_FactoryMint(address to, uint256 amount) public {
         if (to == address(0)) to = address(this);
 
-        BasicERC20 token = BasicERC20(Clones.clone(implementation));
+        TMERC20 token = TMERC20(Clones.clone(implementation));
         token.initialize("Test", "TST", abi.encode(18));
 
         assertEq(address(this), token.factory(), "test_Fuzz_FactoryMint::1");
@@ -49,7 +49,7 @@ contract BasicERC20Test is Test {
         if (to == address(this)) to = address(1);
 
         vm.prank(address(to));
-        vm.expectRevert(BaseERC20.BaseERC20__OnlyFactory.selector);
+        vm.expectRevert(TMBaseERC20.TMBaseERC20__OnlyFactory.selector);
         token.factoryMint(to, amount);
     }
 }

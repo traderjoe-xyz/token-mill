@@ -3,14 +3,15 @@ pragma solidity ^0.8.20;
 
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
-import {IBaseToken} from "../interfaces/IBaseToken.sol";
+import {ITMBaseERC20} from "../interfaces/ITMBaseERC20.sol";
 
 /**
- * @title Base ERC20 Contract
- * @dev Base ERC20 contract following the IBaseToken interface.
+ * @title Token Mill Base ERC20 Contract
+ * @dev Token Mill Base ERC20 contract following the ITMTMBaseERC20 interface.
+ * This contract makes sure that all Token Mill's ERC20 contracts are compliant with the Factory contract.
  */
-abstract contract BaseERC20 is ERC20Upgradeable, IBaseToken {
-    error BaseERC20__OnlyFactory();
+abstract contract TMBaseERC20 is ERC20Upgradeable, ITMBaseERC20 {
+    error TMBaseERC20__OnlyFactory();
 
     address private immutable _factory;
 
@@ -51,7 +52,7 @@ abstract contract BaseERC20 is ERC20Upgradeable, IBaseToken {
      * @param amount The amount of tokens to be minted.
      */
     function factoryMint(address to, uint256 amount) external {
-        if (msg.sender != _factory) revert BaseERC20__OnlyFactory();
+        if (msg.sender != _factory) revert TMBaseERC20__OnlyFactory();
         _mint(to, amount);
     }
 

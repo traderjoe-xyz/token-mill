@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "../src/TMFactory.sol";
 import "../src/Router.sol";
 import "../src/TMMarket.sol";
-import "../src/templates/BasicERC20.sol";
+import "../src/templates/TMERC20.sol";
 import "./mocks/WNative.sol";
 
 contract TestHelper is Test {
@@ -16,7 +16,7 @@ contract TestHelper is Test {
     Router public router;
     WNative public wnative;
 
-    BasicERC20 public basicToken;
+    TMERC20 public basicToken;
 
     address public token0;
     address public token1;
@@ -43,14 +43,14 @@ contract TestHelper is Test {
 
         router = new Router(address(0), address(0), address(0), address(0), address(factory), address(wnative));
 
-        basicToken = new BasicERC20(address(factory));
+        basicToken = new TMERC20(address(factory));
 
         factory.updateTokenImplementation(1, address(basicToken));
 
         vm.label(address(factory), "TMFactory");
         vm.label(address(router), "Router");
         vm.label(address(wnative), "WNative");
-        vm.label(address(basicToken), "BasicERC20 Implementation");
+        vm.label(address(basicToken), "TMERC20 Implementation");
     }
 
     function setUpTokens() public {

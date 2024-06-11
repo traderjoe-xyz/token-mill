@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../../src/templates/BaseERC20.sol";
+import "../../src/templates/TMBaseERC20.sol";
 
-contract TransferTaxToken is BaseERC20 {
+contract TransferTaxToken is TMBaseERC20 {
     uint256 public immutable tax;
 
-    constructor(address factory_, uint256 tax_) BaseERC20(factory_) {
+    constructor(address factory_, uint256 tax_) TMBaseERC20(factory_) {
         require(tax_ <= 1e18, "TransferTaxToken: invalid tax");
         tax = tax_;
     }

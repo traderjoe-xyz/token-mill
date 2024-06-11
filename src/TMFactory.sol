@@ -8,7 +8,7 @@ import {IERC20Metadata, IERC20} from "@openzeppelin/contracts/token/ERC20/extens
 
 import {TMMarket} from "./TMMarket.sol";
 import {ITMFactory} from "./interfaces/ITMFactory.sol";
-import {IBaseToken} from "./interfaces/IBaseToken.sol";
+import {ITMBaseERC20} from "./interfaces/ITMBaseERC20.sol";
 import {ImmutableCreate} from "./libraries/ImmutableCreate.sol";
 import {ImmutableHelper} from "./libraries/ImmutableHelper.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
@@ -367,7 +367,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
         token = Clones.clone(implementation);
 
-        IBaseToken(token).initialize(name, symbol, args);
+        ITMBaseERC20(token).initialize(name, symbol, args);
     }
 
     /**
@@ -420,7 +420,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         emit MarketParametersUpdated(market, protocolShare, msg.sender);
 
         ITMMarket(market).initialize();
-        IBaseToken(baseToken).factoryMint(market, totalSupply);
+        ITMBaseERC20(baseToken).factoryMint(market, totalSupply);
 
         if (IERC20(baseToken).balanceOf(market) != totalSupply) revert TMFactory__InvalidBalance();
     }

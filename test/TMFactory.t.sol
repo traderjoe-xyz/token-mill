@@ -178,7 +178,7 @@ contract TMFactoryTest is Test {
 
         decimals = uint8(bound(decimals, 0, 18));
 
-        BasicERC20 implementation = new BasicERC20(address(factory));
+        TMERC20 implementation = new TMERC20(address(factory));
         factory.updateTokenImplementation(1, address(implementation));
         factory.addQuoteToken(wnative);
 
@@ -406,7 +406,7 @@ contract TMFactoryTest is Test {
         require(ratio <= 1e18, "Ratio must be less than or equal to 1e18");
 
         if (factory.getTokenImplementation(1) == address(0)) {
-            factory.updateTokenImplementation(1, address(new BasicERC20(address(factory))));
+            factory.updateTokenImplementation(1, address(new TMERC20(address(factory))));
         }
 
         if (!factory.isQuoteToken(wnative)) {
@@ -430,8 +430,8 @@ contract TMFactoryTest is Test {
     }
 }
 
-contract BadERC20 is BaseERC20 {
-    constructor(address factory_) BaseERC20(factory_) {}
+contract BadERC20 is TMBaseERC20 {
+    constructor(address factory_) TMBaseERC20(factory_) {}
 
     function _update(address from, address to, uint256 value) internal override {
         unchecked {

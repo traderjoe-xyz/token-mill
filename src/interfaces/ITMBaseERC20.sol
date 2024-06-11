@@ -7,7 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @title Base Token Interface
  * @dev Interface followed by all tokens created by the factory.
  */
-interface IBaseToken is IERC20 {
+interface ITMBaseERC20 is IERC20 {
     function initialize(string memory name, string memory symbol, bytes calldata args) external;
 
     function factory() external view returns (address);

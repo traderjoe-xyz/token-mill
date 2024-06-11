@@ -26,7 +26,7 @@ contract TestRouterMultipleVersion is Test {
 
     TMFactory public factory;
     Router public router;
-    BasicERC20 public basicToken;
+    TMERC20 public basicToken;
 
     address token0;
     address token1;
@@ -48,7 +48,7 @@ contract TestRouterMultipleVersion is Test {
 
         router = new Router(v1Factory, v2_0Router, v2_1Factory, address(0), address(factory), address(wavax));
 
-        basicToken = new BasicERC20(address(factory));
+        basicToken = new TMERC20(address(factory));
 
         factory.updateTokenImplementation(1, address(basicToken));
 
@@ -89,7 +89,7 @@ contract TestRouterMultipleVersion is Test {
 
         vm.label(address(factory), "TMFactory");
         vm.label(address(router), "Router");
-        vm.label(address(basicToken), "BasicERC20 Implementation");
+        vm.label(address(basicToken), "TMERC20 Implementation");
         vm.label(address(v1Factory), "v1Factory");
         vm.label(address(v2_0Factory), "v2_0Factory");
         vm.label(address(v2_0Router), "v2_0Router");
