@@ -94,6 +94,9 @@ $$
 m = \biggl  \lfloor \frac{x}{w} \biggr \rfloor
 $$
 
+![[Figure 1]: Price Points using the Exponential function, p_min = 10, p_max = 100 and 6 points.](./assets/price_graph.png)
+[Figure 1]: Price Points using the Exponential function, $P_{min} = 10$, $P_{max} = 100$, $x_{max} = 500 \ 000 \ 000$ and 6 points. [Desmos](https://www.desmos.com/calculator/gu0mpoolmm)
+
 ### Base to Quote
 
 $$
