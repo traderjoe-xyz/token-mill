@@ -16,7 +16,7 @@ import {IV2_2Factory} from "./interfaces/IV2_2Factory.sol";
 import {IV2_2Pair} from "./interfaces/IV2_2Pair.sol";
 import {ITMFactory} from "./interfaces/ITMFactory.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
-import {IWNATIVE} from "./interfaces/IWNATIVE.sol";
+import {IWNative} from "./interfaces/IWNative.sol";
 
 /**
  * @title Router Contract
@@ -42,7 +42,7 @@ contract Router {
     IV2_2Factory internal immutable _v2_2Factory;
     ITMFactory internal immutable _tmFactory;
 
-    IWNATIVE internal immutable _wnative;
+    IWNative internal immutable _wnative;
 
     /**
      * @dev Constructor for the Router contract.
@@ -71,7 +71,7 @@ contract Router {
         _v2_2Factory = IV2_2Factory(v2_2Factory);
         _tmFactory = ITMFactory(tmFactory);
 
-        _wnative = IWNATIVE(wnative);
+        _wnative = IWNative(wnative);
     }
 
     /**
