@@ -28,14 +28,14 @@ library ImmutableCreate {
         assembly {
             let memEnd := mload(add(code, codeLength))
 
-            let size := add(codeLength, 0x0c) // 10 bytes for the creation code and 2 bytes for the offset of the immutable args
+            let size := add(codeLength, 0x0d) // 11 bytes for the creation code and 2 bytes for the offset of the immutable args
 
-            let creationCode := or(0x6100003d81600a3d39f3, shl(0x38, add(codeLength, 0x02)))
+            let creationCode := or(0x610000600081600b8239f3, shl(0x40, add(codeLength, 0x02)))
 
             mstore(code, creationCode)
             mstore(add(add(code, codeLength), 0x20), shl(0xf0, runtimecodeLength))
 
-            c := create(0, add(code, 0x16), size)
+            c := create(0, add(code, 0x15), size)
 
             mstore(add(code, codeLength), memEnd) // restore the memory
         }
