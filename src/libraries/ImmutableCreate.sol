@@ -26,18 +26,19 @@ library ImmutableCreate {
         uint256 codeLength = code.length;
 
         assembly {
-            let memEnd := mload(add(code, codeLength))
+            let memEndSlot := add(add(code, codeLength), 0x20)
+            let memEndValue := mload(memEndSlot)
 
             let size := add(codeLength, 0x0d) // 11 bytes for the creation code and 2 bytes for the offset of the immutable args
 
             let creationCode := or(0x610000600081600b8239f3, shl(0x40, add(codeLength, 0x02)))
 
             mstore(code, creationCode)
-            mstore(add(add(code, codeLength), 0x20), shl(0xf0, runtimecodeLength))
+            mstore(memEndSlot, shl(0xf0, runtimecodeLength))
 
             c := create(0, add(code, 0x15), size)
 
-            mstore(add(code, codeLength), memEnd) // restore the memory
+            mstore(memEndSlot, memEndValue) // restore the memory
         }
 
         if (c == address(0)) revert ImmutableCreate__DeploymentFailed();
