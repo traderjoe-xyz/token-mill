@@ -190,6 +190,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         }
 
         uint256 balance = tokenToReceive.balanceOf(address(this));
+        if (balance > type(uint128).max) revert TMMarket__ReserveOverflow();
 
         fillBid
             ? _updateReservesOnFillBid(baseReserve, quoteReserve, toSend, toReceive, balance)
