@@ -166,8 +166,6 @@ contract MathTest is Test {
 
         string memory m = string(abi.encodePacked(vm.toString(x0), " + ", vm.toString(y0)));
 
-        console.log("((%s + %s) << 256) + %s", x1, y1, m);
-
         vm.expectRevert(Math.Math__UnderOverflow.selector);
         Math.add512(x0, x1, y0, y1);
 

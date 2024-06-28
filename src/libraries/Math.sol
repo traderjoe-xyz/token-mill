@@ -292,6 +292,8 @@ library Math {
         if (x1 == 0) return sqrt(x0, roundUp);
         if (x1 == type(uint256).max) revert Math__UnderOverflow(); // max allowed is sqrt((2^256-1)^2), orelse round up would overflow
 
+        uint256 mx0 = x0; // Cache x0
+
         uint256 shift;
 
         // Condition: a_3 >= b / 4
@@ -364,7 +366,7 @@ library Math {
             s := sub(s, or(lt(u1, q1), and(eq(u1, q1), lt(rl, rr)))) // if r < 0 { s -= 1 }
             s := shr(shr(1, shift), s) // s >>= (shift / 2)
 
-            s := add(s, iszero(or(eq(mul(s, s), x0), iszero(roundUp)))) // round up if necessary
+            s := add(s, iszero(or(eq(mul(s, s), mx0), iszero(roundUp)))) // round up if necessary
         }
     }
 }
