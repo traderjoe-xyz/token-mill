@@ -159,7 +159,7 @@ contract ImmutableHelperTest is Test {
         uint256[] memory packedPrices
     ) public {
         uint256 length = packedPrices.length;
-        vm.assume(length >= ImmutableHelper.MIN_LENGTH);
+        vm.assume(length >= ImmutableHelper.MIN_LENGTH && baseSalt != quoteSalt);
 
         length = length > ImmutableHelper.MAX_LENGTH ? ImmutableHelper.MAX_LENGTH : length;
 

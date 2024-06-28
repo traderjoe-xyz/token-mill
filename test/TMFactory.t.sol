@@ -238,13 +238,13 @@ contract TMFactoryTest is Test {
     }
 
     function test_Fuzz_UpdateCreator(address sender, address other) public {
-        vm.assume(sender != proxyAdmin);
-
         if (sender == other) {
             unchecked {
                 other = address(uint160(sender) + 1);
             }
         }
+
+        vm.assume(sender != proxyAdmin && other != proxyAdmin);
 
         (, address market) = _setUpAndCreateToken(sender);
 
