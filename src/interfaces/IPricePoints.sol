@@ -7,6 +7,7 @@ pragma solidity ^0.8.20;
  */
 interface IPricePoints {
     error PricePoints__TotalSupplyExceeded();
+    error PricePoints__OverflowInt256();
 
     function getDeltaQuoteAmount(uint256 supply, int256 deltaBaseAmount)
         external

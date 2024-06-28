@@ -37,6 +37,8 @@ abstract contract PricePoints is IPricePoints {
 
         (uint256 baseAmount, uint256 quoteAmount) = _getQuoteAmount(circSupply, base, deltaBaseAmount < 0);
 
+        if ((baseAmount | quoteAmount) > uint256(type(int256).max)) revert PricePoints__OverflowInt256();
+
         return deltaBaseAmount > 0
             ? (int256(baseAmount), -int256(quoteAmount))
             : (-int256(baseAmount), int256(quoteAmount));
@@ -57,13 +59,17 @@ abstract contract PricePoints is IPricePoints {
     {
         if (deltaQuoteAmount == 0) return (0, 0);
 
+        uint256 baseAmount;
+        uint256 quoteAmount;
         if (deltaQuoteAmount > 0) {
-            (uint256 baseAmount, uint256 quoteAmount) = _getBaseAmountOut(supply, uint256(deltaQuoteAmount));
-            return (-int256(baseAmount), int256(quoteAmount));
+            (baseAmount, quoteAmount) = _getBaseAmountOut(supply, uint256(deltaQuoteAmount));
+            (deltaBaseAmount, actualDeltaQuoteAmount) = (-int256(baseAmount), int256(quoteAmount));
         } else {
-            (uint256 baseAmount, uint256 quoteAmount) = _getBaseAmountIn(supply, uint256(-deltaQuoteAmount));
-            return (int256(baseAmount), -int256(quoteAmount));
+            (baseAmount, quoteAmount) = _getBaseAmountIn(supply, uint256(-deltaQuoteAmount));
+            (deltaBaseAmount, actualDeltaQuoteAmount) = (int256(baseAmount), -int256(quoteAmount));
         }
+
+        if ((baseAmount | quoteAmount) > uint256(type(int256).max)) revert PricePoints__OverflowInt256();
     }
 
     /**
