@@ -262,11 +262,13 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
             uint256 totalFees = quoteReserve - minQuoteAmount;
 
             if (totalFees > totalUnclaimedFees) {
+                uint256 fees = totalFees - totalUnclaimedFees;
+
                 uint256 protocolShare = factory.getProtocolShareOf(address(this));
-                uint256 protocolFees = totalFees * protocolShare / 1e18;
+                uint256 protocolFees = fees * protocolShare / 1e18;
 
                 protocolUnclaimedFees += protocolFees;
-                creatorUnclaimedFees += totalFees - protocolFees;
+                creatorUnclaimedFees += fees - protocolFees;
             }
         }
 
