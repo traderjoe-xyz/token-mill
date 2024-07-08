@@ -159,17 +159,15 @@ contract MathTest is Test {
     }
 
     function test_Revert_Add512(uint256 x0, uint256 x1, uint256 y0, uint256 y1) public {
-        uint256 remainder = x0 > type(uint256).max - y0 ? 1 : 0;
+        y1 = bound(y1, type(uint256).max - x1, type(uint256).max);
+        y0 = bound(y0, type(uint256).max - x0, type(uint256).max);
 
-        x1 = bound(x1, 1, type(uint256).max - remainder);
-        y1 = bound(y1, type(uint256).max - x1 + 1 - remainder, type(uint256).max);
-
-        string memory m = string(abi.encodePacked(vm.toString(x0), " + ", vm.toString(y0)));
+        if (x1 == type(uint256).max - y1 && x0 == type(uint256).max - y0) {
+            (x0, y0) = x0 == type(uint256).max ? (type(uint256).max, 1) : (x0 + 1, y0);
+        }
 
         vm.expectRevert(Math.Math__UnderOverflow.selector);
         Math.add512(x0, x1, y0, y1);
-
-        Math.add512(x0, x1, y0, y1 - 1);
     }
 
     function test_Fuzz_Sqrt512(uint256 x, uint256 y) public pure {

@@ -267,10 +267,12 @@ library Math {
         uint256 success;
 
         assembly {
-            z0 := add(x0, y0)
-            z1 := add(add(x1, y1), lt(z0, x0))
+            let rz1 := add(x1, y1)
 
-            success := or(gt(z1, x1), iszero(y1))
+            z0 := add(x0, y0)
+            z1 := add(rz1, lt(z0, x0))
+
+            success := iszero(or(lt(rz1, x1), lt(z1, rz1))) // rz1 >= x1 && z1 >= rz1
         }
 
         if (success == 0) revert Math__UnderOverflow();
