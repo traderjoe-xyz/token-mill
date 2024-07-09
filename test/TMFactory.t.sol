@@ -343,6 +343,22 @@ contract TMFactoryTest is Test {
         assertEq(factory.getCreatorMarketAt(creator0, 1), market3, "test_UpdateCreator::38");
         assertEq(factory.getCreatorMarketAt(creator1, 0), market1, "test_UpdateCreator::39");
         assertEq(factory.getCreatorMarketAt(creator1, 1), market0, "test_UpdateCreator::40");
+
+        vm.prank(creator1);
+        factory.updateCreator(market1, creator1);
+
+        assertEq(factory.getCreatorOf(market0), creator1, "test_UpdateCreator::41");
+        assertEq(factory.getCreatorOf(market1), creator1, "test_UpdateCreator::42");
+        assertEq(factory.getCreatorOf(market2), creator0, "test_UpdateCreator::43");
+        assertEq(factory.getCreatorOf(market3), creator0, "test_UpdateCreator::44");
+
+        assertEq(factory.getCreatorMarketsLength(creator0), 2, "test_UpdateCreator::45");
+        assertEq(factory.getCreatorMarketsLength(creator1), 2, "test_UpdateCreator::46");
+
+        assertEq(factory.getCreatorMarketAt(creator0, 0), market2, "test_UpdateCreator::47");
+        assertEq(factory.getCreatorMarketAt(creator0, 1), market3, "test_UpdateCreator::48");
+        assertEq(factory.getCreatorMarketAt(creator1, 0), market0, "test_UpdateCreator::49");
+        assertEq(factory.getCreatorMarketAt(creator1, 1), market1, "test_UpdateCreator::50");
     }
 
     function test_Fuzz_UpdateProtocolShareOf(uint64 shares) public {
