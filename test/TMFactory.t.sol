@@ -249,11 +249,17 @@ contract TMFactoryTest is Test {
         (, address market) = _setUpAndCreateToken(sender);
 
         assertEq(factory.getCreatorOf(market), sender, "test_Fuzz_UpdateCreator::1");
+        assertEq(factory.getCreatorMarketsLength(sender), 1, "test_Fuzz_UpdateCreator::2");
+        assertEq(factory.getCreatorMarketsLength(other), 0, "test_Fuzz_UpdateCreator::3");
+        assertEq(factory.getCreatorMarketAt(sender, 0), market, "test_Fuzz_UpdateCreator::4");
 
         vm.prank(sender);
         factory.updateCreator(market, other);
 
         assertEq(factory.getCreatorOf(market), other, "test_Fuzz_UpdateCreator::2");
+        assertEq(factory.getCreatorMarketsLength(sender), 0, "test_Fuzz_UpdateCreator::3");
+        assertEq(factory.getCreatorMarketsLength(other), 1, "test_Fuzz_UpdateCreator::4");
+        assertEq(factory.getCreatorMarketAt(other, 0), market, "test_Fuzz_UpdateCreator::5");
 
         vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
         vm.prank(sender);
@@ -263,6 +269,80 @@ contract TMFactoryTest is Test {
         factory.updateCreator(market, sender);
 
         assertEq(factory.getCreatorOf(market), sender, "test_Fuzz_UpdateCreator::3");
+        assertEq(factory.getCreatorMarketsLength(sender), 1, "test_Fuzz_UpdateCreator::4");
+        assertEq(factory.getCreatorMarketsLength(other), 0, "test_Fuzz_UpdateCreator::5");
+        assertEq(factory.getCreatorMarketAt(sender, 0), market, "test_Fuzz_UpdateCreator::6");
+    }
+
+    function test_UpdateCreator() public {
+        address creator0 = makeAddr("Creator0");
+        address creator1 = makeAddr("Creator1");
+
+        (, address market0) = _setUpAndCreateToken(creator0);
+        (, address market1) = _setUpAndCreateToken(creator0);
+        (, address market2) = _setUpAndCreateToken(creator0);
+        (, address market3) = _setUpAndCreateToken(creator1);
+
+        assertEq(factory.getCreatorOf(market0), creator0, "test_UpdateCreator::1");
+        assertEq(factory.getCreatorOf(market1), creator0, "test_UpdateCreator::2");
+        assertEq(factory.getCreatorOf(market2), creator0, "test_UpdateCreator::3");
+        assertEq(factory.getCreatorOf(market3), creator1, "test_UpdateCreator::4");
+
+        assertEq(factory.getCreatorMarketsLength(creator0), 3, "test_UpdateCreator::5");
+        assertEq(factory.getCreatorMarketsLength(creator1), 1, "test_UpdateCreator::6");
+
+        assertEq(factory.getCreatorMarketAt(creator0, 0), market0, "test_UpdateCreator::7");
+        assertEq(factory.getCreatorMarketAt(creator0, 1), market1, "test_UpdateCreator::8");
+        assertEq(factory.getCreatorMarketAt(creator0, 2), market2, "test_UpdateCreator::9");
+        assertEq(factory.getCreatorMarketAt(creator1, 0), market3, "test_UpdateCreator::10");
+
+        vm.prank(creator0);
+        factory.updateCreator(market0, creator1);
+
+        assertEq(factory.getCreatorOf(market0), creator1, "test_UpdateCreator::11");
+        assertEq(factory.getCreatorOf(market1), creator0, "test_UpdateCreator::12");
+        assertEq(factory.getCreatorOf(market2), creator0, "test_UpdateCreator::13");
+        assertEq(factory.getCreatorOf(market3), creator1, "test_UpdateCreator::14");
+
+        assertEq(factory.getCreatorMarketsLength(creator0), 2, "test_UpdateCreator::15");
+        assertEq(factory.getCreatorMarketsLength(creator1), 2, "test_UpdateCreator::16");
+
+        assertEq(factory.getCreatorMarketAt(creator0, 0), market2, "test_UpdateCreator::17");
+        assertEq(factory.getCreatorMarketAt(creator0, 1), market1, "test_UpdateCreator::18");
+        assertEq(factory.getCreatorMarketAt(creator1, 0), market3, "test_UpdateCreator::19");
+        assertEq(factory.getCreatorMarketAt(creator1, 1), market0, "test_UpdateCreator::20");
+
+        vm.prank(creator0);
+        factory.updateCreator(market1, creator1);
+
+        assertEq(factory.getCreatorOf(market0), creator1, "test_UpdateCreator::21");
+        assertEq(factory.getCreatorOf(market1), creator1, "test_UpdateCreator::22");
+        assertEq(factory.getCreatorOf(market2), creator0, "test_UpdateCreator::23");
+        assertEq(factory.getCreatorOf(market3), creator1, "test_UpdateCreator::24");
+
+        assertEq(factory.getCreatorMarketsLength(creator0), 1, "test_UpdateCreator::25");
+        assertEq(factory.getCreatorMarketsLength(creator1), 3, "test_UpdateCreator::26");
+
+        assertEq(factory.getCreatorMarketAt(creator0, 0), market2, "test_UpdateCreator::27");
+        assertEq(factory.getCreatorMarketAt(creator1, 0), market3, "test_UpdateCreator::28");
+        assertEq(factory.getCreatorMarketAt(creator1, 1), market0, "test_UpdateCreator::29");
+        assertEq(factory.getCreatorMarketAt(creator1, 2), market1, "test_UpdateCreator::30");
+
+        vm.prank(creator1);
+        factory.updateCreator(market3, creator0);
+
+        assertEq(factory.getCreatorOf(market0), creator1, "test_UpdateCreator::31");
+        assertEq(factory.getCreatorOf(market1), creator1, "test_UpdateCreator::32");
+        assertEq(factory.getCreatorOf(market2), creator0, "test_UpdateCreator::33");
+        assertEq(factory.getCreatorOf(market3), creator0, "test_UpdateCreator::34");
+
+        assertEq(factory.getCreatorMarketsLength(creator0), 2, "test_UpdateCreator::35");
+        assertEq(factory.getCreatorMarketsLength(creator1), 2, "test_UpdateCreator::36");
+
+        assertEq(factory.getCreatorMarketAt(creator0, 0), market2, "test_UpdateCreator::37");
+        assertEq(factory.getCreatorMarketAt(creator0, 1), market3, "test_UpdateCreator::38");
+        assertEq(factory.getCreatorMarketAt(creator1, 0), market1, "test_UpdateCreator::39");
+        assertEq(factory.getCreatorMarketAt(creator1, 1), market0, "test_UpdateCreator::40");
     }
 
     function test_Fuzz_UpdateProtocolShareOf(uint64 shares) public {

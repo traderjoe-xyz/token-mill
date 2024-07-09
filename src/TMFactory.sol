@@ -35,6 +35,8 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     mapping(uint256 => address implementation) private _implementations;
     EnumerableSet.AddressSet private _quoteTokens;
 
+    mapping(address => EnumerableSet.AddressSet) private _creatorMarkets;
+
     constructor() {
         _disableInitializers();
     }
@@ -57,6 +59,25 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      */
     function getCreatorOf(address market) external view override returns (address) {
         return _parameters[market].creator;
+    }
+
+    /**
+     * @dev Returns the number of markets created by the specified creator.
+     * @param creator The address of the creator.
+     * @return The number of markets created by the creator.
+     */
+    function getCreatorMarketsLength(address creator) external view override returns (uint256) {
+        return _creatorMarkets[creator].length();
+    }
+
+    /**
+     * @dev Returns the market at the specified index created by the specified creator.
+     * @param creator The address of the creator.
+     * @param index The index of the market.
+     * @return The address of the market created by the creator at the specified index.
+     */
+    function getCreatorMarketAt(address creator, uint256 index) external view override returns (address) {
+        return _creatorMarkets[creator].at(index);
     }
 
     /**
@@ -199,6 +220,9 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         MarketParameters storage parameters = _parameters[market];
 
         if (msg.sender != parameters.creator) revert TMFactory__InvalidCaller();
+
+        _creatorMarkets[msg.sender].remove(market);
+        _creatorMarkets[creator].add(market);
 
         parameters.creator = creator;
 
@@ -416,6 +440,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         _markets[quoteToken][baseToken] = _encodeMarket(0, market);
         _tokens[baseToken] = _encodeToken(tokenType, market);
         _parameters[market] = MarketParameters(protocolShare, msg.sender);
+        _creatorMarkets[msg.sender].add(market);
 
         emit MarketParametersUpdated(market, protocolShare, msg.sender);
 

@@ -43,6 +43,10 @@ interface ITMFactory {
 
     function getCreatorOf(address market) external view returns (address);
 
+    function getCreatorMarketsLength(address creator) external view returns (uint256);
+
+    function getCreatorMarketAt(address creator, uint256 index) external view returns (address);
+
     function getProtocolShareOf(address market) external view returns (uint256);
 
     function getTokenType(address token) external view returns (uint256);
