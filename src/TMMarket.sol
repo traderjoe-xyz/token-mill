@@ -76,6 +76,15 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     }
 
     /**
+     * @dev Returns the reserves. The quote reserve includes the pending fees.
+     * @return baseReserve The base reserve.
+     * @return quoteReserve The quote reserve (including the pending fees).
+     */
+    function getReserves() external view override returns (uint256 baseReserve, uint256 quoteReserve) {
+        return _getReserves();
+    }
+
+    /**
      * @dev Returns the price at the specified circulating supply.
      * @param circulatingSupply The circulating supply.
      * @param fillBid Whether to fill the bid or ask.

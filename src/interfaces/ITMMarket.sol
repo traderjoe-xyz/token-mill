@@ -40,6 +40,8 @@ interface ITMMarket is IPricePoints {
         view
         returns (int256 deltaBaseAmount, int256 deltaQuoteAmount);
 
+    function getReserves() external view returns (uint256 baseReserve, uint256 quoteReserve);
+
     function swap(address recipient, int256 deltaAmount, bool fillBid, bytes calldata data)
         external
         returns (int256 deltaBaseAmount, int256 deltaQuoteAmount);
