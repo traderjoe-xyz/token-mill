@@ -400,7 +400,7 @@ contract TMFactoryTest is Test {
 
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token1);
 
-        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0);
+        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp);
 
         (uint256 protocol1, uint256 creator1) = ITMMarket(market1).getPendingFees();
 
@@ -430,7 +430,7 @@ contract TMFactoryTest is Test {
             assertEq(creator1_, 0, "test_ClaimFees::8");
         }
 
-        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0);
+        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp);
 
         (uint256 protocol2, uint256 creator2) = ITMMarket(market1).getPendingFees();
 
@@ -467,7 +467,7 @@ contract TMFactoryTest is Test {
 
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token1);
 
-        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0);
+        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp);
 
         (uint256 protocol1, uint256 creator1) = ITMMarket(market1).getPendingFees();
 

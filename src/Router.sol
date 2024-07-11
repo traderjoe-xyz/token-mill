@@ -17,23 +17,15 @@ import {IV2_2Pair} from "./interfaces/IV2_2Pair.sol";
 import {ITMFactory} from "./interfaces/ITMFactory.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
 import {IWNative} from "./interfaces/IWNative.sol";
+import {IRouter} from "./interfaces/IRouter.sol";
 
 /**
  * @title Router Contract
  * @dev The contract that routes swaps through the different versions of the contracts.
  * Uses the packed route to determine the path of the swap. See `PackedRoute.sol` for more information.
  */
-contract Router {
+contract Router is IRouter {
     using SafeERC20 for IERC20;
-
-    error Router__OnlyWNative();
-    error Router__InvalidMarket();
-    error Router__InvalidRecipient();
-    error Router__InsufficientOutputAmount();
-    error Router__NativeTransferFailed();
-    error Router__InvalidAmounts();
-    error Router__ExceedsMaxInputAmount();
-    error Router__InvalidId();
 
     IV1Factory internal immutable _v1Factory;
     IV2_0Factory internal immutable _v2_0Factory;
@@ -122,14 +114,16 @@ contract Router {
      * @param to The address to which the tokens will be transferred.
      * @param amountIn The amount of tokens to be swapped.
      * @param amountOutMin The minimum amount of tokens to be received.
+     * @param deadline The deadline by which the transaction must be executed.
      * @return The amount of tokens in and out.
      */
-    function swapExactIn(bytes memory route, address to, uint256 amountIn, uint256 amountOutMin)
+    function swapExactIn(bytes memory route, address to, uint256 amountIn, uint256 amountOutMin, uint256 deadline)
         external
         payable
         returns (uint256, uint256)
     {
-        if (to == address(this)) revert Router__InvalidRecipient();
+        _checkDeadline(deadline);
+        _checkRecipient(to);
 
         (address[] memory pairs, uint256[] memory ids, address[] memory tokens) = _getPairsAndIds(route);
 
@@ -138,12 +132,15 @@ contract Router {
         address lastToken = tokens[pairs.length];
         address recipient = lastToken == address(0) ? address(this) : to;
 
-        uint256 balanceBefore = _balanceOf(lastToken, recipient);
-        _swapExactIn(recipient, pairs, ids, amountIn);
-        uint256 balanceAfter = _balanceOf(lastToken, recipient);
+        uint256 amountOut;
+        {
+            uint256 balanceBefore = _balanceOf(lastToken, recipient);
+            _swapExactIn(recipient, pairs, ids, amountIn);
+            uint256 balanceAfter = _balanceOf(lastToken, recipient);
 
-        if (balanceBefore + amountOutMin > balanceAfter) revert Router__InsufficientOutputAmount();
-        uint256 amountOut = balanceAfter - balanceBefore;
+            if (balanceBefore + amountOutMin > balanceAfter) revert Router__InsufficientOutputAmount();
+            amountOut = balanceAfter - balanceBefore;
+        }
 
         if (recipient == address(this)) _transfer(lastToken, recipient, to, amountOut);
 
@@ -164,24 +161,30 @@ contract Router {
      * @param to The address to which the tokens will be transferred.
      * @param amountIn The amount of tokens to be swapped.
      * @param amountOutMin The minimum amount of tokens to be received.
+     * @param deadline The deadline by which the transaction must be executed.
      * @return The amount of tokens in and out.
      */
     function swapExactInSupportingFeeOnTransferTokens(
         bytes memory route,
         address to,
         uint256 amountIn,
-        uint256 amountOutMin
+        uint256 amountOutMin,
+        uint256 deadline
     ) external payable returns (uint256, uint256) {
-        if (to == address(this)) revert Router__InvalidRecipient();
+        _checkDeadline(deadline);
+        _checkRecipient(to);
 
         (address[] memory pairs, uint256[] memory ids, address[] memory tokens) = _getPairsAndIds(route);
 
         address token = tokens[0];
         address recipient = pairs[0];
 
-        uint256 balanceBefore = _balanceOf(token, recipient);
-        _transfer(token, msg.sender, recipient, amountIn);
-        uint256 effectiveAmountIn = _balanceOf(token, recipient) - balanceBefore;
+        uint256 effectiveAmountIn;
+        {
+            uint256 balanceBefore = _balanceOf(token, recipient);
+            _transfer(token, msg.sender, recipient, amountIn);
+            effectiveAmountIn = _balanceOf(token, recipient) - balanceBefore;
+        }
 
         token = tokens[pairs.length];
         recipient = token == address(0) ? address(this) : to;
@@ -209,14 +212,16 @@ contract Router {
      * @param to The address to which the tokens will be transferred.
      * @param amountOut The amount of tokens to be received.
      * @param amountInMax The maximum amount of tokens to be swapped.
+     * @param deadline The deadline by which the transaction must be executed.
      * @return The amount of tokens in and out.
      */
-    function swapExactOut(bytes memory route, address to, uint256 amountOut, uint256 amountInMax)
+    function swapExactOut(bytes memory route, address to, uint256 amountOut, uint256 amountInMax, uint256 deadline)
         external
         payable
         returns (uint256, uint256)
     {
-        if (to == address(this)) revert Router__InvalidRecipient();
+        _checkDeadline(deadline);
+        _checkRecipient(to);
 
         (address[] memory pairs, uint256[] memory ids, address[] memory tokens) = _getPairsAndIds(route);
         uint256[] memory amounts = _getAmounts(pairs, ids, tokens, amountOut);
@@ -249,6 +254,22 @@ contract Router {
         }
 
         return (amountIn, amountOut);
+    }
+
+    /**
+     * @dev Checks if the deadline has passed.
+     * @param deadline The deadline by which the transaction must be executed.
+     */
+    function _checkDeadline(uint256 deadline) internal view {
+        if (deadline < block.timestamp) revert Router__ExceedsDeadline();
+    }
+
+    /**
+     * @dev Checks if the recipient is not the contract itself.
+     * @param recipient The address to check.
+     */
+    function _checkRecipient(address recipient) internal view {
+        if (recipient == address(this)) revert Router__InvalidRecipient();
     }
 
     /**

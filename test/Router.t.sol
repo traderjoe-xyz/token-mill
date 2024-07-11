@@ -24,7 +24,7 @@ contract TestRouter is TestHelper {
         assertEq(IERC20(token0).balanceOf(address(this)), 0, "test_SwapExactInTtoTSingleHop::3");
         assertEq(IERC20(token0).balanceOf(market0w), 500_000_000e18, "test_SwapExactInTtoTSingleHop::4");
 
-        (, uint256 amountOut) = router.swapExactIn(route, address(this), 1e18, 1e18);
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), 1e18, 1e18, block.timestamp);
 
         assertEq(wnative.balanceOf(address(this)), 0, "test_SwapExactInTtoTSingleHop::5");
         assertEq(wnative.balanceOf(market0w), 1e18, "test_SwapExactInTtoTSingleHop::6");
@@ -40,7 +40,7 @@ contract TestRouter is TestHelper {
         assertEq(IERC20(token0).balanceOf(address(this)), 0, "test_SwapExactInNtoTSingleHop::2");
         assertEq(IERC20(token0).balanceOf(market0w), 500_000_000e18, "test_SwapExactInNtoTSingleHop::3");
 
-        (, uint256 amountOut) = router.swapExactIn{value: 1e18}(route, address(this), 1e18, 1e18);
+        (, uint256 amountOut) = router.swapExactIn{value: 1e18}(route, address(this), 1e18, 1e18, block.timestamp);
 
         assertEq(address(this).balance, balance - 1e18, "test_SwapExactInNtoTSingleHop::4");
         assertEq(wnative.balanceOf(market0w), 1e18, "test_SwapExactInNtoTSingleHop::5");
@@ -53,12 +53,12 @@ contract TestRouter is TestHelper {
         wnative.approve(address(router), 1e18);
 
         bytes memory route = abi.encodePacked(wnative, uint32(3 << 24), token0);
-        (, uint256 amountOutToken0) = router.swapExactIn(route, address(this), 1e18, 1e18);
+        (, uint256 amountOutToken0) = router.swapExactIn(route, address(this), 1e18, 1e18, block.timestamp);
 
         IERC20(token0).approve(address(router), amountOutToken0);
 
         route = abi.encodePacked(token0, uint32(3 << 24), wnative);
-        (, uint256 amountOutW) = router.swapExactIn(route, address(this), amountOutToken0, 0.1e18);
+        (, uint256 amountOutW) = router.swapExactIn(route, address(this), amountOutToken0, 0.1e18, block.timestamp);
 
         assertEq(wnative.balanceOf(address(this)), amountOutW, "test_SwapExactInTtoTtoTSingleHop::1");
         assertEq(wnative.balanceOf(market0w), 1e18 - amountOutW, "test_SwapExactInTtoTtoTSingleHop::2");
@@ -68,13 +68,13 @@ contract TestRouter is TestHelper {
 
     function test_SwapExactInNtoTtoNSingleHop() public {
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
-        (, uint256 amountOutToken0) = router.swapExactIn{value: 1e18}(route, address(this), 1e18, 1e18);
+        (, uint256 amountOutToken0) = router.swapExactIn{value: 1e18}(route, address(this), 1e18, 1e18, block.timestamp);
 
         uint256 balance = address(this).balance;
         IERC20(token0).approve(address(router), amountOutToken0);
 
         route = abi.encodePacked(token0, uint32(3 << 24), address(0));
-        (, uint256 amountOutN) = router.swapExactIn(route, address(this), amountOutToken0, 0.1e18);
+        (, uint256 amountOutN) = router.swapExactIn(route, address(this), amountOutToken0, 0.1e18, block.timestamp);
 
         assertEq(address(this).balance, balance + amountOutN, "test_SwapExactInNtoTtoNSingleHop::1");
         assertEq(wnative.balanceOf(market0w), 1e18 - amountOutN, "test_SwapExactInNtoTtoNSingleHop::2");
@@ -98,7 +98,7 @@ contract TestRouter is TestHelper {
         assertEq(IERC20(token2).balanceOf(address(this)), 0, "test_SwapExactInTtoTMultiHop::7");
         assertEq(IERC20(token2).balanceOf(market21), 50_000_000e18, "test_SwapExactInTtoTMultiHop::8");
 
-        (, uint256 amountOut) = router.swapExactIn(route, address(this), 1e18, 1e18);
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), 1e18, 1e18, block.timestamp);
 
         assertEq(wnative.balanceOf(address(this)), 0, "test_SwapExactInTtoTMultiHop::9");
         assertEq(wnative.balanceOf(market0w), 1e18, "test_SwapExactInTtoTMultiHop::10");
@@ -130,7 +130,7 @@ contract TestRouter is TestHelper {
         assertEq(IERC20(token2).balanceOf(address(this)), 0, "test_SwapExactInNtoTMultiHop::6");
         assertEq(IERC20(token2).balanceOf(market21), 50_000_000e18, "test_SwapExactInNtoTMultiHop::7");
 
-        (, uint256 amountOut) = router.swapExactIn{value: 1e18}(route, address(this), 1e18, 1e18);
+        (, uint256 amountOut) = router.swapExactIn{value: 1e18}(route, address(this), 1e18, 1e18, block.timestamp);
 
         assertEq(address(this).balance, balance - 1e18, "test_SwapExactInNtoTMultiHop::8");
         assertEq(wnative.balanceOf(market0w), 1e18, "test_SwapExactInNtoTMultiHop::9");
@@ -155,12 +155,12 @@ contract TestRouter is TestHelper {
 
         bytes memory route =
             abi.encodePacked(wnative, uint32(3 << 24), token0, uint32(3 << 24), token1, uint32(3 << 24), token2);
-        (, uint256 amountOutToken2) = router.swapExactIn(route, address(this), 1e18, 1e18);
+        (, uint256 amountOutToken2) = router.swapExactIn(route, address(this), 1e18, 1e18, block.timestamp);
 
         IERC20(token2).approve(address(router), amountOutToken2);
 
         route = abi.encodePacked(token2, uint32(3 << 24), token1, uint32(3 << 24), token0, uint32(3 << 24), wnative);
-        (, uint256 amountOutW) = router.swapExactIn(route, address(this), amountOutToken2, 0.1e18);
+        (, uint256 amountOutW) = router.swapExactIn(route, address(this), amountOutToken2, 0.1e18, block.timestamp);
 
         assertEq(wnative.balanceOf(address(this)), amountOutW, "test_SwapExactInTtoTtoTMultiHop::1");
         assertEq(wnative.balanceOf(market0w), 1e18 - amountOutW, "test_SwapExactInTtoTtoTMultiHop::2");
@@ -171,13 +171,13 @@ contract TestRouter is TestHelper {
     function test_SwapExactInNtoTtoNMultiHop() public {
         bytes memory route =
             abi.encodePacked(address(0), uint32(3 << 24), token0, uint32(3 << 24), token1, uint32(3 << 24), token2);
-        (, uint256 amountOutToken2) = router.swapExactIn{value: 1e18}(route, address(this), 1e18, 1e18);
+        (, uint256 amountOutToken2) = router.swapExactIn{value: 1e18}(route, address(this), 1e18, 1e18, block.timestamp);
 
         uint256 balance = address(this).balance;
         IERC20(token2).approve(address(router), amountOutToken2);
 
         route = abi.encodePacked(token2, uint32(3 << 24), token1, uint32(3 << 24), token0, uint32(3 << 24), address(0));
-        (, uint256 amountOutN) = router.swapExactIn(route, address(this), amountOutToken2, 0.1e18);
+        (, uint256 amountOutN) = router.swapExactIn(route, address(this), amountOutToken2, 0.1e18, block.timestamp);
 
         assertEq(address(this).balance, balance + amountOutN, "test_SwapExactInNtoTtoNMultiHop::1");
         assertEq(wnative.balanceOf(market0w), 1e18 - amountOutN, "test_SwapExactInNtoTtoNMultiHop::2");
@@ -198,7 +198,8 @@ contract TestRouter is TestHelper {
         assertEq(IERC20(token0).balanceOf(address(this)), 0, "test_SwapExactOutTtoTSingleHop::3");
         assertEq(IERC20(token0).balanceOf(market0w), 500_000_000e18, "test_SwapExactOutTtoTSingleHop::4");
 
-        (uint256 amountIn,) = router.swapExactOut(route, address(this), uint256(-deltaBaseAmount), 1e18);
+        (uint256 amountIn,) =
+            router.swapExactOut(route, address(this), uint256(-deltaBaseAmount), 1e18, block.timestamp);
 
         assertEq(wnative.balanceOf(address(this)), 1e18 - amountIn, "test_SwapExactOutTtoTSingleHop::5");
         assertEq(wnative.balanceOf(market0w), amountIn, "test_SwapExactOutTtoTSingleHop::6");
@@ -222,7 +223,8 @@ contract TestRouter is TestHelper {
         assertEq(IERC20(token0).balanceOf(address(this)), 0, "test_SwapExactOutNtoTSingleHop::2");
         assertEq(IERC20(token0).balanceOf(market0w), 500_000_000e18, "test_SwapExactOutNtoTSingleHop::3");
 
-        (uint256 amountIn,) = router.swapExactOut{value: 1e18}(route, address(this), uint256(-deltaBaseAmount), 1e18);
+        (uint256 amountIn,) =
+            router.swapExactOut{value: 1e18}(route, address(this), uint256(-deltaBaseAmount), 1e18, block.timestamp);
 
         assertEq(address(this).balance, balance - amountIn, "test_SwapExactOutNtoTSingleHop::4");
         assertEq(wnative.balanceOf(market0w), amountIn, "test_SwapExactOutNtoTSingleHop::5");
@@ -243,7 +245,7 @@ contract TestRouter is TestHelper {
         (int256 deltaBaseAmount,) = ITMMarket(market0w).getDeltaBaseAmount(0, 0.9e18);
 
         bytes memory route = abi.encodePacked(wnative, uint32(3 << 24), token0);
-        router.swapExactOut(route, address(this), uint256(-deltaBaseAmount), 1e18);
+        router.swapExactOut(route, address(this), uint256(-deltaBaseAmount), 1e18, block.timestamp);
 
         IERC20(token0).approve(address(router), uint256(-deltaBaseAmount));
 
@@ -251,7 +253,9 @@ contract TestRouter is TestHelper {
             ITMMarket(market0w).getDeltaQuoteAmount(ITMMarket(market0w).getCirculatingSupply(), -deltaBaseAmount);
 
         route = abi.encodePacked(token0, uint32(3 << 24), wnative);
-        router.swapExactOut(route, address(this), uint256(-deltaQuoteAmount), uint256(-deltaBaseAmount));
+        router.swapExactOut(
+            route, address(this), uint256(-deltaQuoteAmount), uint256(-deltaBaseAmount), block.timestamp
+        );
 
         assertEq(
             wnative.balanceOf(address(this)),
@@ -271,7 +275,7 @@ contract TestRouter is TestHelper {
         uint256 balance = address(this).balance;
 
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
-        router.swapExactOut{value: 1e18}(route, address(this), uint256(-deltaBaseAmount), 1e18);
+        router.swapExactOut{value: 1e18}(route, address(this), uint256(-deltaBaseAmount), 1e18, block.timestamp);
 
         IERC20(token0).approve(address(router), uint256(-deltaBaseAmount));
 
@@ -279,7 +283,9 @@ contract TestRouter is TestHelper {
             ITMMarket(market0w).getDeltaQuoteAmount(ITMMarket(market0w).getCirculatingSupply(), -deltaBaseAmount);
 
         route = abi.encodePacked(token0, uint32(3 << 24), address(0));
-        router.swapExactOut(route, address(this), uint256(-deltaQuoteAmount), uint256(-deltaBaseAmount));
+        router.swapExactOut(
+            route, address(this), uint256(-deltaQuoteAmount), uint256(-deltaBaseAmount), block.timestamp
+        );
 
         assertEq(
             address(this).balance, balance - 0.9e18 + uint256(-deltaQuoteAmount), "test_SwapExactOutNtoTtoNSingleHop::1"
@@ -312,7 +318,7 @@ contract TestRouter is TestHelper {
         assertEq(IERC20(token2).balanceOf(market21), 50_000_000e18, "test_SwapExactOutTtoTMultiHop::8");
 
         (uint256 amountIn, uint256 amountOut) =
-            router.swapExactOut(route, address(this), uint256(-deltaBaseAmount), 1e18);
+            router.swapExactOut(route, address(this), uint256(-deltaBaseAmount), 1e18, block.timestamp);
 
         assertEq(wnative.balanceOf(address(this)), 1e18 - amountIn, "test_SwapExactOutTtoTMultiHop::9");
         assertEq(wnative.balanceOf(market0w), amountIn, "test_SwapExactOutTtoTMultiHop::10");
@@ -349,7 +355,7 @@ contract TestRouter is TestHelper {
         assertEq(IERC20(token2).balanceOf(market21), 50_000_000e18, "test_SwapExactOutNtoTMultiHop::7");
 
         (uint256 amountIn, uint256 amountOut) =
-            router.swapExactOut{value: 1e18}(route, address(this), uint256(-deltaBaseAmount), 1e18);
+            router.swapExactOut{value: 1e18}(route, address(this), uint256(-deltaBaseAmount), 1e18, block.timestamp);
 
         assertEq(address(this).balance, balance - amountIn, "test_SwapExactOutNtoTMultiHop::8");
         assertEq(wnative.balanceOf(market0w), amountIn, "test_SwapExactOutNtoTMultiHop::9");
@@ -380,7 +386,7 @@ contract TestRouter is TestHelper {
 
         bytes memory route =
             abi.encodePacked(wnative, uint32(3 << 24), token0, uint32(3 << 24), token1, uint32(3 << 24), token2);
-        router.swapExactOut(route, address(this), uint256(-deltaBaseAmount), 1e18);
+        router.swapExactOut(route, address(this), uint256(-deltaBaseAmount), 1e18, block.timestamp);
 
         uint256 amountToken2 = IERC20(token2).balanceOf(address(this));
         IERC20(token2).approve(address(router), amountToken2);
@@ -390,7 +396,8 @@ contract TestRouter is TestHelper {
         (, deltaQuoteAmount) = ITMMarket(market0w).getDeltaAmounts(-deltaQuoteAmount, true);
 
         route = abi.encodePacked(token2, uint32(3 << 24), token1, uint32(3 << 24), token0, uint32(3 << 24), wnative);
-        (uint256 amountIn,) = router.swapExactOut(route, address(this), uint256(-deltaQuoteAmount), amountToken2);
+        (uint256 amountIn,) =
+            router.swapExactOut(route, address(this), uint256(-deltaQuoteAmount), amountToken2, block.timestamp);
 
         uint256 wnativeBalance = wnative.balanceOf(address(this));
         assertGe(wnativeBalance, 1e18 - 0.9e18 + uint256(-deltaQuoteAmount), "test_SwapExactOutTtoTtoTMultiHop::1");
@@ -412,7 +419,7 @@ contract TestRouter is TestHelper {
 
         bytes memory route =
             abi.encodePacked(address(0), uint32(3 << 24), token0, uint32(3 << 24), token1, uint32(3 << 24), token2);
-        router.swapExactOut{value: 1e18}(route, address(this), uint256(-deltaBaseAmount), 1e18);
+        router.swapExactOut{value: 1e18}(route, address(this), uint256(-deltaBaseAmount), 1e18, block.timestamp);
 
         uint256 amountToken2 = IERC20(token2).balanceOf(address(this));
         IERC20(token2).approve(address(router), amountToken2);
@@ -422,7 +429,8 @@ contract TestRouter is TestHelper {
         (, deltaQuoteAmount) = ITMMarket(market0w).getDeltaAmounts(-deltaQuoteAmount, true);
 
         route = abi.encodePacked(token2, uint32(3 << 24), token1, uint32(3 << 24), token0, uint32(3 << 24), address(0));
-        (uint256 amountIn,) = router.swapExactOut(route, address(this), uint256(-deltaQuoteAmount), amountToken2);
+        (uint256 amountIn,) =
+            router.swapExactOut(route, address(this), uint256(-deltaQuoteAmount), amountToken2, block.timestamp);
 
         assertGe(
             address(this).balance, balance - 0.9e18 + uint256(-deltaQuoteAmount), "test_SwapExactOutNtoTtoNMultiHop::1"
@@ -444,7 +452,7 @@ contract TestRouter is TestHelper {
         assertEq(IERC20(token0).balanceOf(address(this)), 0, "test_SwapExactInNtoTSingleHopExcessNative::2");
         assertEq(IERC20(token0).balanceOf(market0w), 500_000_000e18, "test_SwapExactInNtoTSingleHopExcessNative::3");
 
-        (, uint256 amountOut) = router.swapExactIn{value: 10e18}(route, address(this), 1e18, 1e18);
+        (, uint256 amountOut) = router.swapExactIn{value: 10e18}(route, address(this), 1e18, 1e18, block.timestamp);
 
         assertEq(address(this).balance, balance - 1e18, "test_SwapExactInNtoTSingleHopExcessNative::4");
         assertEq(wnative.balanceOf(market0w), 1e18, "test_SwapExactInNtoTSingleHopExcessNative::5");
@@ -473,7 +481,7 @@ contract TestRouter is TestHelper {
         bytes memory route = abi.encodePacked(wnative, uint32(3 << 24), taxToken);
 
         (uint256 amountIn, uint256 amountOut) =
-            router.swapExactInSupportingFeeOnTransferTokens(route, address(this), 1e18, 0);
+            router.swapExactInSupportingFeeOnTransferTokens(route, address(this), 1e18, 0, block.timestamp);
 
         assertEq(amountIn, 1e18, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::1");
         assertApproxEqAbs(amountOut, 0.9e18, 1, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::2");
@@ -488,12 +496,13 @@ contract TestRouter is TestHelper {
         route = abi.encodePacked(taxToken, uint32(3 << 24), wnative);
 
         vm.expectRevert(ITMMarket.TMMarket__InsufficientAmount.selector);
-        router.swapExactIn(route, address(this), amountOut, 0);
+        router.swapExactIn(route, address(this), amountOut, 0, block.timestamp);
 
         uint256 balance = address(this).balance;
 
-        (uint256 amountIn2, uint256 amountOut2) =
-            router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(route, address(this), amountOut, 0);
+        (uint256 amountIn2, uint256 amountOut2) = router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(
+            route, address(this), amountOut, 0, block.timestamp
+        );
 
         assertEq(amountIn2, amountOut, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::5");
         assertApproxEqAbs(amountOut2, 0.9e18 * 0.9e18 / 1e18, 1, "test_SwapExactInTtoTtoTMultiHopTransferTaxTokens::6");
@@ -525,7 +534,7 @@ contract TestRouter is TestHelper {
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), taxToken);
 
         (uint256 amountIn, uint256 amountOut) =
-            router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(route, address(this), 1e18, 0);
+            router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(route, address(this), 1e18, 0, block.timestamp);
 
         assertEq(amountIn, 1e18, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::1");
         assertApproxEqAbs(amountOut, 0.9e18, 1, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::2");
@@ -540,10 +549,11 @@ contract TestRouter is TestHelper {
         route = abi.encodePacked(taxToken, uint32(3 << 24), address(0));
 
         vm.expectRevert(ITMMarket.TMMarket__InsufficientAmount.selector);
-        router.swapExactIn(route, address(this), amountOut, 0);
+        router.swapExactIn(route, address(this), amountOut, 0, block.timestamp);
 
-        (uint256 amountIn2, uint256 amountOut2) =
-            router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(route, address(this), amountOut, 0);
+        (uint256 amountIn2, uint256 amountOut2) = router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(
+            route, address(this), amountOut, 0, block.timestamp
+        );
 
         assertEq(amountIn2, amountOut, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::5");
         assertApproxEqAbs(amountOut2, 0.9e18 * 0.9e18 / 1e18, 1, "test_SwapExactInNtoTtoNMultiHopTransferTaxTokens::6");
@@ -566,47 +576,57 @@ contract TestRouter is TestHelper {
     function test_Revert_SwapExactIn() public {
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
 
-        vm.expectRevert(Router.Router__InvalidRecipient.selector);
-        router.swapExactIn{value: 1e18}(new bytes(0), address(router), 0, 0);
+        vm.expectRevert(IRouter.Router__ExceedsDeadline.selector);
+        router.swapExactIn{value: 1e18}(new bytes(0), address(0), 0, 0, block.timestamp - 1);
 
-        vm.expectRevert(Router.Router__InvalidRecipient.selector);
-        router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(new bytes(0), address(router), 0, 0);
+        vm.expectRevert(IRouter.Router__InvalidRecipient.selector);
+        router.swapExactIn{value: 1e18}(new bytes(0), address(router), 0, 0, block.timestamp);
 
-        vm.expectRevert(Router.Router__InsufficientOutputAmount.selector);
-        router.swapExactIn{value: 1e18}(route, address(this), 1e18, type(uint256).max);
+        vm.expectRevert(IRouter.Router__InvalidRecipient.selector);
+        router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(
+            new bytes(0), address(router), 0, 0, block.timestamp
+        );
 
-        vm.expectRevert(Router.Router__InsufficientOutputAmount.selector);
-        router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(route, address(this), 1e18, type(uint256).max);
+        vm.expectRevert(IRouter.Router__InsufficientOutputAmount.selector);
+        router.swapExactIn{value: 1e18}(route, address(this), 1e18, type(uint256).max, block.timestamp);
+
+        vm.expectRevert(IRouter.Router__InsufficientOutputAmount.selector);
+        router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(
+            route, address(this), 1e18, type(uint256).max, block.timestamp
+        );
 
         route = abi.encodePacked(token0, uint32(3 << 24), token1);
         deal(token0, address(this), 500_000_000e18 + 1);
         IERC20(token0).approve(address(router), 500_000_000e18 + 1);
 
-        vm.expectRevert(Router.Router__InvalidAmounts.selector);
-        router.swapExactIn(route, address(this), 500_000_000e18 + 1, 1e18);
+        vm.expectRevert(IRouter.Router__InvalidAmounts.selector);
+        router.swapExactIn(route, address(this), 500_000_000e18 + 1, 1e18, block.timestamp);
 
-        vm.expectRevert(Router.Router__InvalidAmounts.selector);
-        router.swapExactInSupportingFeeOnTransferTokens(route, address(this), 500_000_000e18 + 1, 1e18);
+        vm.expectRevert(IRouter.Router__InvalidAmounts.selector);
+        router.swapExactInSupportingFeeOnTransferTokens(route, address(this), 500_000_000e18 + 1, 1e18, block.timestamp);
     }
 
     function test_Revert_SwapExactOut() public {
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
 
-        vm.expectRevert(Router.Router__InvalidRecipient.selector);
-        router.swapExactOut(new bytes(0), address(router), 0, 0);
+        vm.expectRevert(IRouter.Router__ExceedsDeadline.selector);
+        router.swapExactOut(new bytes(0), address(0), 0, 0, block.timestamp - 1);
 
-        vm.expectRevert(Router.Router__InvalidAmounts.selector);
-        router.swapExactOut{value: 1e18}(route, address(this), 500_000_000e18 + 1, 0);
+        vm.expectRevert(IRouter.Router__InvalidRecipient.selector);
+        router.swapExactOut(new bytes(0), address(router), 0, 0, block.timestamp);
+
+        vm.expectRevert(IRouter.Router__InvalidAmounts.selector);
+        router.swapExactOut{value: 1e18}(route, address(this), 500_000_000e18 + 1, 0, block.timestamp);
 
         route = abi.encodePacked(token0, uint32(3 << 24), address(0));
 
-        vm.expectRevert(Router.Router__InvalidAmounts.selector);
-        router.swapExactOut(route, address(this), type(uint128).max, 0);
+        vm.expectRevert(IRouter.Router__InvalidAmounts.selector);
+        router.swapExactOut(route, address(this), type(uint128).max, 0, block.timestamp);
 
         route = abi.encodePacked(address(0), uint32(3 << 24), token0);
 
-        vm.expectRevert(Router.Router__ExceedsMaxInputAmount.selector);
-        router.swapExactOut(route, address(this), 1, 0);
+        vm.expectRevert(IRouter.Router__ExceedsMaxInputAmount.selector);
+        router.swapExactOut(route, address(this), 1, 0, block.timestamp);
 
         uint256[] memory prices = new uint256[](2);
 
@@ -620,7 +640,7 @@ contract TestRouter is TestHelper {
 
         route = abi.encodePacked(address(0), uint32(3 << 24), taxToken);
 
-        vm.expectRevert(Router.Router__InsufficientOutputAmount.selector);
-        router.swapExactOut{value: 1e18}(route, address(this), 1e18 - 1, 1e18);
+        vm.expectRevert(IRouter.Router__InsufficientOutputAmount.selector);
+        router.swapExactOut{value: 1e18}(route, address(this), 1e18 - 1, 1e18, block.timestamp);
     }
 }

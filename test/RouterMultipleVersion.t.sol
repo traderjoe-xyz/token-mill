@@ -117,7 +117,7 @@ contract TestRouterMultipleVersion is Test {
         uint256 amountIn = 10e18;
         uint256 expectedAmountOut = (v1UsdcBalance * amountIn * 997) / (v1WavaxBalance * 1000 + amountIn * 997);
 
-        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0, block.timestamp);
 
         assertEq(expectedAmountOut, amountOut, "test_SwapExactInTtoTSingleHopV1::3");
 
@@ -139,7 +139,7 @@ contract TestRouterMultipleVersion is Test {
         uint256 amountIn = 1e15;
         (uint256 expectedAmountOut,) = IV2_0Router(v2_0Router).getSwapOut(v2_0wu, amountIn, true);
 
-        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0, block.timestamp);
 
         assertEq(expectedAmountOut, amountOut, "test_SwapExactInTtoTSingleHopV2_0::3");
 
@@ -161,7 +161,7 @@ contract TestRouterMultipleVersion is Test {
         uint128 amountIn = 10e18;
         (, uint256 expectedAmountOut,) = IV2_1Pair(v2_1wu).getSwapOut(amountIn, true);
 
-        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0, block.timestamp);
 
         assertEq(expectedAmountOut, amountOut, "test_SwapExactInTtoTSingleHopV2_1::3");
 
@@ -180,7 +180,7 @@ contract TestRouterMultipleVersion is Test {
         uint256 amountIn = 1e18;
         uint256 expectedAmountOut = (v1UsdcBalance * amountIn * 997) / (v1WavaxBalance * 1000 + amountIn * 997);
 
-        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0, block.timestamp);
 
         assertEq(amountOut, expectedAmountOut, "test_SwapExactInTtoTtoTSingleHopV1::1");
         assertEq(
@@ -196,7 +196,7 @@ contract TestRouterMultipleVersion is Test {
 
         route = abi.encodePacked(usdc, v1wu_id, wavax);
 
-        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0);
+        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0, block.timestamp);
 
         assertEq(amountOut2, expectedAmountOut2, "test_SwapExactInTtoTtoTSingleHopV1::4");
         assertEq(
@@ -220,7 +220,7 @@ contract TestRouterMultipleVersion is Test {
         uint256 amountIn = 1e18;
         (uint256 expectedAmountOut,) = IV2_0Router(v2_0Router).getSwapOut(v2_0wu, amountIn, true);
 
-        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0, block.timestamp);
 
         assertEq(expectedAmountOut, amountOut, "test_SwapExactInTtoTtoTSingleHopV2_0::1");
         assertEq(
@@ -238,7 +238,7 @@ contract TestRouterMultipleVersion is Test {
 
         route = abi.encodePacked(usdc, v2_0wu_id, wavax);
 
-        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0);
+        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0, block.timestamp);
 
         assertEq(expectedAmountOut2, amountOut2, "test_SwapExactInTtoTtoTSingleHopV2_0::4");
         assertEq(
@@ -262,7 +262,7 @@ contract TestRouterMultipleVersion is Test {
         uint128 amountIn = 1e18;
         (, uint256 expectedAmountOut,) = IV2_1Pair(v2_1wu).getSwapOut(amountIn, true);
 
-        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0, block.timestamp);
 
         assertEq(expectedAmountOut, amountOut, "test_SwapExactInTtoTtoTSingleHopV2_1::1");
         assertEq(
@@ -280,7 +280,7 @@ contract TestRouterMultipleVersion is Test {
 
         route = abi.encodePacked(usdc, v2_1wu_id, wavax);
 
-        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0);
+        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0, block.timestamp);
 
         assertEq(expectedAmountOut2, amountOut2, "test_SwapExactInTtoTtoTSingleHopV2_1::4");
         assertEq(
@@ -310,7 +310,7 @@ contract TestRouterMultipleVersion is Test {
 
         expectedAmountOut = uint256(-deltaBase);
 
-        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0);
+        (, uint256 amountOut) = router.swapExactIn(route, address(this), amountIn, 0, block.timestamp);
 
         assertEq(amountOut, expectedAmountOut, "test_SwapExactInTtoTtoTMultiHop::1");
         assertEq(wavax.balanceOf(address(this)), initialWavaxBalance - amountIn, "test_SwapExactInTtoTtoTMultiHop::2");
@@ -330,7 +330,7 @@ contract TestRouterMultipleVersion is Test {
         expectedAmountOut2 =
             (v1WavaxBalance * expectedAmountOut2 * 997) / (v1UsdcBalance * 1000 + expectedAmountOut2 * 997);
 
-        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0);
+        (, uint256 amountOut2) = router.swapExactIn(route, address(this), amountIn2, 0, block.timestamp);
 
         assertEq(amountOut2, expectedAmountOut2, "test_SwapExactInTtoTtoTMultiHop::4");
         assertEq(
@@ -357,7 +357,7 @@ contract TestRouterMultipleVersion is Test {
         uint256 amountOut = 100e6;
         uint256 expectedAmountIn = (v1WavaxBalance * amountOut * 1000 - 1) / ((v1UsdcBalance - amountOut) * 997) + 1;
 
-        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max, block.timestamp);
 
         assertEq(expectedAmountIn, amountIn, "test_SwapExactOutTtoTSingleHopV1::3");
 
@@ -379,7 +379,7 @@ contract TestRouterMultipleVersion is Test {
         uint256 amountOut = 100e6;
         (uint256 expectedAmountIn,) = IV2_0Router(v2_0Router).getSwapIn(v2_0wu, amountOut, true);
 
-        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max, block.timestamp);
 
         assertEq(expectedAmountIn, amountIn, "test_SwapExactOutTtoTSingleHopV2_0::3");
 
@@ -403,7 +403,7 @@ contract TestRouterMultipleVersion is Test {
         uint128 amountOut = 100e6;
         (uint256 expectedAmountIn,,) = IV2_1Pair(v2_1wu).getSwapIn(amountOut, true);
 
-        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max, block.timestamp);
 
         assertEq(expectedAmountIn, amountIn, "test_SwapExactOutTtoTSingleHopV2_1::3");
 
@@ -424,7 +424,7 @@ contract TestRouterMultipleVersion is Test {
         uint256 amountOut = 100e6;
         uint256 expectedAmountIn = (v1WavaxBalance * amountOut * 1000 - 1) / ((v1UsdcBalance - amountOut) * 997) + 1;
 
-        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max, block.timestamp);
 
         assertEq(amountIn, expectedAmountIn, "test_SwapExactOutTtoTtoTSingleHopV1::1");
         assertEq(
@@ -446,7 +446,7 @@ contract TestRouterMultipleVersion is Test {
         route = abi.encodePacked(usdc, v1wu_id, wavax);
 
         (uint256 amountIn2, uint256 amountOut2) =
-            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max);
+            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max, block.timestamp);
 
         assertEq(amountIn2, expectedAmountIn2, "test_SwapExactOutTtoTtoTSingleHopV1::5");
         assertEq(amountOut2, expectedAmountOut2, "test_SwapExactOutTtoTtoTSingleHopV1::6");
@@ -471,7 +471,7 @@ contract TestRouterMultipleVersion is Test {
         uint256 amountOut = 100e6;
         (uint256 expectedAmountIn,) = IV2_0Router(v2_0Router).getSwapIn(v2_0wu, amountOut, true);
 
-        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max, block.timestamp);
 
         assertEq(expectedAmountIn, amountIn, "test_SwapExactOutTtoTtoTSingleHopV2_0::1");
         assertEq(
@@ -490,7 +490,7 @@ contract TestRouterMultipleVersion is Test {
         route = abi.encodePacked(usdc, v2_0wu_id, wavax);
 
         (uint256 amountIn2, uint256 amountOut2) =
-            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max);
+            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max, block.timestamp);
 
         assertEq(expectedAmountIn2, amountIn2, "test_SwapExactOutTtoTtoTSingleHopV2_0::4");
         assertGe(amountOut2, expectedAmountOut2, "test_SwapExactOutTtoTtoTSingleHopV2_0::5");
@@ -515,7 +515,7 @@ contract TestRouterMultipleVersion is Test {
         uint128 amountOut = 100e6;
         (uint256 expectedAmountIn,,) = IV2_1Pair(v2_1wu).getSwapIn(amountOut, true);
 
-        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max);
+        (uint256 amountIn,) = router.swapExactOut(route, address(this), amountOut, type(uint256).max, block.timestamp);
 
         assertEq(expectedAmountIn, amountIn, "test_SwapExactOutTtoTtoTSingleHopV2_1::1");
         assertEq(
@@ -534,7 +534,7 @@ contract TestRouterMultipleVersion is Test {
         route = abi.encodePacked(usdc, v2_1wu_id, wavax);
 
         (uint256 amountIn2, uint256 amountOut2) =
-            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max);
+            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max, block.timestamp);
 
         assertEq(expectedAmountIn2, amountIn2, "test_SwapExactOutTtoTtoTSingleHopV2_1::4");
         assertGe(amountOut2, expectedAmountOut2, "test_SwapExactOutTtoTtoTSingleHopV2_1::5");
@@ -565,7 +565,7 @@ contract TestRouterMultipleVersion is Test {
             (v1WavaxBalance * expectedAmountIn * 1000 - 1) / ((v1UsdcBalance - expectedAmountIn) * 997) + 1;
 
         (uint256 amountIn, uint256 amountOut) =
-            router.swapExactOut(route, address(this), expectedAmountOut, type(uint256).max);
+            router.swapExactOut(route, address(this), expectedAmountOut, type(uint256).max, block.timestamp);
 
         assertEq(amountIn, expectedAmountIn, "test_SwapExactOutTtoTtoTMultiHop::1");
         assertEq(amountOut, expectedAmountOut, "test_SwapExactOutTtoTtoTMultiHop::2");
@@ -588,7 +588,7 @@ contract TestRouterMultipleVersion is Test {
         expectedAmountIn2 = uint256(deltaBase);
 
         (uint256 amountIn2, uint256 amountOut2) =
-            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max);
+            router.swapExactOut(route, address(this), expectedAmountOut2, type(uint256).max, block.timestamp);
 
         assertGe(expectedAmountIn2, amountIn2, "test_SwapExactOutTtoTtoTMultiHop::5");
         assertGe(amountOut2, expectedAmountOut2, "test_SwapExactOutTtoTtoTMultiHop::6");
