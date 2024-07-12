@@ -265,7 +265,7 @@ contract Router is IRouter {
      * @param amount The amount of tokens to be swapped (in or out).
      * @param exactIn Whether the amount is exact in or out.
      */
-    function simulate(bytes[] calldata routes, uint256 amount, bool exactIn) external override {
+    function simulate(bytes[] calldata routes, uint256 amount, bool exactIn) external payable override {
         uint256 length = routes.length;
 
         uint256[] memory amounts = new uint256[](length);
@@ -293,7 +293,7 @@ contract Router is IRouter {
      * @param amount The amount of tokens to be swapped (in or out).
      * @param exactIn Whether the amount is exact in or out.
      */
-    function simulateSingle(bytes calldata route, uint256 amount, bool exactIn) external override {
+    function simulateSingle(bytes calldata route, uint256 amount, bool exactIn) external payable override {
         (uint256 amountIn, uint256 amountOut) = exactIn
             ? swapExactInSupportingFeeOnTransferTokens(route, msg.sender, amount, 0, block.timestamp)
             : swapExactOut(route, msg.sender, amount, type(uint256).max, block.timestamp);

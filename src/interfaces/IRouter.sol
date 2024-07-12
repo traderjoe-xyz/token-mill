@@ -36,7 +36,7 @@ interface IRouter {
         payable
         returns (uint256, uint256);
 
-    function simulate(bytes[] calldata routes, uint256 amount, bool exactIn) external;
+    function simulate(bytes[] calldata routes, uint256 amount, bool exactIn) external payable;
 
-    function simulateSingle(bytes calldata route, uint256 amount, bool exactIn) external;
+    function simulateSingle(bytes calldata route, uint256 amount, bool exactIn) external payable;
 }
