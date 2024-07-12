@@ -170,7 +170,7 @@ contract Router is IRouter {
         uint256 amountIn,
         uint256 amountOutMin,
         uint256 deadline
-    ) external payable returns (uint256, uint256) {
+    ) public payable returns (uint256, uint256) {
         _checkDeadline(deadline);
         _checkRecipient(to);
 
@@ -216,7 +216,7 @@ contract Router is IRouter {
      * @return The amount of tokens in and out.
      */
     function swapExactOut(bytes memory route, address to, uint256 amountOut, uint256 amountInMax, uint256 deadline)
-        external
+        public
         payable
         returns (uint256, uint256)
     {
@@ -254,6 +254,49 @@ contract Router is IRouter {
         }
 
         return (amountIn, amountOut);
+    }
+
+    /**
+     * @dev Simulates the swaps of the routes.
+     * The value of the revert will be the `amountIn` or `amountOut` of each route.
+     * @param routes The packed routes of the tokens to be swapped.
+     * @param amount The amount of tokens to be swapped (in or out).
+     * @param exactIn Whether the amount is exact in or out.
+     */
+    function simulate(bytes[] calldata routes, uint256 amount, bool exactIn) external {
+        uint256 length = routes.length;
+
+        uint256[] memory amounts = new uint256[](length);
+        for (uint256 i; i < length;) {
+            (, bytes memory data) = address(this).delegatecall(
+                abi.encodeWithSelector(IRouter.simulateSingle.selector, routes[i++], amount, exactIn)
+            );
+
+            if (bytes4(data) == IRouter.Router__Simulation.selector) {
+                assembly {
+                    mstore(add(amounts, mul(i, 0x20)), mload(add(data, 0x24)))
+                }
+            } else {
+                if (!exactIn) amounts[i - 1] = type(uint256).max; // If exact out, set amountIn to max
+            }
+        }
+
+        revert Router__Simulations(amounts);
+    }
+
+    /**
+     * @dev Simulates the swap of a single route.
+     * The value of the revert will be the `amountIn` or `amountOut` of the route.
+     * @param route The packed route of the tokens to be swapped.
+     * @param amount The amount of tokens to be swapped (in or out).
+     * @param exactIn Whether the amount is exact in or out.
+     */
+    function simulateSingle(bytes calldata route, uint256 amount, bool exactIn) external {
+        (uint256 amountIn, uint256 amountOut) = exactIn
+            ? swapExactInSupportingFeeOnTransferTokens(route, msg.sender, amount, 0, block.timestamp)
+            : swapExactOut(route, msg.sender, amount, type(uint256).max, block.timestamp);
+
+        revert Router__Simulation(exactIn ? amountOut : amountIn);
     }
 
     /**

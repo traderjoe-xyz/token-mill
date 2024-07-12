@@ -11,6 +11,8 @@ interface IRouter {
     error Router__ExceedsMaxInputAmount();
     error Router__InvalidId();
     error Router__ExceedsDeadline();
+    error Router__Simulation(uint256 amount);
+    error Router__Simulations(uint256[] amounts);
 
     function getFactory(uint256 v, uint256 sv) external view returns (address);
 
@@ -33,4 +35,8 @@ interface IRouter {
         external
         payable
         returns (uint256, uint256);
+
+    function simulate(bytes[] calldata routes, uint256 amount, bool exactIn) external;
+
+    function simulateSingle(bytes calldata route, uint256 amount, bool exactIn) external;
 }
