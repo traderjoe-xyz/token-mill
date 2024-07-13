@@ -155,10 +155,10 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
         uint256 timestamp
     ) internal view virtual returns (uint256) {
         unchecked {
-            if (timestamp <= start + cliffDuration) {
-                return 0;
-            } else if (timestamp >= start + vestingDuration) {
+            if (timestamp >= start + vestingDuration) {
                 return total;
+            } else if (timestamp <= start + cliffDuration) {
+                return 0;
             } else {
                 return (total * (timestamp - start)) / vestingDuration;
             }
