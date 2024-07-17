@@ -21,6 +21,8 @@ interface ITMMarket is IPricePoints {
 
     function initialize() external;
 
+    function getFactory() external pure returns (address);
+
     function getBaseToken() external pure returns (address);
 
     function getQuoteToken() external pure returns (address);

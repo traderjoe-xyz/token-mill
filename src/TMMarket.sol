@@ -44,6 +44,14 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     }
 
     /**
+     * @dev Returns the factory address.
+     * @return The factory address.
+     */
+    function getFactory() external pure override returns (address) {
+        return _factory();
+    }
+
+    /**
      * @dev Returns the base token address.
      * @return The base token address.
      */
