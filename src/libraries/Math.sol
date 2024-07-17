@@ -281,10 +281,11 @@ library Math {
     /**
      * @dev Credit to SimonSuckut for the implementation of the Karatsuba Square Root method
      * See https://hal.inria.fr/inria-00072854/document for details.
-     * n = a_3 * b^3 + a_2 * b^2 + a_1 * b + a_0
-     * n = (a_3 * b + a_2) * b^2 + a_1 * b + a_0
+     * n = x1 * 2^256 + x0
      * n = x1 * b^2 + x0
-     * where x1 = a_3 * b + a_2 and x0 = a_1 * b + a_0
+     * n = (a_3 * b + a_2) * b^2 + a_1 * b + a_0
+     * n = a_3 * b^3 + a_2 * b^2 + a_1 * b + a_0
+     * where `x1 = a_3 * b + a_2`, `x0 = a_1 * b + a_0` and `b = 2^128`
      * @param x0 The lower 256 bits of the number
      * @param x1 The higher 256 bits of the number
      * @param roundUp Whether to round up the result
