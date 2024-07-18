@@ -119,7 +119,7 @@ abstract contract PricePoints is IPricePoints {
         }
 
         return (
-            actualBaseAmount - Math.div((baseAmount) * basePrecision, 1e18, !roundUp),
+            actualBaseAmount - Math.div((baseAmount) * basePrecision, 1e18, roundUp),
             Math.div(quoteAmount * _quotePrecision(), 1e18, roundUp)
         );
     }
@@ -168,7 +168,7 @@ abstract contract PricePoints is IPricePoints {
 
         return (
             Math.div(baseAmount * basePrecision, 1e18, false),
-            quoteAmount - Math.div(remainingQuote * quotePrecision, 1e18, true)
+            quoteAmount - Math.div(remainingQuote * quotePrecision, 1e18, false)
         );
     }
 
@@ -217,7 +217,7 @@ abstract contract PricePoints is IPricePoints {
 
         return (
             Math.div(baseAmount * basePrecision, 1e18, true),
-            quoteAmount - Math.div(remainingQuote * quotePrecision, 1e18, false)
+            quoteAmount - Math.div(remainingQuote * quotePrecision, 1e18, true)
         );
     }
 
@@ -239,7 +239,7 @@ abstract contract PricePoints is IPricePoints {
         uint256 dp = p1 - p0;
 
         uint256 currentQuote = Math.mulDiv(base, dp * base + 2 * p0 * widthScaled, 2e18 * widthScaled, false);
-        uint256 nextQuote = Math.div((p0 + p1) * widthScaled, 2e18, false);
+        uint256 nextQuote = Math.div((p0 + p1) * widthScaled, 2e18, true);
 
         uint256 maxQuote = nextQuote - currentQuote;
 
