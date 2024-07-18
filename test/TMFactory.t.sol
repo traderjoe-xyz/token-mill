@@ -256,10 +256,10 @@ contract TMFactoryTest is Test {
         vm.prank(sender);
         factory.updateCreator(market, other);
 
-        assertEq(factory.getCreatorOf(market), other, "test_Fuzz_UpdateCreator::2");
-        assertEq(factory.getCreatorMarketsLength(sender), 0, "test_Fuzz_UpdateCreator::3");
-        assertEq(factory.getCreatorMarketsLength(other), 1, "test_Fuzz_UpdateCreator::4");
-        assertEq(factory.getCreatorMarketAt(other, 0), market, "test_Fuzz_UpdateCreator::5");
+        assertEq(factory.getCreatorOf(market), other, "test_Fuzz_UpdateCreator::5");
+        assertEq(factory.getCreatorMarketsLength(sender), 0, "test_Fuzz_UpdateCreator::6");
+        assertEq(factory.getCreatorMarketsLength(other), 1, "test_Fuzz_UpdateCreator::7");
+        assertEq(factory.getCreatorMarketAt(other, 0), market, "test_Fuzz_UpdateCreator::8");
 
         vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
         vm.prank(sender);
@@ -268,10 +268,10 @@ contract TMFactoryTest is Test {
         vm.prank(other);
         factory.updateCreator(market, sender);
 
-        assertEq(factory.getCreatorOf(market), sender, "test_Fuzz_UpdateCreator::3");
-        assertEq(factory.getCreatorMarketsLength(sender), 1, "test_Fuzz_UpdateCreator::4");
-        assertEq(factory.getCreatorMarketsLength(other), 0, "test_Fuzz_UpdateCreator::5");
-        assertEq(factory.getCreatorMarketAt(sender, 0), market, "test_Fuzz_UpdateCreator::6");
+        assertEq(factory.getCreatorOf(market), sender, "test_Fuzz_UpdateCreator::9");
+        assertEq(factory.getCreatorMarketsLength(sender), 1, "test_Fuzz_UpdateCreator::10");
+        assertEq(factory.getCreatorMarketsLength(other), 0, "test_Fuzz_UpdateCreator::11");
+        assertEq(factory.getCreatorMarketAt(sender, 0), market, "test_Fuzz_UpdateCreator::12");
     }
 
     function test_UpdateCreator() public {

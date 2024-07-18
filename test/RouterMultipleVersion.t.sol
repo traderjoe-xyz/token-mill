@@ -636,7 +636,7 @@ contract TestRouterMultipleVersion is Test {
         (, bytes memory d) =
             address(router).call(abi.encodeWithSelector(IRouter.simulate.selector, routes, amountIn, true));
 
-        assertEq(bytes4(d), IRouter.Router__Simulations.selector, "test_SimulateSwapExactIn::0");
+        assertEq(bytes4(d), IRouter.Router__Simulations.selector, "test_SimulateSwapExactIn::1");
 
         uint256 amount0;
         uint256 amount1;
@@ -655,16 +655,16 @@ contract TestRouterMultipleVersion is Test {
         (uint256 amountIn0, uint256 amountOut0) =
             router.swapExactIn(routes[0], address(this), amountIn, 0, block.timestamp);
 
-        assertEq(amountIn0, amountIn, "test_SimulateSwapExactIn::1");
-        assertEq(amountOut0, amount0, "test_SimulateSwapExactIn::2");
-        assertEq(usdc.balanceOf(address(this)), balance + amountOut0, "test_SimulateSwapExactIn::3");
+        assertEq(amountIn0, amountIn, "test_SimulateSwapExactIn::2");
+        assertEq(amountOut0, amount0, "test_SimulateSwapExactIn::3");
+        assertEq(usdc.balanceOf(address(this)), balance + amountOut0, "test_SimulateSwapExactIn::4");
 
         (uint256 amountIn1, uint256 amountOut1) =
             router.swapExactIn(routes[1], address(this), amountIn, 0, block.timestamp);
 
-        assertEq(amountIn1, amountIn, "test_SimulateSwapExactIn::4");
-        assertEq(amountOut1, amount1, "test_SimulateSwapExactIn::5");
-        assertEq(usdc.balanceOf(address(this)), balance + amountOut0 + amountOut1, "test_SimulateSwapExactIn::6");
+        assertEq(amountIn1, amountIn, "test_SimulateSwapExactIn::5");
+        assertEq(amountOut1, amount1, "test_SimulateSwapExactIn::6");
+        assertEq(usdc.balanceOf(address(this)), balance + amountOut0 + amountOut1, "test_SimulateSwapExactIn::7");
     }
 
     function test_SimulateSwapExactOut() public {
@@ -681,7 +681,7 @@ contract TestRouterMultipleVersion is Test {
         (, bytes memory d) =
             address(router).call(abi.encodeWithSelector(IRouter.simulate.selector, routes, amountOut, false));
 
-        assertEq(bytes4(d), IRouter.Router__Simulations.selector, "test_SimulateSwapExactOut::0");
+        assertEq(bytes4(d), IRouter.Router__Simulations.selector, "test_SimulateSwapExactOut::1");
 
         uint256 amount0;
         uint256 amount1;
@@ -700,16 +700,16 @@ contract TestRouterMultipleVersion is Test {
         (uint256 amountIn0, uint256 amountOut0) =
             router.swapExactOut(routes[0], address(this), amountOut, type(uint256).max, block.timestamp);
 
-        assertEq(amountIn0, amount0, "test_SimulateSwapExactOut::1");
-        assertEq(amountOut0, amountOut, "test_SimulateSwapExactOut::2");
-        assertEq(wavax.balanceOf(address(this)), balance - amountIn0, "test_SimulateSwapExactOut::3");
+        assertEq(amountIn0, amount0, "test_SimulateSwapExactOut::2");
+        assertEq(amountOut0, amountOut, "test_SimulateSwapExactOut::3");
+        assertEq(wavax.balanceOf(address(this)), balance - amountIn0, "test_SimulateSwapExactOut::4");
 
         (uint256 amountIn1, uint256 amountOut1) =
             router.swapExactOut(routes[1], address(this), amountOut, type(uint256).max, block.timestamp);
 
-        assertEq(amountIn1, amount1, "test_SimulateSwapExactOut::4");
-        assertEq(amountOut1, amountOut, "test_SimulateSwapExactOut::5");
-        assertEq(wavax.balanceOf(address(this)), balance - amountIn0 - amountIn1, "test_SimulateSwapExactOut::6");
+        assertEq(amountIn1, amount1, "test_SimulateSwapExactOut::5");
+        assertEq(amountOut1, amountOut, "test_SimulateSwapExactOut::6");
+        assertEq(wavax.balanceOf(address(this)), balance - amountIn0 - amountIn1, "test_SimulateSwapExactOut::7");
     }
 
     function test_SimulateSwapExactInNative() public {
@@ -727,7 +727,7 @@ contract TestRouterMultipleVersion is Test {
             abi.encodeWithSelector(IRouter.simulate.selector, routes, amountIn, true)
         );
 
-        assertEq(bytes4(d), IRouter.Router__Simulations.selector, "test_SimulateSwapExactIn::0");
+        assertEq(bytes4(d), IRouter.Router__Simulations.selector, "test_SimulateSwapExactInNative::1");
 
         uint256 amount0;
         uint256 amount1;
@@ -746,16 +746,16 @@ contract TestRouterMultipleVersion is Test {
         (uint256 amountIn0, uint256 amountOut0) =
             router.swapExactIn{value: amountIn}(routes[0], address(this), amountIn, 0, block.timestamp);
 
-        assertEq(amountIn0, amountIn, "test_SimulateSwapExactIn::1");
-        assertEq(amountOut0, amount0, "test_SimulateSwapExactIn::2");
-        assertEq(usdc.balanceOf(address(this)), balance + amountOut0, "test_SimulateSwapExactIn::3");
+        assertEq(amountIn0, amountIn, "test_SimulateSwapExactInNative::2");
+        assertEq(amountOut0, amount0, "test_SimulateSwapExactInNative::3");
+        assertEq(usdc.balanceOf(address(this)), balance + amountOut0, "test_SimulateSwapExactInNative::4");
 
         (uint256 amountIn1, uint256 amountOut1) =
             router.swapExactIn{value: amountIn}(routes[1], address(this), amountIn, 0, block.timestamp);
 
-        assertEq(amountIn1, amountIn, "test_SimulateSwapExactIn::4");
-        assertEq(amountOut1, amount1, "test_SimulateSwapExactIn::5");
-        assertEq(usdc.balanceOf(address(this)), balance + amountOut0 + amountOut1, "test_SimulateSwapExactIn::6");
+        assertEq(amountIn1, amountIn, "test_SimulateSwapExactInNative::5");
+        assertEq(amountOut1, amount1, "test_SimulateSwapExactInNative::6");
+        assertEq(usdc.balanceOf(address(this)), balance + amountOut0 + amountOut1, "test_SimulateSwapExactInNative::7");
     }
 
     function test_SimulateSwapExactOutNative() public {
@@ -774,7 +774,7 @@ contract TestRouterMultipleVersion is Test {
             abi.encodeWithSelector(IRouter.simulate.selector, routes, amountOut, false)
         );
 
-        assertEq(bytes4(d), IRouter.Router__Simulations.selector, "test_SimulateSwapExactOut::0");
+        assertEq(bytes4(d), IRouter.Router__Simulations.selector, "test_SimulateSwapExactOutNative::1");
 
         uint256 amount0;
         uint256 amount1;
@@ -794,16 +794,16 @@ contract TestRouterMultipleVersion is Test {
             routes[0], address(this), amountOut, type(uint256).max, block.timestamp
         );
 
-        assertEq(amountIn0, amount0, "test_SimulateSwapExactOut::1");
-        assertEq(amountOut0, amountOut, "test_SimulateSwapExactOut::2");
-        assertEq(address(this).balance, balance - amountIn0, "test_SimulateSwapExactOut::3");
+        assertEq(amountIn0, amount0, "test_SimulateSwapExactOutNative::2");
+        assertEq(amountOut0, amountOut, "test_SimulateSwapExactOutNative::3");
+        assertEq(address(this).balance, balance - amountIn0, "test_SimulateSwapExactOutNative::4");
 
         (uint256 amountIn1, uint256 amountOut1) = router.swapExactOut{value: maxAmountIn}(
             routes[1], address(this), amountOut, type(uint256).max, block.timestamp
         );
 
-        assertEq(amountIn1, amount1, "test_SimulateSwapExactOut::4");
-        assertEq(amountOut1, amountOut, "test_SimulateSwapExactOut::5");
-        assertEq(address(this).balance, balance - amountIn0 - amountIn1, "test_SimulateSwapExactOut::6");
+        assertEq(amountIn1, amount1, "test_SimulateSwapExactOutNative::5");
+        assertEq(amountOut1, amountOut, "test_SimulateSwapExactOutNative::6");
+        assertEq(address(this).balance, balance - amountIn0 - amountIn1, "test_SimulateSwapExactOutNative::7");
     }
 }

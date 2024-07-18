@@ -45,10 +45,10 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::3");
-            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::4");
-            assertEq(baseAmount, base, "test_GetAmount::5");
-            assertEq(quoteAmount, 21e6 * _quotePrecision, "test_GetAmount::6");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::5");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::6");
+            assertEq(baseAmount, base, "test_GetAmount::7");
+            assertEq(quoteAmount, 21e6 * _quotePrecision, "test_GetAmount::8");
         }
 
         {
@@ -58,10 +58,10 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::5");
-            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::6");
-            assertEq(baseAmount, base, "test_GetAmount::7");
-            assertEq(quoteAmount, 31e6 * _quotePrecision, "test_GetAmount::8");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::9");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::10");
+            assertEq(baseAmount, base, "test_GetAmount::11");
+            assertEq(quoteAmount, 31e6 * _quotePrecision, "test_GetAmount::12");
         }
 
         {
@@ -71,10 +71,10 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::7");
-            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::8");
-            assertEq(baseAmount, base, "test_GetAmount::9");
-            assertEq(quoteAmount, 175e6 * _quotePrecision, "test_GetAmount::10");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::13");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::14");
+            assertEq(baseAmount, base, "test_GetAmount::15");
+            assertEq(quoteAmount, 175e6 * _quotePrecision, "test_GetAmount::16");
         }
 
         {
@@ -84,10 +84,10 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::9");
-            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::10");
-            assertEq(baseAmount, base, "test_GetAmount::11");
-            assertEq(quoteAmount, 250e6 * _quotePrecision, "test_GetAmount::12");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::17");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::18");
+            assertEq(baseAmount, base, "test_GetAmount::19");
+            assertEq(quoteAmount, 250e6 * _quotePrecision, "test_GetAmount::20");
         }
 
         {
@@ -97,10 +97,10 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::11");
-            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::12");
-            assertEq(baseAmount, base, "test_GetAmount::13");
-            assertEq(quoteAmount, 425e6 * _quotePrecision, "test_GetAmount::14");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::21");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::22");
+            assertEq(baseAmount, base, "test_GetAmount::23");
+            assertEq(quoteAmount, 425e6 * _quotePrecision, "test_GetAmount::24");
         }
 
         {
@@ -110,10 +110,10 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount);
 
-            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::13");
-            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::14");
-            assertEq(baseAmount, base, "test_GetAmount::15");
-            assertEq(quoteAmount, 4650e6 * _quotePrecision, "test_GetAmount::16");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::25");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::26");
+            assertEq(baseAmount, base, "test_GetAmount::27");
+            assertEq(quoteAmount, 4650e6 * _quotePrecision, "test_GetAmount::28");
         }
 
         {
@@ -123,10 +123,10 @@ contract PricePointsTest is Test {
             (uint256 actualBaseAmount, uint256 quoteAmount) = _market.getQuoteAmount(circSupply, base, false);
             (uint256 baseAmount, uint256 actualQuoteAmount) = _market.getBaseAmountOut(circSupply, quoteAmount + 1);
 
-            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::15");
-            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::16");
-            assertEq(baseAmount, base - 1, "test_GetAmount::17");
-            assertEq(quoteAmount, 4650e6 * _quotePrecision, "test_GetAmount::18");
+            assertEq(actualBaseAmount, baseAmount, "test_GetAmount::29");
+            assertEq(actualQuoteAmount, quoteAmount, "test_GetAmount::30");
+            assertEq(baseAmount, base - 1, "test_GetAmount::31");
+            assertEq(quoteAmount, 4650e6 * _quotePrecision, "test_GetAmount::32");
         }
     }
 
