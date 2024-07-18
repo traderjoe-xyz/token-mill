@@ -125,12 +125,12 @@ abstract contract PricePoints is IPricePoints {
     }
 
     /**
-     * @dev Returns the amount of base tokens and quote tokens that should be sent (< 0) or received (> 0) for the
+     * @dev Returns the amount of base tokens that should be sent and the quote amount that should be received for the
      * specified quote amount.
      * @param supply The current supply of the base token.
-     * @param quoteAmount The amount of quote tokens to be sent (< 0) or received (> 0).
-     * @return baseAmount The amount of base tokens to be sent (< 0) or received (> 0).
-     * @return actualQuoteAmount The actual amount of quote tokens to be sent (< 0) or received (> 0).
+     * @param quoteAmount The amount of quote tokens to be received.
+     * @return baseAmount The amount of base tokens to be sent.
+     * @return actualQuoteAmount The actual amount of quote tokens to be received.
      */
     function _getBaseAmountOut(uint256 supply, uint256 quoteAmount)
         internal
@@ -173,12 +173,12 @@ abstract contract PricePoints is IPricePoints {
     }
 
     /**
-     * @dev Returns the amount of base tokens and quote tokens that should be sent (< 0) or received (> 0) for the
+     * @dev Returns the amount of base tokens that should be received and the quote amount that should be sent for the
      * specified quote amount.
      * @param supply The current supply of the base token.
-     * @param quoteAmount The amount of quote tokens to be sent (< 0) or received (> 0).
-     * @return baseAmount The amount of base tokens to be sent (< 0) or received (> 0).
-     * @return actualQuoteAmount The actual amount of quote tokens to be sent (< 0) or received (> 0).
+     * @param quoteAmount The amount of quote tokens to be sent.
+     * @return baseAmount The amount of base tokens to be received.
+     * @return actualQuoteAmount The actual amount of quote tokens to be sent.
      */
     function _getBaseAmountIn(uint256 supply, uint256 quoteAmount)
         internal
