@@ -145,4 +145,47 @@ contract TestTMMarket is TestHelper {
 
         return _callbackReturn;
     }
+
+    function test_unclaimedClaimedFees() external {
+        (uint256 protocolFees, uint256 creatorFees) = ITMMarket(market0w).getPendingFees();
+
+        assertEq(protocolFees, 0, "test_unclaimedClaimedFees::1");
+        assertEq(creatorFees, 0, "test_unclaimedClaimedFees::2");
+
+        bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
+        (, uint256 amountOut) = router.swapExactIn{value: 10e18}(route, address(this), 10e18, 0, block.timestamp);
+
+        (protocolFees, creatorFees) = ITMMarket(market0w).getPendingFees();
+
+        assertGt(protocolFees, 0, "test_unclaimedClaimedFees::3");
+        assertGt(creatorFees, 0, "test_unclaimedClaimedFees::4");
+
+        vm.prank(address(factory));
+        ITMMarket(market0w).claimFees(address(this), address(this), false, false);
+        (uint256 protocolFeesUnclaimed, uint256 creatorFeesUnclaimed) = ITMMarket(market0w).getPendingFees();
+
+        assertEq(protocolFees, protocolFeesUnclaimed, "test_unclaimedClaimedFees::5");
+        assertEq(creatorFees, creatorFeesUnclaimed, "test_unclaimedClaimedFees::6");
+        assertEq(wnative.balanceOf(address(this)), 0, "test_unclaimedClaimedFees::7");
+
+        (, uint256 amountOut2) = router.swapExactIn{value: 10e18}(route, address(this), 10e18, 0, block.timestamp);
+
+        vm.prank(address(factory));
+        uint256 claimedFee = ITMMarket(market0w).claimFees(address(this), address(this), true, true);
+
+        assertEq(wnative.balanceOf(address(this)), claimedFee, "test_unclaimedClaimedFees::8");
+        assertApproxEqAbs(claimedFee, (protocolFees + creatorFees) * 2, 1, "test_unclaimedClaimedFees::9");
+
+        (protocolFees, creatorFees) = ITMMarket(market0w).getPendingFees();
+
+        assertEq(protocolFees, 0, "test_unclaimedClaimedFees::10");
+        assertEq(creatorFees, 0, "test_unclaimedClaimedFees::11");
+
+        IERC20(token0).approve(address(router), amountOut + amountOut2);
+        route = abi.encodePacked(token0, uint32(3 << 24), address(wnative));
+
+        router.swapExactIn(route, address(this), amountOut + amountOut2, 0, block.timestamp);
+
+        assertEq(IERC20(wnative).balanceOf(market0w), 0, "test_unclaimedClaimedFees::12");
+    }
 }
