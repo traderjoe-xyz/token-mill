@@ -17,6 +17,7 @@ interface ITMMarket is IPricePoints {
     error TMMarket__ReserveOverflow();
     error TMMarket__InvalidFees();
     error TMMarket__AlreadyInitialized();
+    error TMMarket__InvalidCirculatingSupply();
 
     event Swap(address indexed sender, address indexed recipient, int256 deltaBaseAmount, int256 deltaQuoteAmount);
     event FeesClaimed(address indexed caller, address indexed recipient, uint256 fees);

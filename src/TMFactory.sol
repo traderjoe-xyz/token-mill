@@ -32,7 +32,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     mapping(address token0 => mapping(address token1 => uint256 packedMarket)) private _markets;
     address[] private _allMarkets;
 
-    mapping(uint256 => address implementation) private _implementations;
+    mapping(uint256 tokenType => address implementation) private _implementations;
     EnumerableSet.AddressSet private _quoteTokens;
 
     mapping(address => EnumerableSet.AddressSet) private _creatorMarkets;
@@ -129,7 +129,8 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * @dev Gets the market of the specified tokens.
      * @param tokenA The address of the first token.
      * @param tokenB The address of the second token.
-     * @return A boolean indicating if the first token is the base token, and the address of the market.
+     * @return A boolean indicating if the first token is the base token
+     * @return The address of the market of the tokens.
      */
     function getMarket(address tokenA, address tokenB) external view override returns (bool, address) {
         uint256 encodedMarket = _markets[tokenA][tokenB];
@@ -414,6 +415,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         uint256 totalSupply,
         uint256[] memory packedPrices
     ) internal returns (address market) {
+        if (baseToken == quoteToken) revert TMFactory__SameTokens();
         if (!_quoteTokens.contains(quoteToken)) revert TMFactory__InvalidQuoteToken();
 
         bytes memory immutableArgs =

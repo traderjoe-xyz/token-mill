@@ -16,6 +16,7 @@ interface ITMFactory {
     error TMFactory__InvalidTokenType();
     error TMFactory__InvalidRecipient();
     error TMFactory__AddressZero();
+    error TMFactory__SameTokens();
 
     // packedPrices = `(askPrice << 128) | bidPrice` for each price point
     event MarketCreated(

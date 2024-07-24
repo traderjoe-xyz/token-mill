@@ -106,7 +106,10 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     function getPriceAt(uint256 circulatingSupply, bool swapB2Q) external pure override returns (uint256) {
         uint256 totalSupply = _totalSupply();
 
-        if (circulatingSupply >= totalSupply) return _pricePoints(_pricePointsLength() - 1, swapB2Q);
+        if (circulatingSupply >= totalSupply) {
+            if (circulatingSupply > totalSupply) revert TMMarket__InvalidCirculatingSupply();
+            return _pricePoints(_pricePointsLength() - 1, swapB2Q);
+        }
 
         circulatingSupply = circulatingSupply * 1e18 / _basePrecision();
         uint256 widthScaled = _widthScaled();
@@ -161,6 +164,8 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         override
         returns (int256 deltaBaseAmount, int256 deltaQuoteAmount)
     {
+        if (deltaAmount == 0) revert TMMarket__ZeroAmount();
+
         uint256 circulatingSupply = _totalSupply() - _baseReserve;
 
         return (deltaAmount > 0) == swapB2Q
