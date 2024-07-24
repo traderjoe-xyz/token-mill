@@ -258,7 +258,7 @@ abstract contract PricePoints is IPricePoints {
             uint256 rl = sqrtDiscriminant;
             uint256 rr = p0 * widthScaled + base * dp;
 
-            deltaBase = rl > rr ? Math.div(rl - rr, dp, false) : 0;
+            deltaBase = Math.div(rl - rr, dp, false);
         }
     }
 
@@ -291,7 +291,7 @@ abstract contract PricePoints is IPricePoints {
             uint256 rl = p0 * widthScaled + base * dp;
             uint256 rr = sqrtDiscriminant;
 
-            deltaBase = rl > rr ? Math.div(rl - rr, dp, true) : 0;
+            deltaBase = Math.div(rl - rr, dp, true);
         }
     }
 
