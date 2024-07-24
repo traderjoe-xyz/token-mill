@@ -149,7 +149,7 @@ library Math {
     }
 
     /**
-     * @notice Calculates floor(x*y/denominator) with full precision
+     * @notice Calculates `x*y/denominator` with full precision and rounding up (if roundUp is true) or down (if roundUp is false)
      * The result will be rounded following the roundUp parameter
      * @dev Credit to Remco Bloemen under MIT license https://xn--2-umb.com/21/muldiv
      * Requirements:
@@ -166,7 +166,7 @@ library Math {
         if (denominator == 0) revert Math__DivisionByZero();
 
         // 512-bit multiply [prod1 prod0] = x * y. Compute the product mod 2^256 and mod 2^256 - 1, then use
-        // use the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
+        // the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
         // variables such that product = prod1 * 2^256 + prod0.
         assembly {
             let mm := mulmod(x, y, not(0))
@@ -346,8 +346,8 @@ library Math {
 
             {
                 // The nominator can be bigger than 2**256. We know that rp < (sp+1) * (sp+1). As sp can be
-                // at most floor(sqrt(2**256 - 1)) we can conclude that the nominator has at most 513 bits
-                // set. An expensive 512x256 bit division can be avoided by treating the bit at position 513 manually
+                // at most floor(sqrt(2**256 - 1)) we can conclude that the nominator has at most 257 bits
+                // set. An expensive 512x256 bit division can be avoided by treating the bit at position 257 manually
                 let carry := shr(128, rp)
                 let x := mul(carry, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
                 q := add(q, div(x, denom))
