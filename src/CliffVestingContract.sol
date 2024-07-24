@@ -12,7 +12,7 @@ import {ICliffVestingContract} from "./interfaces/ICliffVestingContract.sol";
  * tokens after the vesting period has passed. The vesting contract supports multiple vesting schedules for each token.
  * Each vesting schedule is as follows:
  * - tokens vest linearly from the `start` to the `start + vestingDuration` timestamp
- * - vested tokens can only be claimed after the `start + lockDuration` timestamp
+ * - vested tokens can only be claimed after the `start + cliffDuration` timestamp
  */
 contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -39,12 +39,12 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the amount of tokens that can be released by the specified token at the specified index at the
+     * @dev Returns the total vested amount of tokens by the specified token at the specified index at the
      * specified timestamp.
      * @param token The address of the token.
      * @param index The index of the vesting schedule.
      * @param timestamp The timestamp at which the amount of releasable tokens will be calculated.
-     * @return The amount of tokens that can be released by the specified token at the specified index at the
+     * @return The total vested amount of tokens by the specified token at the specified index at the specified timestamp.
      */
     function getVestedAmount(address token, uint256 index, uint256 timestamp) public view override returns (uint256) {
         VestingSchedule storage vesting = _vestingSchedules[token][index];
@@ -84,6 +84,7 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
         if (cliffDuration > vestingDuration) revert CliffVestingContract__InvalidCliffDuration();
         if (start + vestingDuration <= block.timestamp) revert CliffVestingContract__InvalidVestingSchedule();
         if (minAmount == 0) revert CliffVestingContract__ZeroMinAmount();
+        if (beneficiary == address(0)) revert CliffVestingContract__ZeroBeneficiary();
 
         uint256 balance = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -112,14 +113,13 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
         if (vesting.beneficiary != msg.sender) revert CliffVestingContract__OnlyBeneficiary();
 
         uint256 amount = getReleasableAmount(token, index);
+        if (amount == 0) revert CliffVestingContract__NoVestedAmount();
 
-        if (amount > 0) {
-            vesting.released += uint128(amount);
+        vesting.released += uint128(amount);
 
-            IERC20(token).safeTransfer(msg.sender, amount);
+        IERC20(token).safeTransfer(msg.sender, amount);
 
-            emit Released(token, msg.sender, index, amount);
-        }
+        emit Released(token, msg.sender, index, amount);
     }
 
     /**
@@ -129,6 +129,8 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
      * @param index The index of the vesting schedule.
      */
     function transferVestingSchedule(address token, address newBeneficiary, uint256 index) public nonReentrant {
+        if (newBeneficiary == address(0)) revert CliffVestingContract__ZeroBeneficiary();
+
         VestingSchedule storage vesting = _vestingSchedules[token][index];
 
         if (vesting.beneficiary != msg.sender) revert CliffVestingContract__OnlyBeneficiary();

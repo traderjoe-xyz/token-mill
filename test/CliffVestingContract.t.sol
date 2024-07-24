@@ -103,12 +103,15 @@ contract CliffVestingContractTest is Test {
         assertEq(vesting.getReleasableAmount(address(token1), 0), 0, "test_Release::23");
 
         vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token0), 0);
 
         vm.prank(bob);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token0), 1);
 
         vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token1), 0);
 
         vesting0A = vesting.getVestingSchedule(address(token0), 0);
@@ -122,12 +125,15 @@ contract CliffVestingContractTest is Test {
         vm.warp(start0B);
 
         vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token0), 0);
 
         vm.prank(bob);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token0), 1);
 
         vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token1), 0);
 
         vesting0A = vesting.getVestingSchedule(address(token0), 0);
@@ -141,12 +147,15 @@ contract CliffVestingContractTest is Test {
         vm.warp(start0B + cliffDuration0B);
 
         vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token0), 0);
 
         vm.prank(bob);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token0), 1);
 
         vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token1), 0);
 
         vesting0A = vesting.getVestingSchedule(address(token0), 0);
@@ -162,12 +171,14 @@ contract CliffVestingContractTest is Test {
         uint256 releasable0B_0 = vesting0B.total * (block.timestamp - start0B) / vestingDuration0B;
 
         vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token0), 0);
 
         vm.prank(bob);
         vesting.release(address(token0), 1);
 
         vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token1), 0);
 
         vesting0A = vesting.getVestingSchedule(address(token0), 0);
@@ -188,6 +199,7 @@ contract CliffVestingContractTest is Test {
         uint256 releasable0B_1 = vesting0B.total * (block.timestamp - start0B) / vestingDuration0B - releasable0B_0;
 
         vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token0), 0);
 
         vm.prank(bob);
@@ -218,6 +230,7 @@ contract CliffVestingContractTest is Test {
             vesting0B.total * (block.timestamp - start0B) / vestingDuration0B - releasable0B_1 - releasable0B_0;
 
         vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token0), 0);
 
         vm.prank(bob);
@@ -250,12 +263,14 @@ contract CliffVestingContractTest is Test {
             - releasable0B_1 - releasable0B_0;
 
         vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token0), 0);
 
         vm.prank(bob);
         vesting.release(address(token0), 1);
 
         vm.prank(bob);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token1), 0);
 
         vesting0A = vesting.getVestingSchedule(address(token0), 0);
@@ -283,6 +298,7 @@ contract CliffVestingContractTest is Test {
         vesting.release(address(token0), 1);
 
         vm.prank(bob);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__NoVestedAmount.selector);
         vesting.release(address(token1), 0);
 
         vesting0A = vesting.getVestingSchedule(address(token0), 0);

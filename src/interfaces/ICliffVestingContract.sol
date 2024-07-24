@@ -11,6 +11,8 @@ interface ICliffVestingContract {
     error CliffVestingContract__InsufficientAmountReceived(uint256 received, uint256 minAmount);
     error CliffVestingContract__OnlyBeneficiary();
     error CliffVestingContract__ZeroMinAmount();
+    error CliffVestingContract__ZeroBeneficiary();
+    error CliffVestingContract__NoVestedAmount();
 
     event VestingScheduleCreated(
         address indexed token,
