@@ -18,7 +18,9 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     using SafeERC20 for IERC20;
 
     bool internal _locked;
+    uint120 internal _initialized;
     uint128 internal _baseReserve;
+
     uint256 internal _quoteReserve;
 
     uint256 internal _protocolUnclaimedFees;
@@ -39,7 +41,9 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      */
     function initialize() external override {
         if (msg.sender != _factory()) revert TMMarket__OnlyFactory();
+        if (_initialized != 0) revert TMMarket__AlreadyInitialized();
 
+        _initialized = 1;
         _baseReserve = uint128(_totalSupply());
     }
 
@@ -283,6 +287,8 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
 
                 uint256 protocolShare = factory.getProtocolShareOf(address(this));
                 uint256 protocolFees = fees * protocolShare / 1e18;
+
+                if (protocolFees > fees) revert TMMarket__InvalidFees();
 
                 protocolUnclaimedFees += protocolFees;
                 creatorUnclaimedFees += fees - protocolFees;
