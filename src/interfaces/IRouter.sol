@@ -11,6 +11,7 @@ interface IRouter {
     error Router__ExceedsMaxInputAmount();
     error Router__InvalidId();
     error Router__ExceedsDeadline();
+    error Router__InsufficientLiquidity();
     error Router__Simulation(uint256 amount);
     error Router__Simulations(uint256[] amounts);
 

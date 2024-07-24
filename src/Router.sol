@@ -440,7 +440,10 @@ contract Router is IRouter {
                 if (sv == 0) {
                     (amount,) = _v2_0Router.getSwapIn(pair, uint128(amount), t == 1);
                 } else if (sv < 3) {
-                    (amount,,) = IV2_1Pair(pair).getSwapIn(uint128(amount), t == 1);
+                    uint256 amountLeft;
+                    (amount, amountLeft,) = IV2_1Pair(pair).getSwapIn(uint128(amount), t == 1);
+
+                    if (amountLeft != 0) revert Router__InsufficientLiquidity();
                 } else {
                     revert Router__InvalidId();
                 }
