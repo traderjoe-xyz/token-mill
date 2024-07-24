@@ -53,9 +53,11 @@ contract TestTMMarket is TestHelper {
             assertEq(bidPrice, bidPrices0w[index], "test_Fuzz_GetPriceAt::2");
         } else {
             uint256 expectedAskPrice = askPrices0w[index]
-                + (askPrices0w[index + 1] - askPrices0w[index]) * (circulatingSupply - index * width) / width;
+                + Math.div((askPrices0w[index + 1] - askPrices0w[index]) * (circulatingSupply - index * width), width, true);
             uint256 expectedBidPrice = bidPrices0w[index]
-                + (bidPrices0w[index + 1] - bidPrices0w[index]) * (circulatingSupply - index * width) / width;
+                + Math.div(
+                    (bidPrices0w[index + 1] - bidPrices0w[index]) * (circulatingSupply - index * width), width, false
+                );
 
             assertEq(askPrice, expectedAskPrice, "test_Fuzz_GetPriceAt::3");
             assertEq(bidPrice, expectedBidPrice, "test_Fuzz_GetPriceAt::4");

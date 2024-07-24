@@ -117,7 +117,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 p0 = _pricePoints(i, swapB2Q);
         uint256 p1 = _pricePoints(i + 1, swapB2Q);
 
-        return p0 + (p1 - p0) * supply / widthScaled;
+        return p0 + Math.div((p1 - p0) * supply, widthScaled, swapB2Q);
     }
 
     /**
