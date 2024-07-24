@@ -116,7 +116,7 @@ library ImmutableHelper {
                 uint64(quotePrecision),
                 uint128(totalSupply),
                 uint128(widthScaled),
-                uint16(length),
+                uint8(length),
                 packedPrices
             );
 

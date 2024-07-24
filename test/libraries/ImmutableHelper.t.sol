@@ -266,7 +266,7 @@ contract ImmutableHelperTest is Test {
 
             assembly {
                 ptr := add(ptr, 16)
-                length_ := shr(240, mload(ptr))
+                length_ := shr(248, mload(ptr))
             }
 
             assertEq(length_, length, "test_Fuzz_GetImmutableArgs::7");
@@ -274,7 +274,7 @@ contract ImmutableHelperTest is Test {
 
         {
             assembly {
-                ptr := add(ptr, 2)
+                ptr := add(ptr, 1)
             }
 
             for (uint256 i = 0; i < length; i++) {

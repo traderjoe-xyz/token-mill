@@ -434,7 +434,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @return The price points length.
      */
     function _pricePointsLength() internal pure override returns (uint256) {
-        return _getUint(108, 16);
+        return _getUint(108, 8);
     }
 
     /**
@@ -446,6 +446,6 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @return The price of the base token in the quote token at the specified index.
      */
     function _pricePoints(uint256 i, bool bid) internal pure override returns (uint256) {
-        return _getUint((bid ? 110 : 126) + i * 32, 128);
+        return _getUint((bid ? 109 : 125) + i * 32, 128);
     }
 }

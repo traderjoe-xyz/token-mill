@@ -927,11 +927,11 @@ contract PricePointsTest is Test {
         assertEq(_market.get(68, 64), 10 ** decimalsQuote, "_deployCurve::5");
         assertEq(_market.get(76, 128), totalSupply, "_deployCurve::6");
         assertEq(_market.get(92, 128), (totalSupply / nb) * 1e18 / 10 ** decimalsBase, "_deployCurve::7");
-        assertEq(_market.get(108, 16), pricePoints.length, "_deployCurve::8");
+        assertEq(_market.get(108, 8), pricePoints.length, "_deployCurve::8");
 
         for (uint256 i = 0; i < pricePoints.length; i++) {
-            assertEq(_market.get(110 + i * 0x20, 128), pricePoints[i], "_deployCurve::9");
-            assertEq(_market.get(126 + i * 0x20, 128), pricePoints[i], "_deployCurve::10");
+            assertEq(_market.get(109 + i * 0x20, 128), pricePoints[i], "_deployCurve::9");
+            assertEq(_market.get(125 + i * 0x20, 128), pricePoints[i], "_deployCurve::10");
         }
 
         _pricePoints = pricePoints;
