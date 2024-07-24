@@ -13,6 +13,7 @@ import {ITMMarket} from "./interfaces/ITMMarket.sol";
 /**
  * @title Token Mill Market
  * @dev The token mill market contract.
+ * The view functions might return an outdated value if they're called in the middle of a swap or a fee claim.
  */
 contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     using SafeERC20 for IERC20;
