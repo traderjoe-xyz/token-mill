@@ -155,16 +155,16 @@ contract TMFactoryTest is Test {
         factory.updateProtocolShare(uint64(bound(shares, 1e18 + 1, type(uint64).max)));
     }
 
-    function test_Fuzz_UpdateProtocolFeeRecipient(address recipient) public {
-        assertEq(factory.getProtocolFeeRecipient(), address(0), "test_Fuzz_UpdateProtocolFeeRecipient::1");
+    function test_Fuzz_UpdateProtocolClaimer(address recipient) public {
+        assertEq(factory.getProtocolClaimer(), address(0), "test_Fuzz_UpdateProtocolClaimer::1");
 
-        factory.updateProtocolFeeRecipient(recipient);
+        factory.updateProtocolClaimer(recipient);
 
-        assertEq(factory.getProtocolFeeRecipient(), recipient, "test_Fuzz_UpdateProtocolFeeRecipient::2");
+        assertEq(factory.getProtocolClaimer(), recipient, "test_Fuzz_UpdateProtocolClaimer::2");
 
-        factory.updateProtocolFeeRecipient(address(0));
+        factory.updateProtocolClaimer(address(0));
 
-        assertEq(factory.getProtocolFeeRecipient(), address(0), "test_Fuzz_UpdateProtocolFeeRecipient::3");
+        assertEq(factory.getProtocolClaimer(), address(0), "test_Fuzz_UpdateProtocolClaimer::3");
     }
 
     function test_Fuzz_CreateTokenAndMarket(
@@ -404,7 +404,7 @@ contract TMFactoryTest is Test {
 
         (uint256 protocol1, uint256 creator1) = ITMMarket(market1).getPendingFees();
 
-        factory.updateProtocolFeeRecipient(feeRecipient);
+        factory.updateProtocolClaimer(feeRecipient);
 
         vm.prank(alice);
         uint256 claimed1c = factory.claimFees(market1, alice);

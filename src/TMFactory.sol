@@ -23,7 +23,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     uint256 private constant MAX_QUOTE_TOKENS = 64;
     uint64 private constant MAX_PROTOCOL_SHARE = 1e18;
 
-    address private _protocolFeeRecipient;
+    address private _protocolClaimer;
     uint64 private _protocolShare;
 
     mapping(address market => MarketParameters) private _parameters;
@@ -118,11 +118,11 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     }
 
     /**
-     * @dev Gets the protocol fee recipient.
-     * @return The address of the protocol fee recipient.
+     * @dev Gets the protocol fee claimer, that is the address that can claim the protocol fees.
+     * @return The address of the protocol fee claimer.
      */
-    function getProtocolFeeRecipient() external view override returns (address) {
-        return _protocolFeeRecipient;
+    function getProtocolClaimer() external view override returns (address) {
+        return _protocolClaimer;
     }
 
     /**
@@ -242,10 +242,10 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         MarketParameters storage parameters = _parameters[market];
 
         address creator = parameters.creator;
-        address protocolFeeRecipient = _protocolFeeRecipient;
+        address protocolClaimer = _protocolClaimer;
 
         bool isCreator = msg.sender == creator;
-        bool isProtocol = msg.sender == protocolFeeRecipient;
+        bool isProtocol = msg.sender == protocolClaimer;
 
         if (!isCreator && !isProtocol) revert TMFactory__InvalidCaller();
 
@@ -262,12 +262,12 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
     /**
      * @dev Updates the protocol fee recipient.
-     * @param protocolFeeRecipient The address of the protocol fee recipient.
+     * @param protocolClaimer The address of the protocol fee recipient.
      */
-    function updateProtocolFeeRecipient(address protocolFeeRecipient) external override onlyOwner {
-        _protocolFeeRecipient = protocolFeeRecipient;
+    function updateProtocolClaimer(address protocolClaimer) external override onlyOwner {
+        _protocolClaimer = protocolClaimer;
 
-        emit ProtocolFeeRecipientUpdated(protocolFeeRecipient);
+        emit ProtocolClaimerUpdated(protocolClaimer);
     }
 
     /**

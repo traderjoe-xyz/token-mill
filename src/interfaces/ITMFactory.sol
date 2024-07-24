@@ -35,7 +35,7 @@ interface ITMFactory {
     event TokenImplementationUpdated(uint96 tokenType, address implementation);
     event QuoteTokenAdded(address quoteToken);
     event QuoteTokenRemoved(address quoteToken);
-    event ProtocolFeeRecipientUpdated(address recipient);
+    event ProtocolClaimerUpdated(address recipient);
 
     struct MarketParameters {
         uint96 protocolShare;
@@ -56,7 +56,7 @@ interface ITMFactory {
 
     function getProtocolShare() external view returns (uint256);
 
-    function getProtocolFeeRecipient() external view returns (address);
+    function getProtocolClaimer() external view returns (address);
 
     function getMarket(address tokenA, address tokenB) external view returns (bool tokenAisBase, address market);
 
@@ -87,7 +87,7 @@ interface ITMFactory {
 
     function updateProtocolShare(uint64 protocolShare) external;
 
-    function updateProtocolFeeRecipient(address recipient) external;
+    function updateProtocolClaimer(address recipient) external;
 
     function updateProtocolShareOf(address market, uint64 protocolShare) external;
 
