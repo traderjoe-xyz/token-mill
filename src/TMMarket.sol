@@ -99,13 +99,13 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     /**
      * @dev Returns the price at the specified circulating supply.
      * @param circulatingSupply The circulating supply.
-     * @param fillBid Whether to fill the bid or ask.
+     * @param swapB2Q Whether to swap base to quote (true) or quote to base (false).
      * @return The price.
      */
-    function getPriceAt(uint256 circulatingSupply, bool fillBid) external pure override returns (uint256) {
+    function getPriceAt(uint256 circulatingSupply, bool swapB2Q) external pure override returns (uint256) {
         uint256 totalSupply = _totalSupply();
 
-        if (circulatingSupply >= totalSupply) return _pricePoints(_pricePointsLength() - 1, fillBid);
+        if (circulatingSupply >= totalSupply) return _pricePoints(_pricePointsLength() - 1, swapB2Q);
 
         circulatingSupply = circulatingSupply * 1e18 / _basePrecision();
         uint256 widthScaled = _widthScaled();
@@ -113,24 +113,24 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 i = circulatingSupply / widthScaled;
         uint256 supply = circulatingSupply % widthScaled;
 
-        uint256 p0 = _pricePoints(i, fillBid);
-        uint256 p1 = _pricePoints(i + 1, fillBid);
+        uint256 p0 = _pricePoints(i, swapB2Q);
+        uint256 p1 = _pricePoints(i + 1, swapB2Q);
 
         return p0 + (p1 - p0) * supply / widthScaled;
     }
 
     /**
      * @dev Returns the price points.
-     * @param fillBid Whether to return the bid or ask price points.
+     * @param swapB2Q Whether to swap base to quote (true) or quote to base (false).
      * @return The price points.
      */
-    function getPricePoints(bool fillBid) external pure override returns (uint256[] memory) {
+    function getPricePoints(bool swapB2Q) external pure override returns (uint256[] memory) {
         uint256 length = _pricePointsLength();
 
         uint256[] memory prices = new uint256[](length);
 
         for (uint256 i; i < length; ++i) {
-            prices[i] = _pricePoints(i, fillBid);
+            prices[i] = _pricePoints(i, swapB2Q);
         }
 
         return prices;
@@ -150,11 +150,11 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     /**
      * @dev Returns the delta amounts.
      * @param deltaAmount The delta amount.
-     * @param fillBid Whether to fill the bid or ask.
+     * @param swapB2Q Whether to swap base to quote (true) or quote to base (false).
      * @return deltaBaseAmount The delta base amount.
      * @return deltaQuoteAmount The delta quote amount.
      */
-    function getDeltaAmounts(int256 deltaAmount, bool fillBid)
+    function getDeltaAmounts(int256 deltaAmount, bool swapB2Q)
         external
         view
         override
@@ -162,7 +162,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     {
         uint256 circulatingSupply = _totalSupply() - _baseReserve;
 
-        return (deltaAmount > 0) == fillBid
+        return (deltaAmount > 0) == swapB2Q
             ? getDeltaQuoteAmount(circulatingSupply, deltaAmount)
             : getDeltaBaseAmount(circulatingSupply, deltaAmount);
     }
@@ -170,18 +170,18 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     /**
      * @dev Swap tokens.
      * TOKEN/USD -> TOKEN is base, USD is quote
-     * fillBid = true  + dAmount > 0 (true)  -> in: dAmount Base,  out:       -X Quote
-     * fillBid = true  + dAmount < 0 (false) -> in:       X Base,  out: -dAmount Quote
-     * fillBid = false + dAmount > 0 (true)  -> in: dAmount Quote, out:       -X Base
-     * fillBid = false + dAmount < 0 (false) -> in:       X Quote, out: -dAmount Base
+     * swapB2Q = true  + dAmount > 0 (true)  -> in: dAmount Base,  out:       -X Quote
+     * swapB2Q = true  + dAmount < 0 (false) -> in:       X Base,  out: -dAmount Quote
+     * swapB2Q = false + dAmount > 0 (true)  -> in: dAmount Quote, out:       -X Base
+     * swapB2Q = false + dAmount < 0 (false) -> in:       X Quote, out: -dAmount Base
      * @param recipient The recipient of the tokens.
      * @param deltaAmount The delta amount.
-     * @param fillBid Whether to fill the bid or ask.
+     * @param swapB2Q Whether to swap base to quote (true) or quote to base (false).
      * @param data The data to be passed to the swap callback. If the data is empty, the callback will be skipped.
      * @return deltaBaseAmount The delta base amount.
      * @return deltaQuoteAmount The delta quote amount.
      */
-    function swap(address recipient, int256 deltaAmount, bool fillBid, bytes calldata data)
+    function swap(address recipient, int256 deltaAmount, bool swapB2Q, bytes calldata data)
         external
         override
         nonReentrant
@@ -193,11 +193,11 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         (uint256 baseReserve, uint256 quoteReserve) = _getReserves();
         uint256 circulatingSupply = _totalSupply() - baseReserve;
 
-        (deltaBaseAmount, deltaQuoteAmount) = (deltaAmount > 0) == fillBid
+        (deltaBaseAmount, deltaQuoteAmount) = (deltaAmount > 0) == swapB2Q
             ? getDeltaQuoteAmount(circulatingSupply, deltaAmount)
             : getDeltaBaseAmount(circulatingSupply, deltaAmount);
 
-        (uint256 toSend, uint256 toReceive, IERC20 tokenToSend, IERC20 tokenToReceive) = fillBid
+        (uint256 toSend, uint256 toReceive, IERC20 tokenToSend, IERC20 tokenToReceive) = swapB2Q
             ? (Math.abs(deltaQuoteAmount), Math.abs(deltaBaseAmount), IERC20(_quoteToken()), IERC20(_baseToken()))
             : (Math.abs(deltaBaseAmount), Math.abs(deltaQuoteAmount), IERC20(_baseToken()), IERC20(_quoteToken()));
 
@@ -213,9 +213,9 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 balance = tokenToReceive.balanceOf(address(this));
         if (balance > type(uint128).max) revert TMMarket__ReserveOverflow();
 
-        fillBid
-            ? _updateReservesOnFillBid(baseReserve, quoteReserve, toSend, toReceive, balance)
-            : _updateReservesOnFillAsk(baseReserve, quoteReserve, toSend, toReceive, balance);
+        swapB2Q
+            ? _updateReservesOnB2Q(baseReserve, quoteReserve, toSend, toReceive, balance)
+            : _updateReservesOnQ2B(baseReserve, quoteReserve, toSend, toReceive, balance);
 
         emit Swap(msg.sender, recipient, deltaBaseAmount, deltaQuoteAmount);
     }
@@ -276,7 +276,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 creatorUnclaimedFees = _creatorUnclaimedFees;
 
         uint256 quoteReserve = _quoteReserve;
-        (, uint256 minQuoteAmount) = _getQuoteAmount(0, _totalSupply() - _baseReserve, false);
+        (, uint256 minQuoteAmount) = _getQuoteAmount(0, _totalSupply() - _baseReserve, false, true);
 
         if (quoteReserve > minQuoteAmount) {
             uint256 totalUnclaimedFees = protocolUnclaimedFees + creatorUnclaimedFees;
@@ -307,14 +307,14 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     }
 
     /**
-     * @dev Updates the reserves on a bid fill.
+     * @dev Updates the reserves on a base to quote swap.
      * @param baseReserve The base reserve.
      * @param quoteReserve The quote reserve.
      * @param toSend The amount to send.
      * @param toReceive The amount to receive.
      * @param baseBalance The base balance.
      */
-    function _updateReservesOnFillBid(
+    function _updateReservesOnB2Q(
         uint256 baseReserve,
         uint256 quoteReserve,
         uint256 toSend,
@@ -328,14 +328,14 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     }
 
     /**
-     * @dev Updates the reserves on an ask fill.
+     * @dev Updates the reserves on a quote to base swap.
      * @param baseReserve The base reserve.
      * @param quoteReserve The quote reserve.
      * @param toSend The amount to send.
      * @param toReceive The amount to receive.
      * @param quoteBalance The quote balance.
      */
-    function _updateReservesOnFillAsk(
+    function _updateReservesOnQ2B(
         uint256 baseReserve,
         uint256 quoteReserve,
         uint256 toSend,
@@ -435,10 +435,10 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @dev Returns the price points using the immutable arguments.
      * This function doesn't check that the index is within bounds. It should be done by the parent function.
      * @param i The index of the price point.
-     * @param fillBid Whether to fill the bid or ask.
+     * @param swapB2Q Whether to swap base to quote (true) or quote to base (false).
      * @return The price point.
      */
-    function _pricePoints(uint256 i, bool fillBid) internal pure override returns (uint256) {
-        return _getUint((fillBid ? 110 : 126) + i * 32, 128);
+    function _pricePoints(uint256 i, bool swapB2Q) internal pure override returns (uint256) {
+        return _getUint((swapB2Q ? 110 : 126) + i * 32, 128);
     }
 }

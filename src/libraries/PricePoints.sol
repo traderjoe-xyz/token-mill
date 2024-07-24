@@ -31,11 +31,13 @@ abstract contract PricePoints is IPricePoints {
     {
         if (deltaBaseAmount == 0) return (0, 0);
 
-        (uint256 circSupply, uint256 base) = deltaBaseAmount > 0
-            ? (supply - uint256(deltaBaseAmount), uint256(deltaBaseAmount))
-            : (supply, uint256(-deltaBaseAmount));
+        bool exactOut = deltaBaseAmount < 0;
 
-        (uint256 baseAmount, uint256 quoteAmount) = _getQuoteAmount(circSupply, base, deltaBaseAmount < 0);
+        (uint256 circSupply, uint256 base) = exactOut
+            ? (supply, uint256(-deltaBaseAmount))
+            : (supply - uint256(deltaBaseAmount), uint256(deltaBaseAmount));
+
+        (uint256 baseAmount, uint256 quoteAmount) = _getQuoteAmount(circSupply, base, exactOut, exactOut);
 
         if ((baseAmount | quoteAmount) > uint256(type(int256).max)) revert PricePoints__OverflowInt256();
 
@@ -73,15 +75,15 @@ abstract contract PricePoints is IPricePoints {
     }
 
     /**
-     * @dev Returns the amount of base tokens and quote tokens that should be sent (< 0) or received (> 0) for the
-     * specified base amount.
+     * @dev Returns the amount of base tokens and quote tokens that should be sent (exactOut) or received (!exactOut)
      * @param supply The current supply of the base token.
-     * @param baseAmount The amount of base tokens to be sent (< 0) or received (> 0).
-     * @param roundUp Whether to round up the base amount.
-     * @return actualBaseAmount The actual amount of base tokens to be sent (< 0) or received (> 0).
-     * @return quoteAmount The amount of quote tokens to be sent (< 0) or received (> 0).
+     * @param baseAmount The amount of base tokens to be sent (exactOut) or received (!exactOut).
+     * @param exactOut Whether the base amount is expected to be sent (true) or received (false).
+     * @param roundUp Whether to round up the quote amount.
+     * @return actualBaseAmount The actual amount of base tokens to be sent (exactOut) or received (!exactOut).
+     * @return quoteAmount The amount of quote tokens to be sent (exactOut) or received (!exactOut).
      */
-    function _getQuoteAmount(uint256 supply, uint256 baseAmount, bool roundUp)
+    function _getQuoteAmount(uint256 supply, uint256 baseAmount, bool exactOut, bool roundUp)
         internal
         view
         returns (uint256 actualBaseAmount, uint256 quoteAmount)
@@ -93,28 +95,31 @@ abstract contract PricePoints is IPricePoints {
         uint256 basePrecision = _basePrecision();
         uint256 widthScaled = _widthScaled();
 
-        supply = supply * 1e18 / basePrecision;
+        uint256 scaledSupply = supply * 1e18 / basePrecision;
         actualBaseAmount = baseAmount;
 
         baseAmount = baseAmount * 1e18 / basePrecision;
 
-        uint256 i = supply / widthScaled;
-        supply = supply % widthScaled;
+        uint256 i = scaledSupply / widthScaled;
+        scaledSupply = scaledSupply % widthScaled;
 
-        uint256 p0 = _pricePoints(i, roundUp);
+        uint256 p0 = _pricePoints(i, exactOut);
 
         while (baseAmount > 0 && ++i < length) {
-            uint256 p1 = _pricePoints(i, roundUp);
+            uint256 p1 = _pricePoints(i, exactOut);
 
-            uint256 deltaBase = Math.min(baseAmount, widthScaled - supply);
+            uint256 deltaBase = Math.min(baseAmount, widthScaled - scaledSupply);
             uint256 deltaQuote = Math.mulDiv(
-                deltaBase, (p1 - p0) * (deltaBase + 2 * supply) + 2 * p0 * widthScaled, 2e18 * widthScaled, roundUp
+                deltaBase,
+                (p1 - p0) * (deltaBase + 2 * scaledSupply) + 2 * p0 * widthScaled,
+                2e18 * widthScaled,
+                roundUp
             );
 
             quoteAmount += deltaQuote;
             baseAmount -= deltaBase;
 
-            supply = 0;
+            scaledSupply = 0;
             p0 = p1;
         }
 
@@ -341,7 +346,8 @@ abstract contract PricePoints is IPricePoints {
     /**
      * @dev Returns the price of the base token in the quote token at the specified index.
      * @param i The index of the price point.
-     * @param bid Whether to get the bid price.
+     * @param bid Whether to get the bid price (true), ie, the price at which the user can sell the base token,
+     * or the ask price (false), ie, the price at which the user can buy the base token.
      * @return The price of the base token in the quote token at the specified index.
      */
     function _pricePoints(uint256 i, bool bid) internal view virtual returns (uint256);

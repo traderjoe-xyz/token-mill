@@ -383,14 +383,14 @@ contract Router is IRouter {
                         id := or(sub(id, t), swapForY)
                     }
                 } else if (v == 3) {
-                    bool fillBid;
-                    (fillBid, pair) =
+                    bool swapB2Q;
+                    (swapB2Q, pair) =
                         _tmFactory.getMarket(tokenIn, tokenOut == address(0) ? address(_wnative) : tokenOut);
                     if (pair == address(0)) revert Router__InvalidMarket();
                     if ((sv | t) != 0) revert Router__InvalidId();
 
                     assembly {
-                        id := or(id, iszero(iszero(fillBid)))
+                        id := or(id, iszero(iszero(swapB2Q)))
                     }
                 } else {
                     revert Router__InvalidId();

@@ -951,7 +951,7 @@ contract MarketTestContract is TMMarket {
     }
 
     function getQuoteAmount(uint256 supply, uint256 baseAmount, bool roundUp) public view returns (uint256, uint256) {
-        return _getQuoteAmount(supply, baseAmount, roundUp);
+        return _getQuoteAmount(supply, baseAmount, roundUp, roundUp);
     }
 
     function getBaseAmountOut(uint256 supply, uint256 quoteAmount) public view returns (uint256, uint256) {

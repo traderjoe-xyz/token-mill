@@ -121,7 +121,7 @@ contract TestTMMarket is TestHelper {
 
         router.swapExactIn(route, address(this), amountOut, 0, block.timestamp);
 
-        assertEq(IERC20(wnative).balanceOf(market0w), 0, "test_ClaimFees::8");
+        assertApproxEqAbs(IERC20(wnative).balanceOf(market0w), 0, 1, "test_ClaimFees::8");
     }
 
     function test_Revert_ClaimFees() external {
@@ -186,6 +186,6 @@ contract TestTMMarket is TestHelper {
 
         router.swapExactIn(route, address(this), amountOut + amountOut2, 0, block.timestamp);
 
-        assertEq(IERC20(wnative).balanceOf(market0w), 0, "test_unclaimedClaimedFees::12");
+        assertApproxEqAbs(IERC20(wnative).balanceOf(market0w), 0, 1, "test_unclaimedClaimedFees::12");
     }
 }
