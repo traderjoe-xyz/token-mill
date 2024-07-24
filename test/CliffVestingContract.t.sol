@@ -357,7 +357,11 @@ contract CliffVestingContractTest is Test {
             address(token0), alice, uint128(amount), uint128(amount), uint80(block.timestamp), 0, 1
         );
 
-        newBeneficiary = newBeneficiary == alice ? bob : newBeneficiary;
+        vm.prank(alice);
+        vm.expectRevert(ICliffVestingContract.CliffVestingContract__ZeroBeneficiary.selector);
+        vesting.transferVestingSchedule(address(token0), address(0), 0);
+
+        newBeneficiary = newBeneficiary == address(0) || newBeneficiary == alice ? bob : newBeneficiary;
 
         vm.expectRevert(ICliffVestingContract.CliffVestingContract__OnlyBeneficiary.selector);
         vm.prank(newBeneficiary);
