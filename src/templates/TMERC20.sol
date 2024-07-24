@@ -5,7 +5,7 @@ import {TMBaseERC20} from "./TMBaseERC20.sol";
 
 /**
  * @title Token Mill ERC20 Contract
- * @dev Basic ERC20 contract following the ITMTMBaseERC20 interface with custom number of decimals.
+ * @dev Basic ERC20 contract following the ITMBaseERC20 interface with custom number of decimals.
  */
 contract TMERC20 is TMBaseERC20 {
     error TMERC20__InvalidArgsLength();

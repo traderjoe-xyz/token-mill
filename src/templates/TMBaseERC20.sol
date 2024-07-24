@@ -7,7 +7,7 @@ import {ITMBaseERC20} from "../interfaces/ITMBaseERC20.sol";
 
 /**
  * @title Token Mill Base ERC20 Contract
- * @dev Token Mill Base ERC20 contract following the ITMTMBaseERC20 interface.
+ * @dev Token Mill Base ERC20 contract following the ITMBaseERC20 interface.
  * This contract makes sure that all Token Mill's ERC20 contracts are compliant with the Factory contract.
  */
 abstract contract TMBaseERC20 is ERC20Upgradeable, ITMBaseERC20 {
