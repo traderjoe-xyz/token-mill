@@ -231,7 +231,7 @@ abstract contract PricePoints is IPricePoints {
      * @param p0 The price of the base token in the quote token at the current price point.
      * @param p1 The price of the base token in the quote token at the next price point.
      * @param widthScaled The width of the segment in scaled base tokens.
-     * @param base The remaining base tokens.
+     * @param base The amount of base tokens already purchased in the current segment.
      * @param remainingQuote The remaining quote tokens.
      * @return deltaBase The amount of base tokens to be sent (< 0) or received (> 0).
      * @return deltaQuote The amount of quote tokens to be sent (< 0) or received (> 0).
@@ -248,7 +248,7 @@ abstract contract PricePoints is IPricePoints {
 
         uint256 maxQuote = nextQuote - currentQuote;
 
-        if (remainingQuote > maxQuote) {
+        if (remainingQuote >= maxQuote) {
             deltaQuote = maxQuote;
             deltaBase = widthScaled - base;
         } else {
@@ -267,7 +267,7 @@ abstract contract PricePoints is IPricePoints {
      * @param p0 The price of the base token in the quote token at the current price point.
      * @param p1 The price of the base token in the quote token at the next price point.
      * @param widthScaled The width of the segment in scaled base tokens.
-     * @param base The remaining base tokens.
+     * @param base The amount of base tokens already purchased in the current segment.
      * @param remainingQuote The remaining quote tokens.
      * @return deltaBase The amount of base tokens to be sent (< 0) or received (> 0).
      * @return deltaQuote The amount of quote tokens to be sent (< 0) or received (> 0).
@@ -280,7 +280,7 @@ abstract contract PricePoints is IPricePoints {
         uint256 dp = p1 - p0;
         uint256 currentQuote = Math.mulDiv(base, dp * base + 2 * p0 * widthScaled, 2e18 * widthScaled, false);
 
-        if (remainingQuote > currentQuote) {
+        if (remainingQuote >= currentQuote) {
             deltaQuote = currentQuote;
             deltaBase = base;
         } else {
