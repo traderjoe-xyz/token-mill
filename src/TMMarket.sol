@@ -436,10 +436,11 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @dev Returns the price points using the immutable arguments.
      * This function doesn't check that the index is within bounds. It should be done by the parent function.
      * @param i The index of the price point.
-     * @param swapB2Q Whether to swap base to quote (true) or quote to base (false).
-     * @return The price point.
+     * @param bid Whether to get the bid price (true), ie, the price at which the user can sell the base token,
+     * or the ask price (false), ie, the price at which the user can buy the base token.
+     * @return The price of the base token in the quote token at the specified index.
      */
-    function _pricePoints(uint256 i, bool swapB2Q) internal pure override returns (uint256) {
-        return _getUint((swapB2Q ? 110 : 126) + i * 32, 128);
+    function _pricePoints(uint256 i, bool bid) internal pure override returns (uint256) {
+        return _getUint((bid ? 110 : 126) + i * 32, 128);
     }
 }
