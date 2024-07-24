@@ -338,7 +338,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * @return The encoded token.
      */
     function _encodeToken(uint96 tokenType, address market) private pure returns (uint256) {
-        return uint256((tokenType << 160) | uint160(market));
+        return uint256((uint256(tokenType) << 160) | uint160(market));
     }
 
     /**
