@@ -128,22 +128,7 @@ contract Router is IRouter {
 
         (address[] memory pairs, uint256[] memory ids, address[] memory tokens) = _getPairsAndIds(route);
 
-        _transfer(tokens[0], msg.sender, pairs[0], amountIn);
-
-        address lastToken = tokens[pairs.length];
-        address recipient = lastToken == address(0) ? address(this) : to;
-
-        uint256 amountOut;
-        {
-            uint256 balanceBefore = _balanceOf(lastToken, recipient);
-            _swapExactIn(recipient, pairs, ids, amountIn);
-            uint256 balanceAfter = _balanceOf(lastToken, recipient);
-
-            if (balanceBefore + amountOutMin > balanceAfter) revert Router__InsufficientOutputAmount();
-            amountOut = balanceAfter - balanceBefore;
-        }
-
-        if (recipient == address(this)) _transfer(lastToken, recipient, to, amountOut);
+        uint256 amountOut = _swapExactIn(to, pairs, ids, tokens, amountIn, amountOutMin);
 
         if (msg.value > 0) {
             uint256 leftOver = address(this).balance;
@@ -177,24 +162,7 @@ contract Router is IRouter {
 
         (address[] memory pairs, uint256[] memory ids, address[] memory tokens) = _getPairsAndIds(route);
 
-        address token = tokens[0];
-        address recipient = pairs[0];
-
-        uint256 effectiveAmountIn;
-        {
-            uint256 balanceBefore = _balanceOf(token, recipient);
-            _transfer(token, msg.sender, recipient, amountIn);
-            effectiveAmountIn = _balanceOf(token, recipient) - balanceBefore;
-        }
-
-        token = tokens[pairs.length];
-        recipient = token == address(0) ? address(this) : to;
-
-        uint256 amountOut = _swapExactInSupportingFeeOnTransferTokens(recipient, pairs, ids, tokens, effectiveAmountIn);
-
-        if (amountOut < amountOutMin) revert Router__InsufficientOutputAmount();
-
-        if (recipient == address(this)) _transfer(token, recipient, to, amountOut);
+        uint256 amountOut = _swapExactInSupportingFeeOnTransferTokens(to, pairs, ids, tokens, amountIn, amountOutMin);
 
         if (msg.value > 0) {
             uint256 leftOver = address(this).balance;
@@ -226,27 +194,11 @@ contract Router is IRouter {
         _checkRecipient(to);
 
         (address[] memory pairs, uint256[] memory ids, address[] memory tokens) = _getPairsAndIds(route);
-        uint256[] memory amounts = _getAmounts(pairs, ids, tokens, amountOut);
-
-        uint256 amountIn = amounts[0];
+        uint256 amountIn = _getAmountIn(pairs, ids, tokens, amountOut);
 
         if (amountIn > amountInMax) revert Router__ExceedsMaxInputAmount();
 
-        _transfer(tokens[0], msg.sender, pairs[0], amountIn);
-
-        address lastToken = tokens[pairs.length];
-        address recipient = lastToken == address(0) ? address(this) : to;
-
-        {
-            uint256 balanceBefore = _balanceOf(lastToken, recipient);
-            _swapExactOut(recipient, pairs, ids, amounts);
-            uint256 balanceAfter = _balanceOf(lastToken, recipient);
-
-            if (balanceBefore + amountOut > balanceAfter) revert Router__InsufficientOutputAmount();
-            amountOut = balanceAfter - balanceBefore;
-        }
-
-        if (lastToken == address(0)) _transfer(lastToken, address(this), to, amountOut);
+        uint256 actualAmountOut = _swapExactOut(to, pairs, ids, tokens, amountIn, amountOut);
 
         if (msg.value > 0) {
             uint256 leftOver = address(this).balance;
@@ -255,7 +207,7 @@ contract Router is IRouter {
             }
         }
 
-        return (amountIn, amountOut);
+        return (amountIn, actualAmountOut);
     }
 
     /**
@@ -406,23 +358,19 @@ contract Router is IRouter {
     }
 
     /**
-     * @dev Get the amounts in of the route.
+     * @dev Get the amount in of the route.
      * @param pairs The pairs of the route.
      * @param ids The ids of the route.
      * @param tokens The tokens of the route.
      * @param amount The amount of tokens to be swapped.
-     * @return amounts The amounts of the route.
+     * @return amountIn The amount of tokens in.
      */
-    function _getAmounts(address[] memory pairs, uint256[] memory ids, address[] memory tokens, uint256 amount)
+    function _getAmountIn(address[] memory pairs, uint256[] memory ids, address[] memory tokens, uint256 amount)
         internal
         view
-        returns (uint256[] memory amounts)
+        returns (uint256 amountIn)
     {
-        uint256 length = tokens.length;
-        amounts = new uint256[](length);
-
-        uint256 i = length - 1;
-        amounts[i] = amount;
+        uint256 i = tokens.length - 1;
 
         for (; i > 0;) {
             (uint256 v, uint256 sv, uint256 t) = PackedRoute.decodeId(ids[--i]);
@@ -461,9 +409,9 @@ contract Router is IRouter {
             } else {
                 revert Router__InvalidId();
             }
-
-            amounts[i] = amount;
         }
+
+        return amount;
     }
 
     /**
@@ -473,18 +421,39 @@ contract Router is IRouter {
      * @param ids The ids of the route.
      * @param amount The amount of tokens to be swapped.
      */
-    function _swapExactIn(address to, address[] memory pairs, uint256[] memory ids, uint256 amount) internal {
+    function _swapExactIn(
+        address to,
+        address[] memory pairs,
+        uint256[] memory ids,
+        address[] memory tokens,
+        uint256 amount,
+        uint256 amountOutMin
+    ) internal returns (uint256) {
         uint256 length = pairs.length;
         address pair = pairs[0];
 
+        address lastToken = tokens[length];
+        address recipient = lastToken == address(0) ? address(this) : to;
+
+        uint256 balance = _balanceOf(lastToken, recipient);
+
+        _transfer(tokens[0], msg.sender, pair, amount);
+
         for (uint256 i; i < length;) {
             (uint256 v, uint256 sv, uint256 t) = PackedRoute.decodeId(ids[i]);
-            address recipient = ++i == length ? to : pairs[i];
+            address next = ++i == length ? recipient : pairs[i];
 
-            amount = _swap(pair, recipient, amount, v, sv, t);
+            amount = _swap(pair, next, amount, v, sv, t);
 
-            pair = recipient;
+            pair = next;
         }
+
+        uint256 amountOut = _balanceOf(lastToken, recipient) - balance;
+
+        if (amountOut < amountOutMin || amount < amountOutMin) revert Router__InsufficientOutputAmount();
+        if (recipient == address(this)) _transfer(lastToken, recipient, to, amountOut);
+
+        return amountOut;
     }
 
     /**
@@ -494,6 +463,7 @@ contract Router is IRouter {
      * @param ids The ids of the route.
      * @param tokens The tokens of the route.
      * @param amount The amount of tokens to be swapped.
+     * @param amountOutMin The minimum amount of tokens to be received.
      * @return The amount of tokens out.
      */
     function _swapExactInSupportingFeeOnTransferTokens(
@@ -501,22 +471,35 @@ contract Router is IRouter {
         address[] memory pairs,
         uint256[] memory ids,
         address[] memory tokens,
-        uint256 amount
+        uint256 amount,
+        uint256 amountOutMin
     ) internal returns (uint256) {
         uint256 length = pairs.length;
         address pair = pairs[0];
 
+        {
+            address token = tokens[0];
+            uint256 balanceBefore = _balanceOf(token, pair);
+            _transfer(token, msg.sender, pair, amount);
+            amount = _balanceOf(token, pair) - balanceBefore;
+        }
+
+        address tokenOut;
+        uint256 amountOut;
         for (uint256 i; i < length;) {
             (uint256 v, uint256 sv, uint256 t) = PackedRoute.decodeId(ids[i]);
-            address recipient = ++i == length ? to : pairs[i];
-            address tokenOut = tokens[i];
+            tokenOut = tokens[++i];
+            address next = i == length ? (tokenOut == address(0) ? address(this) : to) : pairs[i];
 
-            uint256 balance = _balanceOf(tokenOut, recipient);
-            _swap(pair, recipient, amount, v, sv, t);
-            amount = _balanceOf(tokenOut, recipient) - balance;
+            uint256 balance = _balanceOf(tokenOut, next);
+            amountOut = _swap(pair, next, amount, v, sv, t);
+            amount = _balanceOf(tokenOut, next) - balance;
 
-            pair = recipient;
+            pair = next;
         }
+
+        if (amountOut < amountOutMin || amount < amountOutMin) revert Router__InsufficientOutputAmount();
+        if (tokenOut == address(0)) _transfer(tokenOut, address(this), to, amountOut);
 
         return amount;
     }
@@ -526,24 +509,47 @@ contract Router is IRouter {
      * @param to The address to which the tokens will be transferred.
      * @param pairs The pairs of the route.
      * @param ids The ids of the route.
-     * @param amounts The amounts of the route.
+     * @param tokens The tokens of the route.
+     * @param amountIn The amount of tokens to be swapped.
+     * @param amountOutMin The minimum amount of tokens to be received.
+     * @return The amount of tokens out.
      */
-    function _swapExactOut(address to, address[] memory pairs, uint256[] memory ids, uint256[] memory amounts)
-        internal
-    {
+    function _swapExactOut(
+        address to,
+        address[] memory pairs,
+        uint256[] memory ids,
+        address[] memory tokens,
+        uint256 amountIn,
+        uint256 amountOutMin
+    ) internal returns (uint256) {
         uint256 length = pairs.length;
         address pair = pairs[0];
 
+        address lastToken = tokens[pairs.length];
+        address recipient = lastToken == address(0) ? address(this) : to;
+
+        uint256 balance = _balanceOf(lastToken, recipient);
+        uint256 amount = amountIn;
+
+        _transfer(tokens[0], msg.sender, pair, amount);
+
         for (uint256 i; i < length;) {
-            (uint256 v, uint256 sv, uint256 t) = PackedRoute.decodeId(ids[i]);
-            uint256 amountIn = amounts[i];
+            uint256 id = ids[i];
+            address next = ++i == length ? recipient : pairs[i];
+            (uint256 v, uint256 sv, uint256 t) = PackedRoute.decodeId(id);
 
-            address recipient = ++i == length ? to : pairs[i];
+            amount = _swap(pair, next, amount, v, sv, t);
 
-            _swap(pair, recipient, amountIn, v, sv, t);
-
-            pair = recipient;
+            pair = next;
         }
+
+        address to_ = to;
+        uint256 amountOut = _balanceOf(lastToken, recipient) - balance;
+
+        if (amountOut < amountOutMin || amount < amountOutMin) revert Router__InsufficientOutputAmount();
+        if (recipient == address(this)) _transfer(lastToken, recipient, to_, amountOut);
+
+        return amountOut;
     }
 
     /**
