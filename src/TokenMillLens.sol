@@ -106,6 +106,33 @@ contract TokenMillLens {
     }
 
     /**
+     * @dev Returns information for a given user about the markets they are a creator for.
+     * @param creatorAddress Address of the creator to gather data for.
+     * @return creatorData Struct containing data on the markets a user is a creator for.
+    */
+    function getCreatorData(
+        address creatorAddress
+    ) external view returns (CreatorData memory creatorData) {
+        uint256 creatorMarketsLength = _TMFactory.getCreatorMarketsLength(creatorAddress);
+        
+        address[] memory userMarkets = new address[](creatorMarketsLength);
+        uint256[] memory userMarketPendingFees = new uint256[](creatorMarketsLength);
+
+        for (uint256 i; i < creatorMarketsLength; i++) {
+            address marketAddress = _TMFactory.getCreatorMarketAt(creatorAddress, i);
+            (,uint256 creatorFees) = ITMMarket(marketAddress).getPendingFees();
+            
+            userMarkets[i] = marketAddress;
+            userMarketPendingFees[i] = creatorFees;
+        }
+
+        creatorData = CreatorData({
+            userMarkets: userMarkets,
+            userMarketPendingFees: userMarketPendingFees
+        });
+    }
+
+    /**
      * @dev Returns detailed data about a single market.
      * @param marketAddress Address of the market to gather data for.
      * @return detailedMarketData Struct containing detailed data about a market.
@@ -147,33 +174,6 @@ contract TokenMillLens {
                 }
             } catch {}
         }
-    }
-
-    /**
-     * @dev Returns information for a given user about the markets they are a creator for.
-     * @param creatorAddress Address of the creator to gather data for.
-     * @return creatorData Struct containing data on the markets a user is a creator for.
-    */
-    function getCreatorData(
-        address creatorAddress
-    ) external view returns (CreatorData memory creatorData) {
-        uint256 creatorMarketsLength = _TMFactory.getCreatorMarketsLength(creatorAddress);
-        
-        address[] memory userMarkets = new address[](creatorMarketsLength);
-        uint256[] memory userMarketPendingFees = new uint256[](creatorMarketsLength);
-
-        for (uint256 i; i < creatorMarketsLength; i++) {
-            address marketAddress = _TMFactory.getCreatorMarketAt(creatorAddress, i);
-            (,uint256 creatorFees) = ITMMarket(marketAddress).getPendingFees();
-            
-            userMarkets[i] = marketAddress;
-            userMarketPendingFees[i] = creatorFees;
-        }
-
-        creatorData = CreatorData({
-            userMarkets: userMarkets,
-            userMarketPendingFees: userMarketPendingFees
-        });
     }
 
 }
