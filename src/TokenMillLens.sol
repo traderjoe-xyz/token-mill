@@ -6,21 +6,24 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {ITMFactory} from "./interfaces/ITMFactory.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
 
+/**
+ * @title Token Mill Lens
+ * @dev The token mill lens contract.
+ */
 contract TokenMillLens {
 
-    struct MarketAddresses {
+    struct MarketData {
         address market;
         address quoteToken;
         address baseToken;
     }
 
-    struct AggregateMarketMetadata {
-        uint256 numberOfMarkets;
+    struct AggregateMarketData {
         address[] whitelistedQuoteTokens;
-        MarketAddresses[] allMarketAddresses;
+        MarketData[] allMarketData;
     }
 
-    struct IndividualMarketMetadata {
+    struct DetailedMarketData {
         bool marketExists;
         address quoteToken;
         address baseToken;
@@ -43,7 +46,7 @@ contract TokenMillLens {
         uint256 creatorPendingFees;
     }
 
-    struct UserMetadata {
+    struct CreatorData {
         address[] userMarkets;
         uint256[] userMarketPendingFees;
     }
@@ -54,98 +57,120 @@ contract TokenMillLens {
         _TMFactory = TMFactory;
     }
 
-    function getAllMarketMetadata(
+    /**
+     * @dev Returns high level data about markets launched from the TMFactory contract, for a specified chunk.
+     * @param start Starting index of markets in TMFactory _allMarkets array to gather data for.
+     * @param offset Number of markets to gather data for, starting from `start`.
+     * @return aggregateMarketData Struct containing aggregate market data.
+    */
+    function getAggregateMarketData(
         uint256 start,
         uint256 offset
-    ) external view returns (AggregateMarketMetadata memory aggregateMarketMetadata) {
+    ) external view returns (AggregateMarketData memory aggregateMarketData) {
         uint256 numberOfMarkets = _TMFactory.getMarketsLength();
 
         offset = start >= numberOfMarkets ? 0 : (start + offset > numberOfMarkets ? numberOfMarkets - start : offset);
 
-        MarketAddresses[] memory marketAddresses = new MarketAddresses[](offset);
+        MarketData[] memory marketData = new MarketData[](offset);
 
         for (uint256 i; i < offset; i++) {
             address market = _TMFactory.getMarketAt(start+i);
 
-            marketAddresses[i] = MarketAddresses({
+            marketData[i] = MarketData({
                 market: market,
                 quoteToken: ITMMarket(market).getQuoteToken(),
                 baseToken: ITMMarket(market).getBaseToken()
             });
         }
 
-        aggregateMarketMetadata = AggregateMarketMetadata({
-            numberOfMarkets: numberOfMarkets,
+        aggregateMarketData = AggregateMarketData({
             whitelistedQuoteTokens: _TMFactory.getQuoteTokens(),
-            allMarketAddresses: marketAddresses
+            allMarketData: marketData
         });
     }
 
-    function getMultipleMarketMetadata(
+    /**
+     * @dev Returns detailed data about every market in a provided array.
+     * @param marketAddresses Array of market addresses to gather data for.
+     * @return detailedMarketsData Array of structs, each containing detailed market data.
+    */
+    function getMultipleDetailedMarketData(
         address[] calldata marketAddresses
-    ) external view returns (IndividualMarketMetadata[] memory individualMarketsMetadata) {
+    ) external view returns (DetailedMarketData[] memory detailedMarketsData) {
         uint256 length = marketAddresses.length;
-        individualMarketsMetadata = new IndividualMarketMetadata[](length);
+        detailedMarketsData = new DetailedMarketData[](length);
 
         for (uint256 i; i < length; i++) {
-            individualMarketsMetadata[i] = getSingleMarketMetadata(marketAddresses[i]);
+            detailedMarketsData[i] = getSingleDetailedMarketData(marketAddresses[i]);
         }
     }
 
-    function getSingleMarketMetadata(
+    /**
+     * @dev Returns detailed data about a single market.
+     * @param marketAddress Address of the market to gather data for.
+     * @return detailedMarketData Struct containing detailed data about a market.
+    */
+    function getSingleDetailedMarketData(
         address marketAddress
-    ) public view returns (IndividualMarketMetadata memory individualMarketMetadata) {
-        ITMMarket market = ITMMarket(marketAddress);
+    ) public view returns (DetailedMarketData memory detailedMarketData) {
+        if (marketAddress.code.length != 0) {
+            ITMMarket market = ITMMarket(marketAddress);
 
-        try market.getBaseToken() returns (address baseToken) {
-            if (marketAddress == _TMFactory.getMarketOf(baseToken)) {
-                address quoteToken = market.getQuoteToken();
-                uint256 circulatingSupply = market.getCirculatingSupply();
-                (uint256 protocolFees, uint256 creatorFees) = market.getPendingFees();
+            try market.getBaseToken() returns (address baseToken) {
+                if (marketAddress == _TMFactory.getMarketOf(baseToken)) {
+                    address quoteToken = market.getQuoteToken();
+                    uint256 circulatingSupply = market.getCirculatingSupply();
+                    (uint256 protocolFees, uint256 creatorFees) = market.getPendingFees();
 
-                individualMarketMetadata = IndividualMarketMetadata({
-                    marketExists: true,
-                    quoteToken: quoteToken,
-                    baseToken: baseToken,
-                    baseTokenType: _TMFactory.getTokenType(baseToken),
-                    quoteTokenDecimals: IERC20Metadata(quoteToken).decimals(),
-                    baseTokenDecimals: IERC20Metadata(baseToken).decimals(),
-                    quoteTokenName: IERC20Metadata(quoteToken).name(),
-                    baseTokenName: IERC20Metadata(baseToken).name(),
-                    quoteTokenSymbol: IERC20Metadata(quoteToken).symbol(),
-                    baseTokenSymbol: IERC20Metadata(baseToken).symbol(),
-                    marketCreator: _TMFactory.getCreatorOf(marketAddress),
-                    protocolShare: _TMFactory.getProtocolShareOf(marketAddress),
-                    totalSupply: market.getTotalSupply(),
-                    circulatingSupply: circulatingSupply,
-                    spotPriceFillBid: market.getPriceAt(circulatingSupply, false),
-                    spotPriceFillAsk: market.getPriceAt(circulatingSupply, true),
-                    askPrices: market.getPricePoints(true),
-                    bidPrices: market.getPricePoints(false),
-                    protocolPendingFees: protocolFees,
-                    creatorPendingFees: creatorFees
-                });
-            }
-        } catch {}
+                    detailedMarketData = DetailedMarketData({
+                        marketExists: true,
+                        quoteToken: quoteToken,
+                        baseToken: baseToken,
+                        baseTokenType: _TMFactory.getTokenType(baseToken),
+                        quoteTokenDecimals: IERC20Metadata(quoteToken).decimals(),
+                        baseTokenDecimals: IERC20Metadata(baseToken).decimals(),
+                        quoteTokenName: IERC20Metadata(quoteToken).name(),
+                        baseTokenName: IERC20Metadata(baseToken).name(),
+                        quoteTokenSymbol: IERC20Metadata(quoteToken).symbol(),
+                        baseTokenSymbol: IERC20Metadata(baseToken).symbol(),
+                        marketCreator: _TMFactory.getCreatorOf(marketAddress),
+                        protocolShare: _TMFactory.getProtocolShareOf(marketAddress),
+                        totalSupply: market.getTotalSupply(),
+                        circulatingSupply: circulatingSupply,
+                        spotPriceFillBid: market.getPriceAt(circulatingSupply, false),
+                        spotPriceFillAsk: market.getPriceAt(circulatingSupply, true),
+                        askPrices: market.getPricePoints(true),
+                        bidPrices: market.getPricePoints(false),
+                        protocolPendingFees: protocolFees,
+                        creatorPendingFees: creatorFees
+                    });
+                }
+            } catch {}
+        }
     }
 
-    function getUserMetadata(
-        address userAddress
-    ) external view returns (UserMetadata memory userMetadata) {
-        uint256 creatorMarketsLength = _TMFactory.getCreatorMarketsLength(userAddress);
+    /**
+     * @dev Returns information for a given user about the markets they are a creator for.
+     * @param creatorAddress Address of the creator to gather data for.
+     * @return creatorData Struct containing data on the markets a user is a creator for.
+    */
+    function getCreatorData(
+        address creatorAddress
+    ) external view returns (CreatorData memory creatorData) {
+        uint256 creatorMarketsLength = _TMFactory.getCreatorMarketsLength(creatorAddress);
         
         address[] memory userMarkets = new address[](creatorMarketsLength);
         uint256[] memory userMarketPendingFees = new uint256[](creatorMarketsLength);
 
         for (uint256 i; i < creatorMarketsLength; i++) {
-            address marketAddress = _TMFactory.getCreatorMarketAt(userAddress, i);
+            address marketAddress = _TMFactory.getCreatorMarketAt(creatorAddress, i);
             (,uint256 creatorFees) = ITMMarket(marketAddress).getPendingFees();
             
             userMarkets[i] = marketAddress;
             userMarketPendingFees[i] = creatorFees;
         }
 
-        userMetadata = UserMetadata({
+        creatorData = CreatorData({
             userMarkets: userMarkets,
             userMarketPendingFees: userMarketPendingFees
         });

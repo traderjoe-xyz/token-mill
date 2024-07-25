@@ -17,65 +17,64 @@ contract TestTokenMillLens is TestHelper {
         tokenMillLens = new TokenMillLens(ITMFactory(address(factory)));
     }    
 
-    function test_getAllMarketMetadata() public {
-        TokenMillLens.AggregateMarketMetadata memory aggregateMarketMetadata = tokenMillLens.getAllMarketMetadata(0,10);
+    function test_getAggregateMarketData() public {
+        TokenMillLens.AggregateMarketData memory aggregateMarketData = tokenMillLens.getAggregateMarketData(0,10);
 
-        assertEq(aggregateMarketMetadata.numberOfMarkets, 3);
-        assertEq(aggregateMarketMetadata.whitelistedQuoteTokens.length, 3);
-        assertEq(aggregateMarketMetadata.whitelistedQuoteTokens[0], address(wnative));
+        assertEq(aggregateMarketData.whitelistedQuoteTokens.length, 3);
+        assertEq(aggregateMarketData.whitelistedQuoteTokens[0], address(wnative));
         
-        TokenMillLens.MarketAddresses memory marketAddresses = aggregateMarketMetadata.allMarketAddresses[0];
-        assertEq(marketAddresses.market, market0w);
-        assertEq(marketAddresses.quoteToken, address(wnative));
-        assertEq(marketAddresses.baseToken, address(token0));
+        TokenMillLens.MarketData memory marketData = aggregateMarketData.allMarketData[0];
+        assertEq(marketData.market, market0w);
+        assertEq(marketData.quoteToken, address(wnative));
+        assertEq(marketData.baseToken, address(token0));
         
-        aggregateMarketMetadata = tokenMillLens.getAllMarketMetadata(2,1);
-        marketAddresses = aggregateMarketMetadata.allMarketAddresses[0];
-        assertEq(marketAddresses.market, market21);
-        assertEq(marketAddresses.quoteToken, token1);
-        assertEq(marketAddresses.baseToken, token2);
+        aggregateMarketData = tokenMillLens.getAggregateMarketData(2,1);
+        marketData = aggregateMarketData.allMarketData[0];
+        assertEq(marketData.market, market21);
+        assertEq(marketData.quoteToken, token1);
+        assertEq(marketData.baseToken, token2);
     }
 
-    function test_getSingleMarketMetadata() public {
+    function test_getSingleDetailedMarketData() public {
         EmptyContract ec = new EmptyContract();
-        TokenMillLens.IndividualMarketMetadata memory individualMarketMetadata = 
-            tokenMillLens.getSingleMarketMetadata(address(ec));
-        assertEq(individualMarketMetadata.marketExists, false);
+        TokenMillLens.DetailedMarketData memory detailedMarketData = 
+            tokenMillLens.getSingleDetailedMarketData(address(ec));
+        assertEq(detailedMarketData.marketExists, false);
 
-        vm.expectRevert();
-        individualMarketMetadata = tokenMillLens.getSingleMarketMetadata(address(0));
+        detailedMarketData = tokenMillLens.getSingleDetailedMarketData(address(0));
+        assertEq(detailedMarketData.marketExists, false);
 
-        individualMarketMetadata = tokenMillLens.getSingleMarketMetadata(market0w);
-        assertEq(individualMarketMetadata.marketExists, true);
-        assertEq(individualMarketMetadata.quoteToken, address(wnative));
-        assertEq(individualMarketMetadata.baseToken, token0);
-        assertEq(individualMarketMetadata.baseTokenType, 1);
-        assertEq(individualMarketMetadata.quoteTokenDecimals, 18);
-        assertEq(individualMarketMetadata.baseTokenDecimals, 18);
-        assertEq(individualMarketMetadata.quoteTokenName, "Wrapped Native");
-        assertEq(individualMarketMetadata.baseTokenName, "Token0");
-        assertEq(individualMarketMetadata.quoteTokenSymbol, "WNATIVE");
-        assertEq(individualMarketMetadata.baseTokenSymbol, "T0");
-        assertEq(individualMarketMetadata.marketCreator, address(this));
-        assertEq(individualMarketMetadata.protocolShare, 1e17);
-        assertEq(individualMarketMetadata.totalSupply, 500_000_000e18);
-        assertEq(individualMarketMetadata.circulatingSupply, 0);
-        assertEq(individualMarketMetadata.spotPriceFillBid, 0);
-        assertEq(individualMarketMetadata.spotPriceFillAsk, 0);
-        assertEq(individualMarketMetadata.askPrices, askPrices0w);
-        assertEq(individualMarketMetadata.bidPrices, bidPrices0w);
-        assertEq(individualMarketMetadata.protocolPendingFees, 0);
-        assertEq(individualMarketMetadata.creatorPendingFees, 0);
+        detailedMarketData = tokenMillLens.getSingleDetailedMarketData(market0w);
+        assertEq(detailedMarketData.marketExists, true);
+        assertEq(detailedMarketData.quoteToken, address(wnative));
+        assertEq(detailedMarketData.baseToken, token0);
+        assertEq(detailedMarketData.baseTokenType, 1);
+        assertEq(detailedMarketData.quoteTokenDecimals, 18);
+        assertEq(detailedMarketData.baseTokenDecimals, 18);
+        assertEq(detailedMarketData.quoteTokenName, "Wrapped Native");
+        assertEq(detailedMarketData.baseTokenName, "Token0");
+        assertEq(detailedMarketData.quoteTokenSymbol, "WNATIVE");
+        assertEq(detailedMarketData.baseTokenSymbol, "T0");
+        assertEq(detailedMarketData.marketCreator, address(this));
+        assertEq(detailedMarketData.protocolShare, 1e17);
+        assertEq(detailedMarketData.totalSupply, 500_000_000e18);
+        assertEq(detailedMarketData.circulatingSupply, 0);
+        assertEq(detailedMarketData.spotPriceFillBid, 0);
+        assertEq(detailedMarketData.spotPriceFillAsk, 0);
+        assertEq(detailedMarketData.askPrices, askPrices0w);
+        assertEq(detailedMarketData.bidPrices, bidPrices0w);
+        assertEq(detailedMarketData.protocolPendingFees, 0);
+        assertEq(detailedMarketData.creatorPendingFees, 0);
     }
 
-    function test_getMultipleMarketMetadata() public {
+    function test_getMultipleDetailedMarketData() public {
         address[] memory marketAddresses = new address[](2);
         marketAddresses[0] = market0w;
         marketAddresses[1] = market21;
 
-        TokenMillLens.IndividualMarketMetadata[] memory individualMarketsMetadata = 
-            tokenMillLens.getMultipleMarketMetadata(marketAddresses);
-        assertEq(individualMarketsMetadata.length, 2);
+        TokenMillLens.DetailedMarketData[] memory detailedMarketsData = 
+            tokenMillLens.getMultipleDetailedMarketData(marketAddresses);
+        assertEq(detailedMarketsData.length, 2);
 
         uint256[] memory askPrices = new uint256[](3);
         askPrices[0] = 10e18;
@@ -87,39 +86,39 @@ contract TestTokenMillLens is TestHelper {
         bidPrices[1] = 10e18;
         bidPrices[2] = 20e18;        
 
-        assertEq(individualMarketsMetadata[1].marketExists, true);
-        assertEq(individualMarketsMetadata[1].quoteToken, token1);
-        assertEq(individualMarketsMetadata[1].baseToken, token2);
-        assertEq(individualMarketsMetadata[1].baseTokenType, 1);
-        assertEq(individualMarketsMetadata[1].quoteTokenDecimals, 18);
-        assertEq(individualMarketsMetadata[1].baseTokenDecimals, 18);
-        assertEq(individualMarketsMetadata[1].quoteTokenName, "Token1");
-        assertEq(individualMarketsMetadata[1].baseTokenName, "Token2");
-        assertEq(individualMarketsMetadata[1].quoteTokenSymbol, "T1");
-        assertEq(individualMarketsMetadata[1].baseTokenSymbol, "T2");
-        assertEq(individualMarketsMetadata[1].marketCreator, address(this));
-        assertEq(individualMarketsMetadata[1].protocolShare, 1e17);
-        assertEq(individualMarketsMetadata[1].totalSupply, 50_000_000e18);
-        assertEq(individualMarketsMetadata[1].circulatingSupply, 0);
-        assertEq(individualMarketsMetadata[1].spotPriceFillBid, bidPrices[0]);
-        assertEq(individualMarketsMetadata[1].spotPriceFillAsk, askPrices[0]);
-        assertEq(individualMarketsMetadata[1].askPrices, askPrices);
-        assertEq(individualMarketsMetadata[1].bidPrices, bidPrices);
-        assertEq(individualMarketsMetadata[1].protocolPendingFees, 0);
-        assertEq(individualMarketsMetadata[1].creatorPendingFees, 0);
+        assertEq(detailedMarketsData[1].marketExists, true);
+        assertEq(detailedMarketsData[1].quoteToken, token1);
+        assertEq(detailedMarketsData[1].baseToken, token2);
+        assertEq(detailedMarketsData[1].baseTokenType, 1);
+        assertEq(detailedMarketsData[1].quoteTokenDecimals, 18);
+        assertEq(detailedMarketsData[1].baseTokenDecimals, 18);
+        assertEq(detailedMarketsData[1].quoteTokenName, "Token1");
+        assertEq(detailedMarketsData[1].baseTokenName, "Token2");
+        assertEq(detailedMarketsData[1].quoteTokenSymbol, "T1");
+        assertEq(detailedMarketsData[1].baseTokenSymbol, "T2");
+        assertEq(detailedMarketsData[1].marketCreator, address(this));
+        assertEq(detailedMarketsData[1].protocolShare, 1e17);
+        assertEq(detailedMarketsData[1].totalSupply, 50_000_000e18);
+        assertEq(detailedMarketsData[1].circulatingSupply, 0);
+        assertEq(detailedMarketsData[1].spotPriceFillBid, bidPrices[0]);
+        assertEq(detailedMarketsData[1].spotPriceFillAsk, askPrices[0]);
+        assertEq(detailedMarketsData[1].askPrices, askPrices);
+        assertEq(detailedMarketsData[1].bidPrices, bidPrices);
+        assertEq(detailedMarketsData[1].protocolPendingFees, 0);
+        assertEq(detailedMarketsData[1].creatorPendingFees, 0);
     }
 
-    function test_getUserMetadata() public {
-        TokenMillLens.UserMetadata memory userMetadata = tokenMillLens.getUserMetadata(address(this));
+    function test_getCreatorData() public {
+        TokenMillLens.CreatorData memory creatorData = tokenMillLens.getCreatorData(address(this));
 
-        assertEq(userMetadata.userMarkets.length, 3);
-        assertEq(userMetadata.userMarketPendingFees.length, 3);
-        assertEq(userMetadata.userMarkets[0], market0w);
-        assertEq(userMetadata.userMarketPendingFees[0], 0);
+        assertEq(creatorData.userMarkets.length, 3);
+        assertEq(creatorData.userMarketPendingFees.length, 3);
+        assertEq(creatorData.userMarkets[0], market0w);
+        assertEq(creatorData.userMarketPendingFees[0], 0);
 
-        userMetadata = tokenMillLens.getUserMetadata(address(0));
-        assertEq(userMetadata.userMarkets.length, 0);
-        assertEq(userMetadata.userMarketPendingFees.length, 0);
+        creatorData = tokenMillLens.getCreatorData(address(0));
+        assertEq(creatorData.userMarkets.length, 0);
+        assertEq(creatorData.userMarketPendingFees.length, 0);
     }
 
 }
