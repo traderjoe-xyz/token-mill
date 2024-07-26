@@ -72,9 +72,9 @@ contract TestTokenMillLens is TestHelper {
         marketAddresses[0] = market0w;
         marketAddresses[1] = market21;
 
-        TokenMillLens.DetailedMarketData[] memory detailedMarketsData = 
+        TokenMillLens.DetailedMarketData[] memory detailedMarketData = 
             tokenMillLens.getMultipleDetailedMarketData(marketAddresses);
-        assertEq(detailedMarketsData.length, 2);
+        assertEq(detailedMarketData.length, 2);
 
         uint256[] memory askPrices = new uint256[](3);
         askPrices[0] = 10e18;
@@ -86,39 +86,39 @@ contract TestTokenMillLens is TestHelper {
         bidPrices[1] = 10e18;
         bidPrices[2] = 20e18;        
 
-        assertEq(detailedMarketsData[1].marketExists, true);
-        assertEq(detailedMarketsData[1].quoteToken, token1);
-        assertEq(detailedMarketsData[1].baseToken, token2);
-        assertEq(detailedMarketsData[1].baseTokenType, 1);
-        assertEq(detailedMarketsData[1].quoteTokenDecimals, 18);
-        assertEq(detailedMarketsData[1].baseTokenDecimals, 18);
-        assertEq(detailedMarketsData[1].quoteTokenName, "Token1");
-        assertEq(detailedMarketsData[1].baseTokenName, "Token2");
-        assertEq(detailedMarketsData[1].quoteTokenSymbol, "T1");
-        assertEq(detailedMarketsData[1].baseTokenSymbol, "T2");
-        assertEq(detailedMarketsData[1].marketCreator, address(this));
-        assertEq(detailedMarketsData[1].protocolShare, 1e17);
-        assertEq(detailedMarketsData[1].totalSupply, 50_000_000e18);
-        assertEq(detailedMarketsData[1].circulatingSupply, 0);
-        assertEq(detailedMarketsData[1].spotPriceFillBid, bidPrices[0]);
-        assertEq(detailedMarketsData[1].spotPriceFillAsk, askPrices[0]);
-        assertEq(detailedMarketsData[1].askPrices, askPrices);
-        assertEq(detailedMarketsData[1].bidPrices, bidPrices);
-        assertEq(detailedMarketsData[1].protocolPendingFees, 0);
-        assertEq(detailedMarketsData[1].creatorPendingFees, 0);
+        assertEq(detailedMarketData[1].marketExists, true);
+        assertEq(detailedMarketData[1].quoteToken, token1);
+        assertEq(detailedMarketData[1].baseToken, token2);
+        assertEq(detailedMarketData[1].baseTokenType, 1);
+        assertEq(detailedMarketData[1].quoteTokenDecimals, 18);
+        assertEq(detailedMarketData[1].baseTokenDecimals, 18);
+        assertEq(detailedMarketData[1].quoteTokenName, "Token1");
+        assertEq(detailedMarketData[1].baseTokenName, "Token2");
+        assertEq(detailedMarketData[1].quoteTokenSymbol, "T1");
+        assertEq(detailedMarketData[1].baseTokenSymbol, "T2");
+        assertEq(detailedMarketData[1].marketCreator, address(this));
+        assertEq(detailedMarketData[1].protocolShare, 1e17);
+        assertEq(detailedMarketData[1].totalSupply, 50_000_000e18);
+        assertEq(detailedMarketData[1].circulatingSupply, 0);
+        assertEq(detailedMarketData[1].spotPriceFillBid, bidPrices[0]);
+        assertEq(detailedMarketData[1].spotPriceFillAsk, askPrices[0]);
+        assertEq(detailedMarketData[1].askPrices, askPrices);
+        assertEq(detailedMarketData[1].bidPrices, bidPrices);
+        assertEq(detailedMarketData[1].protocolPendingFees, 0);
+        assertEq(detailedMarketData[1].creatorPendingFees, 0);
     }
 
     function test_getCreatorData() public {
         TokenMillLens.CreatorData memory creatorData = tokenMillLens.getCreatorData(address(this));
 
-        assertEq(creatorData.userMarkets.length, 3);
-        assertEq(creatorData.userMarketPendingFees.length, 3);
-        assertEq(creatorData.userMarkets[0], market0w);
-        assertEq(creatorData.userMarketPendingFees[0], 0);
+        assertEq(creatorData.creatorMarkets.length, 3);
+        assertEq(creatorData.creatorMarketPendingFees.length, 3);
+        assertEq(creatorData.creatorMarkets[0], market0w);
+        assertEq(creatorData.creatorMarketPendingFees[0], 0);
 
         creatorData = tokenMillLens.getCreatorData(address(0));
-        assertEq(creatorData.userMarkets.length, 0);
-        assertEq(creatorData.userMarketPendingFees.length, 0);
+        assertEq(creatorData.creatorMarkets.length, 0);
+        assertEq(creatorData.creatorMarketPendingFees.length, 0);
     }
 
 }
