@@ -35,7 +35,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     mapping(uint256 tokenType => address implementation) private _implementations;
     EnumerableSet.AddressSet private _quoteTokens;
 
-    mapping(address => EnumerableSet.AddressSet) private _creatorMarkets;
+    mapping(address creator => EnumerableSet.AddressSet markets) private _creatorMarkets;
 
     constructor() {
         _disableInitializers();
