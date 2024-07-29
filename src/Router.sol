@@ -198,7 +198,7 @@ contract Router is IRouter {
 
         if (amountIn > amountInMax) revert Router__ExceedsMaxInputAmount();
 
-        uint256 actualAmountOut = _swapExactOut(to, pairs, ids, tokens, amountIn, amountOut);
+        uint256 actualAmountOut = _swapExactIn(to, pairs, ids, tokens, amountIn, amountOut);
 
         if (msg.value > 0) {
             uint256 leftOver = address(this).balance;
@@ -502,54 +502,6 @@ contract Router is IRouter {
         if (tokenOut == address(0)) _transfer(tokenOut, address(this), to, amountOut);
 
         return amount;
-    }
-
-    /**
-     * @dev Swaps the minimum amount of tokens in the route for the exact (or greater) amount of tokens out.
-     * @param to The address to which the tokens will be transferred.
-     * @param pairs The pairs of the route.
-     * @param ids The ids of the route.
-     * @param tokens The tokens of the route.
-     * @param amountIn The amount of tokens to be swapped.
-     * @param amountOutMin The minimum amount of tokens to be received.
-     * @return The amount of tokens out.
-     */
-    function _swapExactOut(
-        address to,
-        address[] memory pairs,
-        uint256[] memory ids,
-        address[] memory tokens,
-        uint256 amountIn,
-        uint256 amountOutMin
-    ) internal returns (uint256) {
-        uint256 length = pairs.length;
-        address pair = pairs[0];
-
-        address lastToken = tokens[pairs.length];
-        address recipient = lastToken == address(0) ? address(this) : to;
-
-        uint256 balance = _balanceOf(lastToken, recipient);
-        uint256 amount = amountIn;
-
-        _transfer(tokens[0], msg.sender, pair, amount);
-
-        for (uint256 i; i < length;) {
-            uint256 id = ids[i];
-            address next = ++i == length ? recipient : pairs[i];
-            (uint256 v, uint256 sv, uint256 t) = PackedRoute.decodeId(id);
-
-            amount = _swap(pair, next, amount, v, sv, t);
-
-            pair = next;
-        }
-
-        address to_ = to;
-        uint256 amountOut = _balanceOf(lastToken, recipient) - balance;
-
-        if (amountOut < amountOutMin || amount < amountOutMin) revert Router__InsufficientOutputAmount();
-        if (recipient == address(this)) _transfer(lastToken, recipient, to_, amountOut);
-
-        return amountOut;
     }
 
     /**
