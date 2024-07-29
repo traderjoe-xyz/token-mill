@@ -91,6 +91,7 @@ contract CliffVestingContract is ICliffVestingContract, ReentrancyGuard {
         uint256 received = IERC20(token).balanceOf(address(this)) - balance;
 
         if (received < minAmount) revert CliffVestingContract__InsufficientAmountReceived(received, minAmount);
+        if (received > type(uint128).max) revert CliffVestingContract__Overflow();
 
         uint256 index = _vestingSchedules[token].length;
         _vestingSchedules[token].push(

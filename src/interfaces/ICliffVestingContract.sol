@@ -13,6 +13,7 @@ interface ICliffVestingContract {
     error CliffVestingContract__ZeroMinAmount();
     error CliffVestingContract__ZeroBeneficiary();
     error CliffVestingContract__NoVestedAmount();
+    error CliffVestingContract__Overflow();
 
     event VestingScheduleCreated(
         address indexed token,
