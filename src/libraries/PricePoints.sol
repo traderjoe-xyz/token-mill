@@ -344,11 +344,12 @@ abstract contract PricePoints is IPricePoints {
     function _pricePointsLength() internal view virtual returns (uint256);
 
     /**
-     * @dev Returns the price of the base token in the quote token at the specified index.
+     * @dev Returns the price points using the immutable arguments.
+     * This function doesn't check that the index is within bounds. It should be done by the parent function.
      * @param i The index of the price point.
-     * @param bid Whether to get the bid price (true), ie, the price at which the user can sell the base token,
-     * or the ask price (false), ie, the price at which the user can buy the base token.
+     * @param askPrice Whether to get the ask price (true), ie, the price at which the user can sell the base token,
+     * or the bid price (false), ie, the price at which the user can buy the base token.
      * @return The price of the base token in the quote token at the specified index.
      */
-    function _pricePoints(uint256 i, bool bid) internal view virtual returns (uint256);
+    function _pricePoints(uint256 i, bool askPrice) internal view virtual returns (uint256);
 }

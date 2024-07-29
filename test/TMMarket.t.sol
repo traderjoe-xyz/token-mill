@@ -42,8 +42,8 @@ contract TestTMMarket is TestHelper {
     function test_Fuzz_GetPriceAt(uint256 circulatingSupply) public view {
         circulatingSupply = bound(circulatingSupply, 0, 500_000_000e18);
 
-        uint256 askPrice = ITMMarket(market0w).getPriceAt(circulatingSupply, true);
-        uint256 bidPrice = ITMMarket(market0w).getPriceAt(circulatingSupply, false);
+        uint256 askPrice = ITMMarket(market0w).getPriceAt(circulatingSupply, false);
+        uint256 bidPrice = ITMMarket(market0w).getPriceAt(circulatingSupply, true);
 
         uint256 width = 500_000_000e18 / 2;
         uint256 index = circulatingSupply / width;

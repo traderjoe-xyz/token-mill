@@ -106,9 +106,11 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     function getPriceAt(uint256 circulatingSupply, bool swapB2Q) external pure override returns (uint256) {
         uint256 totalSupply = _totalSupply();
 
+        bool askPrice = !swapB2Q;
+
         if (circulatingSupply >= totalSupply) {
             if (circulatingSupply > totalSupply) revert TMMarket__InvalidCirculatingSupply();
-            return _pricePoints(_pricePointsLength() - 1, swapB2Q);
+            return _pricePoints(_pricePointsLength() - 1, askPrice);
         }
 
         circulatingSupply = circulatingSupply * 1e18 / _basePrecision();
@@ -117,10 +119,10 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 i = circulatingSupply / widthScaled;
         uint256 supply = circulatingSupply % widthScaled;
 
-        uint256 p0 = _pricePoints(i, swapB2Q);
-        uint256 p1 = _pricePoints(i + 1, swapB2Q);
+        uint256 p0 = _pricePoints(i, askPrice);
+        uint256 p1 = _pricePoints(i + 1, askPrice);
 
-        return p0 + Math.div((p1 - p0) * supply, widthScaled, swapB2Q);
+        return p0 + Math.div((p1 - p0) * supply, widthScaled, askPrice);
     }
 
     /**
@@ -441,11 +443,11 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @dev Returns the price points using the immutable arguments.
      * This function doesn't check that the index is within bounds. It should be done by the parent function.
      * @param i The index of the price point.
-     * @param bid Whether to get the bid price (true), ie, the price at which the user can sell the base token,
-     * or the ask price (false), ie, the price at which the user can buy the base token.
+     * @param askPrice Whether to get the ask price (true), ie, the price at which the user can sell the base token,
+     * or the bid price (false), ie, the price at which the user can buy the base token.
      * @return The price of the base token in the quote token at the specified index.
      */
-    function _pricePoints(uint256 i, bool bid) internal pure override returns (uint256) {
-        return _getUint((bid ? 109 : 125) + i * 32, 128);
+    function _pricePoints(uint256 i, bool askPrice) internal pure override returns (uint256) {
+        return _getUint((askPrice ? 109 : 125) + i * 32, 128);
     }
 }
