@@ -8,9 +8,8 @@ import {ITMMarket} from "./interfaces/ITMMarket.sol";
 
 /**
  * @title Token Mill Lens
- * @dev The token mill lens contract.
- * Contains logic for gathering aggregate data on markets deployed from the Token Mill factory
- * contract, along with detailed data on individual markets, and creator data about
+ * @dev Contains logic for gathering aggregate data on markets deployed from the Token Mill
+ * factory contract, along with detailed data on individual markets, and creator data about
  * associated markets and pending fees.
  */
 contract TokenMillLens {
