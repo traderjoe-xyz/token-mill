@@ -665,16 +665,43 @@ contract TestRouter is TestHelper {
             quoteTokenAmountIn: 0,
             baseTokenAmountOutMin: 1e22
         });
-        IRouter.VestingArgs[] memory vestings = new IRouter.VestingArgs[](2);
-        uint256 expectedBasePurchaseAmount = 7071067811865475244008; // pre-computed
+        IRouter.VestingArgs[] memory vestings;
 
-        vm.expectRevert(IRouter.Router__InsufficientReceivedQuote.selector);
+        vm.expectRevert(IRouter.Router__InvalidCreateTMMarketAndVestingInputs.selector);
         (address baseToken, address market, uint256 baseAmountReceived) = router.createTMMarketAndVesting(
             args, address(vesting), vestings
         );
 
-        args.quoteTokenAmountIn = 1e18;
+        vestings = new IRouter.VestingArgs[](2);
+        
+        vestings[0] = IRouter.VestingArgs({
+            beneficiary: address(1),
+            percentageAmountBps: 1_000,
+            start: uint80(block.timestamp),
+            cliffDuration: 0,
+            vestingDuration: 0
+        });
 
+        vestings[1] = IRouter.VestingArgs({
+            beneficiary: address(2),
+            percentageAmountBps: 1_000,
+            start: uint80(block.timestamp),
+            cliffDuration: 3600,
+            vestingDuration: 3600
+        });
+
+        vm.expectRevert(IRouter.Router__InvalidCreateTMMarketAndVestingInputs.selector);
+        (baseToken, market, baseAmountReceived) = router.createTMMarketAndVesting(
+            args, address(0), vestings
+        );
+
+        vm.expectRevert(ITMMarket.TMMarket__ZeroAmount.selector);
+        (baseToken, market, baseAmountReceived) = router.createTMMarketAndVesting(
+            args, address(vesting), vestings
+        );
+
+        args.quoteTokenAmountIn = 1e18;
+        
         vm.expectRevert(IRouter.Router__InsufficientReceivedBase.selector);
         (baseToken, market, baseAmountReceived) = router.createTMMarketAndVesting(
             args, address(vesting), vestings
@@ -687,28 +714,15 @@ contract TestRouter is TestHelper {
             args, address(vesting), vestings
         );
 
-        vestings[0] = IRouter.VestingArgs({
-            beneficiary: address(1),
-            amount: 1e18,
-            start: uint80(block.timestamp),
-            cliffDuration: uint80(block.timestamp + 3600),
-            vestingDuration: uint80(block.timestamp + 3600)
-        });
+        vestings[0].cliffDuration = 3600;
+        vestings[0].vestingDuration = 3600;
 
-        vestings[1] = IRouter.VestingArgs({
-            beneficiary: address(2),
-            amount: 1e18,
-            start: uint80(block.timestamp),
-            cliffDuration: uint80(block.timestamp + 3600),
-            vestingDuration: uint80(block.timestamp + 3600)
-        });
-
-        vm.expectRevert(IRouter.Router__InsufficientVestingAllocation.selector);
+        vm.expectRevert(IRouter.Router__InvalidVestingAllocation.selector);
         (baseToken, market, baseAmountReceived) = router.createTMMarketAndVesting(
             args, address(vesting), vestings
         );
 
-        vestings[1].amount = uint128(expectedBasePurchaseAmount - 1e18);
+        vestings[1].percentageAmountBps = 9_000;
 
         (baseToken, market, baseAmountReceived) = router.createTMMarketAndVesting(
             args, address(vesting), vestings
@@ -730,12 +744,14 @@ contract TestRouter is TestHelper {
             baseToken, 0
         );
 
-        assertEq(vestingSchedule.beneficiary, address(1), "test_CreateTMMarketAndCreateVesting::7");
-        assertEq(vestingSchedule.total, 1e18, "test_CreateTMMarketAndCreateVesting::8");
+        uint256 expectedVestingAmount = baseAmountReceived * 1_000 / 10_000;
+        assertEq(vestingSchedule.total, expectedVestingAmount, "test_CreateTMMarketAndCreateVesting::7");
+        assertEq(vestingSchedule.beneficiary, address(1), "test_CreateTMMarketAndCreateVesting::8");
 
         vestingSchedule = vesting.getVestingSchedule(baseToken, 1);        
 
-        assertEq(vestingSchedule.beneficiary, address(2), "test_CreateTMMarketAndCreateVesting::9");
-        assertEq(vestingSchedule.total, uint128(expectedBasePurchaseAmount - 1e18), "test_CreateTMMarketAndCreateVesting::10");
+        expectedVestingAmount = baseAmountReceived - expectedVestingAmount;
+        assertEq(vestingSchedule.total, expectedVestingAmount, "test_CreateTMMarketAndCreateVesting::9");
+        assertEq(vestingSchedule.beneficiary, address(2), "test_CreateTMMarketAndCreateVesting::10");
     }
 }

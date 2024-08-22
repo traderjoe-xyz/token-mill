@@ -268,46 +268,69 @@ contract Router is IRouter {
         address vestingContract,
         VestingArgs[] memory vestings
     ) external override returns (address baseToken, address market, uint256 baseAmountReceived) {
+        if (vestings.length == 0 || vestingContract == address(0)) {
+            revert Router__InvalidCreateTMMarketAndVestingInputs();
+        }
+
         (baseToken, market) = _tmFactory.createMarketAndToken(
-            args.tokenType, args.name, args.symbol, args.quoteToken, 
-            args.totalSupply, args.bidPrices, args.askPrices, args.args
+            args.tokenType,
+            args.name,
+            args.symbol,
+            args.quoteToken,
+            args.totalSupply,
+            args.bidPrices,
+            args.askPrices,
+            args.args
         );
-        
+
         _tmFactory.updateCreator(market, msg.sender);
 
-        uint256 transferredAmount;
         {
             uint256 startingBalance = IERC20(args.quoteToken).balanceOf(market);
             IERC20(args.quoteToken).safeTransferFrom(msg.sender, market, args.quoteTokenAmountIn);
-            transferredAmount = IERC20(args.quoteToken).balanceOf(market) - startingBalance;
+            uint256 transferredAmount = IERC20(args.quoteToken).balanceOf(market) - startingBalance;
+
+            (int256 deltaBaseAmount,) =
+                ITMMarket(market).swap(address(this), int256(transferredAmount), false, new bytes(0));
+
+            baseAmountReceived = Math.abs(deltaBaseAmount);
+
+            if (baseAmountReceived < args.baseTokenAmountOutMin) {
+                revert Router__InsufficientReceivedBase();
+            }
         }
 
-        if (transferredAmount == 0) {
-            revert Router__InsufficientReceivedQuote();
-        }        
+        IERC20(baseToken).forceApprove(vestingContract, baseAmountReceived);
 
-        (int256 deltaBaseAmount,) = ITMMarket(market).swap(
-            address(this), int256(transferredAmount), false, new bytes(0)
-        );
+        {
+            uint256 totalPercentageAmountBps;
+            uint256 totalAmountVested;
+            uint256 amountToVest;
 
-        baseAmountReceived = Math.abs(deltaBaseAmount);
-        if (baseAmountReceived < args.baseTokenAmountOutMin) {
-            revert Router__InsufficientReceivedBase();
-        }
-        
-        IERC20(baseToken).approve(vestingContract, baseAmountReceived);
+            for (uint256 i; i < vestings.length; ++i) {
+                if (i == vestings.length - 1) {
+                    amountToVest = baseAmountReceived - totalAmountVested; // includes dust
+                } else {
+                    amountToVest = baseAmountReceived * vestings[i].percentageAmountBps / 10_000;
+                    totalAmountVested += amountToVest;
+                }
 
-        uint256 totalVestedTokenAmount;
-        for (uint256 i; i < vestings.length; ++i) {
-            ICliffVestingContract(vestingContract).createVestingSchedule(
-                baseToken, vestings[i].beneficiary, vestings[i].amount, vestings[i].amount, 
-                vestings[i].start, vestings[i].cliffDuration, vestings[i].vestingDuration
-            );
-            totalVestedTokenAmount += vestings[i].amount;
-        }
-        
-        if (totalVestedTokenAmount != baseAmountReceived) {
-            revert Router__InsufficientVestingAllocation();
+                ICliffVestingContract(vestingContract).createVestingSchedule(
+                    baseToken,
+                    vestings[i].beneficiary,
+                    uint128(amountToVest),
+                    uint128(amountToVest),
+                    vestings[i].start,
+                    vestings[i].cliffDuration,
+                    vestings[i].vestingDuration
+                );
+
+                totalPercentageAmountBps += vestings[i].percentageAmountBps;
+            }
+
+            if (totalPercentageAmountBps != 10_000) {
+                revert Router__InvalidVestingAllocation();
+            }
         }
     }
 
