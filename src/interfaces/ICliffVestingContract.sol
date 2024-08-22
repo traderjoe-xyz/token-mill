@@ -20,10 +20,10 @@ interface ICliffVestingContract {
         address indexed sender,
         address indexed beneficiary,
         uint256 vesting,
-        uint128 amount,
-        uint80 start,
-        uint80 cliffDuration,
-        uint80 vestingDuration
+        uint256 amount,
+        uint256 start,
+        uint256 cliffDuration,
+        uint256 vestingDuration
     );
 
     event VestingScheduleTransferred(address indexed token, address indexed from, address indexed to, uint256 index);
