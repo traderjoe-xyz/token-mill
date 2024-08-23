@@ -17,6 +17,7 @@ interface IRouter {
     error Router__InsufficientReceivedBase();
     error Router__InvalidCreateTMMarketAndVestingInputs();
     error Router__InvalidVestingAllocation();
+    error Router__InvalidNativeAmountSent();
 
     struct TMMarketCreationAndPurchaseArgs {
         uint96 tokenType;
@@ -69,5 +70,5 @@ interface IRouter {
         TMMarketCreationAndPurchaseArgs memory args,
         address vestingContract,
         VestingArgs[] memory vestings
-    ) external returns (address baseToken, address market, uint256 baseAmountReceived);
+    ) external payable returns (address baseToken, address market, uint256 baseAmountReceived);
 }

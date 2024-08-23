@@ -267,16 +267,23 @@ contract Router is IRouter {
         TMMarketCreationAndPurchaseArgs memory args,
         address vestingContract,
         VestingArgs[] memory vestings
-    ) external override returns (address baseToken, address market, uint256 baseAmountReceived) {
+    ) external payable override returns (address baseToken, address market, uint256 baseAmountReceived) {
         if (vestings.length == 0 || vestingContract == address(0)) {
             revert Router__InvalidCreateTMMarketAndVestingInputs();
+        }
+
+        if (
+            (args.quoteToken == address(0) && msg.value != args.quoteTokenAmountIn)
+                || (args.quoteToken != address(0) && msg.value != 0)
+        ) {
+            revert Router__InvalidNativeAmountSent();
         }
 
         (baseToken, market) = _tmFactory.createMarketAndToken(
             args.tokenType,
             args.name,
             args.symbol,
-            args.quoteToken,
+            args.quoteToken == address(0) ? address(_wnative) : args.quoteToken,
             args.totalSupply,
             args.bidPrices,
             args.askPrices,
@@ -286,9 +293,11 @@ contract Router is IRouter {
         _tmFactory.updateCreator(market, msg.sender);
 
         {
-            uint256 startingBalance = IERC20(args.quoteToken).balanceOf(market);
-            IERC20(args.quoteToken).safeTransferFrom(msg.sender, market, args.quoteTokenAmountIn);
-            uint256 transferredAmount = IERC20(args.quoteToken).balanceOf(market) - startingBalance;
+            address quoteToken = args.quoteToken;
+
+            uint256 balanceBefore = _balanceOf(quoteToken, market);
+            _transfer(quoteToken, msg.sender, market, args.quoteTokenAmountIn);
+            uint256 transferredAmount = _balanceOf(quoteToken, market) - balanceBefore;
 
             (int256 deltaBaseAmount,) =
                 ITMMarket(market).swap(address(this), int256(transferredAmount), false, new bytes(0));
