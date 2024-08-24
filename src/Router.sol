@@ -272,10 +272,7 @@ contract Router is IRouter {
             revert Router__InvalidCreateTMMarketAndVestingInputs();
         }
 
-        if (
-            (args.quoteToken == address(0) && msg.value != args.quoteTokenAmountIn)
-                || (args.quoteToken != address(0) && msg.value != 0)
-        ) {
+        if (args.quoteToken == address(0) ? msg.value != args.quoteTokenAmountIn : msg.value != 0) {
             revert Router__InvalidNativeAmountSent();
         }
 
