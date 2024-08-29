@@ -18,7 +18,7 @@ library ImmutableHelper {
     error ImmutableHelper__PriceTooHigh(uint256 askPrice, uint256 maxPrice);
 
     uint256 constant MIN_LENGTH = 2;
-    uint256 constant MAX_LENGTH = 100;
+    uint256 constant MAX_LENGTH = 101;
     uint256 constant MAX_PRICE = 1e36;
     uint256 constant MAX_DECIMALS = 18;
 
