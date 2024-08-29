@@ -12,8 +12,7 @@ import {ITMMarket} from "./interfaces/ITMMarket.sol";
  * factory contract, along with detailed data on individual markets, and creator data about
  * associated markets and pending fees.
  */
-contract TokenMillLens {
-
+contract TMLens {
     struct MarketData {
         address market;
         address quoteToken;
@@ -34,7 +33,7 @@ contract TokenMillLens {
         uint256 baseTokenDecimals;
         string quoteTokenName;
         string baseTokenName;
-        string quoteTokenSymbol;	
+        string quoteTokenSymbol;
         string baseTokenSymbol;
         address marketCreator;
         uint256 protocolShare;
@@ -64,11 +63,12 @@ contract TokenMillLens {
      * @param start Starting index of markets in TMFactory _allMarkets array to gather data for.
      * @param offset Number of markets to gather data for, starting from `start`.
      * @return aggregateMarketData Struct containing aggregate market data.
-    */
-    function getAggregateMarketData(
-        uint256 start,
-        uint256 offset
-    ) external view returns (AggregateMarketData memory aggregateMarketData) {
+     */
+    function getAggregateMarketData(uint256 start, uint256 offset)
+        external
+        view
+        returns (AggregateMarketData memory aggregateMarketData)
+    {
         uint256 numberOfMarkets = _TMFactory.getMarketsLength();
 
         offset = start >= numberOfMarkets ? 0 : (start + offset > numberOfMarkets ? numberOfMarkets - start : offset);
@@ -76,7 +76,7 @@ contract TokenMillLens {
         MarketData[] memory marketData = new MarketData[](offset);
 
         for (uint256 i; i < offset; i++) {
-            address market = _TMFactory.getMarketAt(start+i);
+            address market = _TMFactory.getMarketAt(start + i);
 
             marketData[i] = MarketData({
                 market: market,
@@ -85,20 +85,20 @@ contract TokenMillLens {
             });
         }
 
-        aggregateMarketData = AggregateMarketData({
-            whitelistedQuoteTokens: _TMFactory.getQuoteTokens(),
-            allMarketData: marketData
-        });
+        aggregateMarketData =
+            AggregateMarketData({whitelistedQuoteTokens: _TMFactory.getQuoteTokens(), allMarketData: marketData});
     }
 
     /**
      * @dev Returns detailed data about every market in a provided array.
      * @param marketAddresses Array of market addresses to gather data for.
      * @return detailedMarketData Array of structs, each containing detailed market data.
-    */
-    function getMultipleDetailedMarketData(
-        address[] calldata marketAddresses
-    ) external view returns (DetailedMarketData[] memory detailedMarketData) {
+     */
+    function getMultipleDetailedMarketData(address[] calldata marketAddresses)
+        external
+        view
+        returns (DetailedMarketData[] memory detailedMarketData)
+    {
         uint256 length = marketAddresses.length;
         detailedMarketData = new DetailedMarketData[](length);
 
@@ -111,37 +111,34 @@ contract TokenMillLens {
      * @dev Returns information for a given user about the markets they are a creator for.
      * @param creatorAddress Address of the creator to gather data for.
      * @return creatorData Struct containing data on the markets a user is a creator for.
-    */
-    function getCreatorData(
-        address creatorAddress
-    ) external view returns (CreatorData memory creatorData) {
+     */
+    function getCreatorData(address creatorAddress) external view returns (CreatorData memory creatorData) {
         uint256 creatorMarketsLength = _TMFactory.getCreatorMarketsLength(creatorAddress);
-        
+
         address[] memory creatorMarkets = new address[](creatorMarketsLength);
         uint256[] memory creatorMarketPendingFees = new uint256[](creatorMarketsLength);
 
         for (uint256 i; i < creatorMarketsLength; i++) {
             address marketAddress = _TMFactory.getCreatorMarketAt(creatorAddress, i);
-            (,uint256 creatorFees) = ITMMarket(marketAddress).getPendingFees();
-            
+            (, uint256 creatorFees) = ITMMarket(marketAddress).getPendingFees();
+
             creatorMarkets[i] = marketAddress;
             creatorMarketPendingFees[i] = creatorFees;
         }
 
-        creatorData = CreatorData({
-            creatorMarkets: creatorMarkets,
-            creatorMarketPendingFees: creatorMarketPendingFees
-        });
+        creatorData = CreatorData({creatorMarkets: creatorMarkets, creatorMarketPendingFees: creatorMarketPendingFees});
     }
 
     /**
      * @dev Returns detailed data about a single market.
      * @param marketAddress Address of the market to gather data for.
      * @return detailedMarketData Struct containing detailed data about a market.
-    */
-    function getSingleDetailedMarketData(
-        address marketAddress
-    ) public view returns (DetailedMarketData memory detailedMarketData) {
+     */
+    function getSingleDetailedMarketData(address marketAddress)
+        public
+        view
+        returns (DetailedMarketData memory detailedMarketData)
+    {
         if (marketAddress.code.length != 0) {
             ITMMarket market = ITMMarket(marketAddress);
 
@@ -166,8 +163,8 @@ contract TokenMillLens {
                         protocolShare: _TMFactory.getProtocolShareOf(marketAddress),
                         totalSupply: market.getTotalSupply(),
                         circulatingSupply: circulatingSupply,
-                        spotPriceFillBid: market.getPriceAt(circulatingSupply, false),
-                        spotPriceFillAsk: market.getPriceAt(circulatingSupply, true),
+                        spotPriceFillBid: market.getPriceAt(circulatingSupply, true),
+                        spotPriceFillAsk: market.getPriceAt(circulatingSupply, false),
                         askPrices: market.getPricePoints(true),
                         bidPrices: market.getPricePoints(false),
                         protocolPendingFees: protocolFees,
@@ -177,5 +174,4 @@ contract TokenMillLens {
             } catch {}
         }
     }
-
 }
