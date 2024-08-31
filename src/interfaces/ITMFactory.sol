@@ -17,6 +17,7 @@ interface ITMFactory {
     error TMFactory__InvalidRecipient();
     error TMFactory__AddressZero();
     error TMFactory__SameTokens();
+    error TMFactory__ZeroFeeRecipients();
 
     // packedPrices = `(askPrice << 128) | bidPrice` for each price point
     event MarketCreated(
@@ -35,7 +36,7 @@ interface ITMFactory {
     event TokenImplementationUpdated(uint96 tokenType, address implementation);
     event QuoteTokenAdded(address quoteToken);
     event QuoteTokenRemoved(address quoteToken);
-    event ProtocolClaimerUpdated(address recipient);
+    event ProtocolFeeRecipientUpdated(address recipient);
 
     struct MarketParameters {
         uint96 protocolShare;
@@ -58,7 +59,7 @@ interface ITMFactory {
 
     function getProtocolShare() external view returns (uint256);
 
-    function getProtocolClaimer() external view returns (address);
+    function getProtocolFeeRecipient() external view returns (address);
 
     function getMarket(address tokenA, address tokenB) external view returns (bool tokenAisBase, address market);
 
@@ -85,11 +86,11 @@ interface ITMFactory {
 
     function updateCreator(address market, address creator) external;
 
-    function claimFees(address market, address recipient) external returns (uint256 fees);
+    function claimFees(address market) external returns (uint256 protocolFees, uint256 stakingFees);
 
     function updateProtocolShare(uint64 protocolShare) external;
 
-    function updateProtocolClaimer(address recipient) external;
+    function updateProtocolFeeRecipient(address recipient) external;
 
     function updateProtocolShareOf(address market, uint64 protocolShare) external;
 

@@ -25,7 +25,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
     address public immutable override STAKING;
 
-    address private _protocolClaimer;
+    address private _protocolFeeRecipient;
     uint64 private _protocolShare;
 
     mapping(address market => MarketParameters) private _parameters;
@@ -122,11 +122,11 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     }
 
     /**
-     * @dev Gets the protocol fee claimer, that is the address that can claim the protocol fees.
-     * @return The address of the protocol fee claimer.
+     * @dev Gets the protocol fee recipient.
+     * @return The address of the protocol fee recipient.
      */
-    function getProtocolClaimer() external view override returns (address) {
-        return _protocolClaimer;
+    function getProtocolFeeRecipient() external view override returns (address) {
+        return _protocolFeeRecipient;
     }
 
     /**
@@ -236,24 +236,19 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
     /**
      * @dev Claims the fees of the specified market.
+     * Only the staking contract can claim the staking fees.
+     * Claim the protocol fees if the protocolFeeRecipient is not address(0).
      * @param market The address of the market.
-     * @param recipient The address of the recipient.
-     * @return fees The amount of fees claimed.
+     * @return protocolFees The protocol fees claimed.
+     * @return stakingFees The staking fees claimed.
      */
-    function claimFees(address market, address recipient) external override returns (uint256 fees) {
-        if (recipient == address(0)) revert TMFactory__InvalidRecipient();
+    function claimFees(address market) external override returns (uint256 protocolFees, uint256 stakingFees) {
+        address protocolFeeRecipient = _protocolFeeRecipient;
+        address stakingFeeRecipient = msg.sender == STAKING ? STAKING : address(0);
 
-        MarketParameters storage parameters = _parameters[market];
+        if (uint160(protocolFeeRecipient) | uint160(stakingFeeRecipient) == 0) revert TMFactory__ZeroFeeRecipients();
 
-        address creator = parameters.creator;
-        address protocolClaimer = _protocolClaimer;
-
-        bool isCreator = msg.sender == creator;
-        bool isProtocol = msg.sender == protocolClaimer;
-
-        if (!isCreator && !isProtocol) revert TMFactory__InvalidCaller();
-
-        fees = ITMMarket(market).claimFees(msg.sender, recipient, isCreator, isProtocol);
+        return ITMMarket(market).claimFees(msg.sender, protocolFeeRecipient, stakingFeeRecipient);
     }
 
     /**
@@ -266,12 +261,12 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
     /**
      * @dev Updates the protocol fee recipient.
-     * @param protocolClaimer The address of the protocol fee recipient.
+     * @param protocolFeeRecipient The address of the protocol fee recipient.
      */
-    function updateProtocolClaimer(address protocolClaimer) external override onlyOwner {
-        _protocolClaimer = protocolClaimer;
+    function updateProtocolFeeRecipient(address protocolFeeRecipient) external override onlyOwner {
+        _protocolFeeRecipient = protocolFeeRecipient;
 
-        emit ProtocolClaimerUpdated(protocolClaimer);
+        emit ProtocolFeeRecipientUpdated(protocolFeeRecipient);
     }
 
     /**
@@ -284,7 +279,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
         MarketParameters storage parameters = _parameters[market];
 
-        ITMMarket(market).claimFees(address(0), address(0), false, false);
+        ITMMarket(market).claimFees(msg.sender, _protocolFeeRecipient, address(0));
 
         parameters.protocolShare = protocolShare;
 

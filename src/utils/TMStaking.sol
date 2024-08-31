@@ -576,10 +576,10 @@ contract TMStaking is ReentrancyGuardUpgradeable {
         uint256 totalShares = totalStaked + totalLocked;
 
         if (totalShares > 0) {
-            uint256 claimed = ITMFactory(FACTORY).claimFees(market, address(this));
+            (, uint256 stakingFees) = ITMFactory(FACTORY).claimFees(market);
 
-            if (claimed > 0) {
-                accRewardPerShare += (claimed * PRECISION) / totalShares;
+            if (stakingFees > 0) {
+                accRewardPerShare += (stakingFees * PRECISION) / totalShares;
                 staking.accRewardPerShare = accRewardPerShare;
             }
         }

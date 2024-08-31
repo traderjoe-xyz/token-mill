@@ -156,16 +156,16 @@ contract TMFactoryTest is Test {
         factory.updateProtocolShare(uint64(bound(shares, 1e18 + 1, type(uint64).max)));
     }
 
-    function test_Fuzz_UpdateProtocolClaimer(address recipient) public {
-        assertEq(factory.getProtocolClaimer(), address(0), "test_Fuzz_UpdateProtocolClaimer::1");
+    function test_Fuzz_UpdateProtocolFeeRecipient(address recipient) public {
+        assertEq(factory.getProtocolFeeRecipient(), address(0), "test_Fuzz_UpdateProtocolFeeRecipient::1");
 
-        factory.updateProtocolClaimer(recipient);
+        factory.updateProtocolFeeRecipient(recipient);
 
-        assertEq(factory.getProtocolClaimer(), recipient, "test_Fuzz_UpdateProtocolClaimer::2");
+        assertEq(factory.getProtocolFeeRecipient(), recipient, "test_Fuzz_UpdateProtocolFeeRecipient::2");
 
-        factory.updateProtocolClaimer(address(0));
+        factory.updateProtocolFeeRecipient(address(0));
 
-        assertEq(factory.getProtocolClaimer(), address(0), "test_Fuzz_UpdateProtocolClaimer::3");
+        assertEq(factory.getProtocolFeeRecipient(), address(0), "test_Fuzz_UpdateProtocolFeeRecipient::3");
     }
 
     function test_Fuzz_CreateTokenAndMarket(
@@ -403,62 +403,66 @@ contract TMFactoryTest is Test {
 
         router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp);
 
-        (uint256 protocol1, uint256 creator1) = ITMMarket(market1).getPendingFees();
+        (uint256 protocol1, uint256 staking1) = ITMMarket(market1).getPendingFees();
 
-        factory.updateProtocolClaimer(feeRecipient);
+        factory.updateProtocolFeeRecipient(feeRecipient);
 
         vm.prank(staking);
-        uint256 claimed1c = factory.claimFees(market1, alice);
+        (uint256 protocol1Claimed, uint256 staking1Claimed) = factory.claimFees(market1);
 
-        assertEq(claimed1c, creator1, "test_ClaimFees::1");
-        assertEq(IERC20(wnative).balanceOf(alice), creator1, "test_ClaimFees::2");
+        assertEq(protocol1Claimed, protocol1, "test_ClaimFees::1");
+        assertEq(staking1Claimed, staking1, "test_ClaimFees::2");
+
+        assertEq(IERC20(wnative).balanceOf(feeRecipient), protocol1, "test_ClaimFees::2");
+        assertEq(IERC20(wnative).balanceOf(staking), staking1, "test_ClaimFees::2");
 
         {
-            (uint256 protocol1_, uint256 creator1_) = ITMMarket(market1).getPendingFees();
+            (uint256 protocolA, uint256 stakingA) = ITMMarket(market1).getPendingFees();
 
-            assertEq(protocol1_, protocol1, "test_ClaimFees::3");
-            assertEq(creator1_, 0, "test_ClaimFees::4");
-
-            vm.prank(address(feeRecipient));
-            uint256 claimed1p = factory.claimFees(market1, feeRecipient);
-
-            assertEq(claimed1p, protocol1, "test_ClaimFees::5");
-            assertEq(IERC20(wnative).balanceOf(feeRecipient), protocol1, "test_ClaimFees::6");
-
-            (protocol1_, creator1_) = ITMMarket(market1).getPendingFees();
-
-            assertEq(protocol1_, 0, "test_ClaimFees::7");
-            assertEq(creator1_, 0, "test_ClaimFees::8");
+            assertEq(protocolA, 0, "test_ClaimFees::3");
+            assertEq(stakingA, 0, "test_ClaimFees::4");
         }
 
         router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp);
 
-        (uint256 protocol2, uint256 creator2) = ITMMarket(market1).getPendingFees();
+        (uint256 protocol2, uint256 staking2) = ITMMarket(market1).getPendingFees();
 
         assertApproxEqAbs(protocol2, protocol1, 1, "test_ClaimFees::9");
-        assertApproxEqAbs(creator2, creator1, 1, "test_ClaimFees::10");
+        assertApproxEqAbs(staking2, staking1, 1, "test_ClaimFees::10");
 
         vm.prank(feeRecipient);
-        uint256 claimed2p = factory.claimFees(market1, feeRecipient);
+        (uint256 protocol2Claimed, uint256 staking2Claimed) = factory.claimFees(market1);
 
-        assertEq(claimed2p, protocol2, "test_ClaimFees::11");
-        assertEq(IERC20(wnative).balanceOf(feeRecipient), protocol1 + protocol2, "test_ClaimFees::12");
+        assertEq(protocol2Claimed, protocol2, "test_ClaimFees::11");
+        assertEq(staking2Claimed, 0, "test_ClaimFees::12");
 
-        (uint256 protocol2_, uint256 creator2_) = ITMMarket(market1).getPendingFees();
+        assertEq(IERC20(wnative).balanceOf(feeRecipient), protocol1 + protocol2, "test_ClaimFees::13");
+        assertEq(IERC20(wnative).balanceOf(staking), staking1, "test_ClaimFees::14");
 
-        assertEq(protocol2_, 0, "test_ClaimFees::13");
-        assertEq(creator2_, creator2, "test_ClaimFees::14");
+        {
+            (uint256 protocol3, uint256 staking3) = ITMMarket(market1).getPendingFees();
 
-        vm.prank(staking);
-        uint256 claimed2c = factory.claimFees(market1, alice);
+            assertEq(protocol3, 0, "test_ClaimFees::13");
+            assertEq(staking3, staking2, "test_ClaimFees::14");
+        }
 
-        assertEq(claimed2c, creator2, "test_ClaimFees::15");
-        assertEq(IERC20(wnative).balanceOf(alice), creator1 + creator2, "test_ClaimFees::16");
+        {
+            vm.prank(staking);
+            (uint256 protocol3Claimed, uint256 staking3Claimed) = factory.claimFees(market1);
 
-        (protocol2_, creator2_) = ITMMarket(market1).getPendingFees();
+            assertEq(protocol3Claimed, 0, "test_ClaimFees::15");
+            assertEq(staking3Claimed, staking2, "test_ClaimFees::16");
+        }
 
-        assertEq(protocol2_, 0, "test_ClaimFees::17");
-        assertEq(creator2_, 0, "test_ClaimFees::18");
+        assertEq(IERC20(wnative).balanceOf(feeRecipient), protocol1 + protocol2, "test_ClaimFees::17");
+        assertEq(IERC20(wnative).balanceOf(staking), staking1 + staking2, "test_ClaimFees::18");
+
+        {
+            (uint256 protocolA, uint256 stakingA) = ITMMarket(market1).getPendingFees();
+
+            assertEq(protocolA, 0, "test_ClaimFees::3");
+            assertEq(stakingA, 0, "test_ClaimFees::4");
+        }
     }
 
     function test_ClaimFeesAndUpdateProtocolFees() public {
@@ -470,41 +474,17 @@ contract TMFactoryTest is Test {
 
         router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp);
 
-        (uint256 protocol1, uint256 creator1) = ITMMarket(market1).getPendingFees();
+        (uint256 protocol1, uint256 staking1) = ITMMarket(market1).getPendingFees();
 
         assertGt(protocol1, 0, "test_ClaimFeesAndUpdateProtocolFees::1");
-        assertGt(creator1, 0, "test_ClaimFeesAndUpdateProtocolFees::2");
+        assertGt(staking1, 0, "test_ClaimFeesAndUpdateProtocolFees::2");
 
         factory.updateProtocolShareOf(market1, 0.5e18);
 
-        (uint256 protocol1_, uint256 creator1_) = ITMMarket(market1).getPendingFees();
+        (uint256 protocol1_, uint256 staking1_) = ITMMarket(market1).getPendingFees();
 
         assertEq(protocol1_, protocol1, "test_ClaimFeesAndUpdateProtocolFees::3");
-        assertEq(creator1_, creator1, "test_ClaimFeesAndUpdateProtocolFees::4");
-    }
-
-    function test_Revert_ClaimFees() public {
-        (, address market1) = _setUpAndCreateToken(alice);
-        (, address market2) = _setUpAndCreateToken(bob);
-
-        vm.expectRevert(ITMFactory.TMFactory__InvalidRecipient.selector);
-        factory.claimFees(market1, address(0));
-
-        vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
-        vm.prank(alice);
-        factory.claimFees(market1, alice);
-
-        vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
-        vm.prank(alice);
-        factory.claimFees(market2, alice);
-
-        vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
-        vm.prank(bob);
-        factory.claimFees(market1, bob);
-
-        vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
-        vm.prank(bob);
-        factory.claimFees(market2, bob);
+        assertEq(staking1_, staking1, "test_ClaimFeesAndUpdateProtocolFees::4");
     }
 
     function _setUpAndCreateToken(address sender) internal returns (address token, address market) {

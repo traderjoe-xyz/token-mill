@@ -25,7 +25,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     uint256 internal _quoteReserve;
 
     uint256 internal _protocolUnclaimedFees;
-    uint256 internal _creatorUnclaimedFees;
+    uint256 internal _stakingUnclaimedFees;
 
     /**
      * @dev Modifier to prevent reentrancy.
@@ -145,12 +145,10 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     /**
      * @dev Returns the pending fees.
      * @return protocolFees The protocol fees.
-     * @return creatorFees The creator fees.
+     * @return stakingFees The staking fees.
      */
-    function getPendingFees() external view override returns (uint256 protocolFees, uint256 creatorFees) {
-        (, uint256 pendingProtocolFees, uint256 pendingCreatorFees) = _getPendingFees(ITMFactory(_factory()));
-
-        return (pendingProtocolFees, pendingCreatorFees);
+    function getPendingFees() external view override returns (uint256 protocolFees, uint256 stakingFees) {
+        (, protocolFees, stakingFees) = _getPendingFees(ITMFactory(_factory()));
     }
 
     /**
@@ -231,63 +229,72 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     /**
      * @dev Claims the fees.
      * @param caller The caller of the function.
-     * @param recipient The recipient of the fees.
-     * @param isCreator Whether to claim the creator fees.
-     * @param isProtocol Whether to claim the protocol fees.
-     * @return fees The fees claimed.
+     * @param protocolFeeRecipient The protocol fee recipient. If it's address(0), the fees will be cached.
+     * @param stakingFeeRecipient The staking fee recipient. If it's address(0), the fees will be cached.
+     * @return protocolFees The protocol fees.
+     * @return stakingFees The staking fees.
      */
-    function claimFees(address caller, address recipient, bool isCreator, bool isProtocol)
+    function claimFees(address caller, address protocolFeeRecipient, address stakingFeeRecipient)
         external
         override
         nonReentrant
-        returns (uint256 fees)
+        returns (uint256 protocolFees, uint256 stakingFees)
     {
         ITMFactory factory = ITMFactory(_factory());
 
         if (msg.sender != address(factory)) revert TMMarket__OnlyFactory();
 
-        (uint256 quoteReserve, uint256 pendingProtocolFees, uint256 pendingCreatorFees) = _getPendingFees(factory);
+        (uint256 quoteReserve, uint256 pendingProtocolFees, uint256 pendingStakingFees) = _getPendingFees(factory);
 
-        if (isProtocol) {
-            fees = pendingProtocolFees;
-
-            pendingProtocolFees = 0;
+        if (protocolFeeRecipient == address(0)) {
+            _protocolUnclaimedFees = pendingProtocolFees;
+        } else {
+            protocolFees = pendingProtocolFees;
             _protocolUnclaimedFees = 0;
         }
 
-        if (isCreator) {
-            fees += pendingCreatorFees;
-
-            pendingCreatorFees = 0;
-            _creatorUnclaimedFees = 0;
+        if (stakingFeeRecipient == address(0)) {
+            _stakingUnclaimedFees = pendingStakingFees;
+        } else {
+            stakingFees = pendingStakingFees;
+            _stakingUnclaimedFees = 0;
         }
 
-        if (pendingProtocolFees > 0) _protocolUnclaimedFees = pendingProtocolFees;
-        if (pendingCreatorFees > 0) _creatorUnclaimedFees = pendingCreatorFees;
+        uint256 totalFees = stakingFees + protocolFees;
 
-        if (fees > 0) {
-            _quoteReserve = quoteReserve - fees;
+        if (totalFees > 0) {
+            _quoteReserve = quoteReserve - totalFees;
 
-            IERC20(_quoteToken()).safeTransfer(recipient, fees);
+            IERC20 quoteToken = IERC20(_quoteToken());
 
-            emit FeesClaimed(caller, recipient, fees);
+            if (protocolFees > 0) {
+                quoteToken.safeTransfer(protocolFeeRecipient, protocolFees);
+
+                emit ProtocolFeesClaimed(caller, protocolFeeRecipient, protocolFees);
+            }
+
+            if (stakingFees > 0) {
+                quoteToken.safeTransfer(stakingFeeRecipient, stakingFees);
+
+                emit StakingFeesClaimed(caller, stakingFeeRecipient, stakingFees);
+            }
         }
     }
 
     /**
      * @dev Returns the pending fees.
      * @param factory The factory contract.
-     * @return The quote reserve, protocol unclaimed fees, and creator unclaimed fees.
+     * @return The quote reserve, protocol unclaimed fees, and staking unclaimed fees.
      */
     function _getPendingFees(ITMFactory factory) internal view returns (uint256, uint256, uint256) {
         uint256 protocolUnclaimedFees = _protocolUnclaimedFees;
-        uint256 creatorUnclaimedFees = _creatorUnclaimedFees;
+        uint256 stakingUnclaimedFees = _stakingUnclaimedFees;
 
         uint256 quoteReserve = _quoteReserve;
         (, uint256 minQuoteAmount) = _getQuoteAmount(0, _totalSupply() - _baseReserve, false, true);
 
         if (quoteReserve > minQuoteAmount) {
-            uint256 totalUnclaimedFees = protocolUnclaimedFees + creatorUnclaimedFees;
+            uint256 totalUnclaimedFees = protocolUnclaimedFees + stakingUnclaimedFees;
             uint256 totalFees = quoteReserve - minQuoteAmount;
 
             if (totalFees > totalUnclaimedFees) {
@@ -299,11 +306,11 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
                 if (protocolFees > fees) revert TMMarket__InvalidFees();
 
                 protocolUnclaimedFees += protocolFees;
-                creatorUnclaimedFees += fees - protocolFees;
+                stakingUnclaimedFees += fees - protocolFees;
             }
         }
 
-        return (quoteReserve, protocolUnclaimedFees, creatorUnclaimedFees);
+        return (quoteReserve, protocolUnclaimedFees, stakingUnclaimedFees);
     }
 
     /**
