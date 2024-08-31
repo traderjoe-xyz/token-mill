@@ -29,10 +29,12 @@ contract TestHelper is Test {
     uint256[] public askPrices0w;
     uint256[] public bidPrices0w;
 
+    address public stakingAddress;
+
     function setUp() public virtual {
         wnative = new WNative();
 
-        address factoryImp = address(new TMFactory());
+        address factoryImp = address(new TMFactory(stakingAddress));
         factory = TMFactory(
             address(
                 new TransparentUpgradeableProxy(
@@ -105,5 +107,10 @@ contract TestHelper is Test {
         vm.label(market0w, "Market0W");
         vm.label(market10, "Market10");
         vm.label(market21, "Market21");
+    }
+
+    function _predictContractAddress(uint256 deltaNonce) internal view returns (address) {
+        uint256 nonce = vm.getNonce(address(this)) + deltaNonce;
+        return vm.computeCreateAddress(address(this), nonce);
     }
 }

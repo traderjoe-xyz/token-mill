@@ -14,11 +14,12 @@ contract TMFactoryTest is Test {
     address bob = makeAddr("Bob");
 
     address feeRecipient = makeAddr("FeeRecipient");
+    address staking = makeAddr("TMStaking");
 
     function setUp() public {
         wnative = address(new WNative());
 
-        address factoryImp = address(new TMFactory());
+        address factoryImp = address(new TMFactory(staking));
         factory = TMFactory(
             address(
                 new TransparentUpgradeableProxy(
@@ -406,7 +407,7 @@ contract TMFactoryTest is Test {
 
         factory.updateProtocolClaimer(feeRecipient);
 
-        vm.prank(alice);
+        vm.prank(staking);
         uint256 claimed1c = factory.claimFees(market1, alice);
 
         assertEq(claimed1c, creator1, "test_ClaimFees::1");
@@ -448,7 +449,7 @@ contract TMFactoryTest is Test {
         assertEq(protocol2_, 0, "test_ClaimFees::13");
         assertEq(creator2_, creator2, "test_ClaimFees::14");
 
-        vm.prank(alice);
+        vm.prank(staking);
         uint256 claimed2c = factory.claimFees(market1, alice);
 
         assertEq(claimed2c, creator2, "test_ClaimFees::15");
@@ -491,7 +492,19 @@ contract TMFactoryTest is Test {
 
         vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
         vm.prank(alice);
+        factory.claimFees(market1, alice);
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
+        vm.prank(alice);
         factory.claimFees(market2, alice);
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
+        vm.prank(bob);
+        factory.claimFees(market1, bob);
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
+        vm.prank(bob);
+        factory.claimFees(market2, bob);
     }
 
     function _setUpAndCreateToken(address sender) internal returns (address token, address market) {

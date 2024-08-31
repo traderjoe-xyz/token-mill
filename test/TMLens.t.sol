@@ -16,7 +16,7 @@ contract TestTMLens is TestHelper {
         lens = new TMLens(ITMFactory(address(factory)));
     }
 
-    function test_getAggregateMarketData() public {
+    function test_getAggregateMarketData() public view {
         TMLens.AggregateMarketData memory aggregateMarketData = lens.getAggregateMarketData(0, 10);
 
         assertEq(aggregateMarketData.whitelistedQuoteTokens.length, 3, "test_getAggregateMarketData::1");
@@ -65,7 +65,7 @@ contract TestTMLens is TestHelper {
         assertEq(detailedMarketData.creatorPendingFees, 0, "test_getSingleDetailedMarketData::22");
     }
 
-    function test_getMultipleDetailedMarketData() public {
+    function test_getMultipleDetailedMarketData() public view {
         address[] memory marketAddresses = new address[](2);
         marketAddresses[0] = market0w;
         marketAddresses[1] = market21;
@@ -105,7 +105,7 @@ contract TestTMLens is TestHelper {
         assertEq(detailedMarketData[1].creatorPendingFees, 0, "test_getMultipleDetailedMarketData::21");
     }
 
-    function test_getCreatorData() public {
+    function test_getCreatorData() public view {
         TMLens.CreatorData memory creatorData = lens.getCreatorData(address(this));
 
         assertEq(creatorData.creatorMarkets.length, 3, "test_getCreatorData::1");

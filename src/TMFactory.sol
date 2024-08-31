@@ -23,6 +23,8 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     uint256 private constant MAX_QUOTE_TOKENS = 64;
     uint64 private constant MAX_PROTOCOL_SHARE = 1e18;
 
+    address public immutable override STAKING;
+
     address private _protocolClaimer;
     uint64 private _protocolShare;
 
@@ -37,8 +39,10 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
     mapping(address creator => EnumerableSet.AddressSet markets) private _creatorMarkets;
 
-    constructor() {
+    constructor(address staking) {
         _disableInitializers();
+
+        STAKING = staking;
     }
 
     /**

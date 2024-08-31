@@ -42,6 +42,8 @@ interface ITMFactory {
         address creator;
     }
 
+    function STAKING() external view returns (address);
+
     function getCreatorOf(address market) external view returns (address);
 
     function getCreatorMarketsLength(address creator) external view returns (uint256);
