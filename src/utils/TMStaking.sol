@@ -8,6 +8,7 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {CliffVestingContract} from "../CliffVestingContract.sol";
 import {ITMMarket} from "../interfaces/ITMMarket.sol";
 import {ITMFactory} from "../interfaces/ITMFactory.sol";
+import {ITMStaking} from "../interfaces/ITMStaking.sol";
 
 /**
  * @title Token Mill Staking Contract
@@ -19,66 +20,12 @@ import {ITMFactory} from "../interfaces/ITMFactory.sol";
  * - tokens vest linearly from the `start` to the `start + vestingDuration` timestamp
  * - vested tokens can only be claimed after the `start + cliffDuration` timestamp
  */
-contract TMStaking is ReentrancyGuardUpgradeable {
+contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.UintSet;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    error TMStakingZeroAmount();
-    error TMStakingOverflow();
-    error TMStakingInvalidToken(address token);
-    error TMStakingInsufficientStake(int256 amount, int256 lockedAmount);
-    error TMStakingInvalidVestingSchedule();
-    error TMStakingInvalidCliffDuration();
-    error TMStakingZeroBeneficiary();
-    error TMStakingInsufficientAmountReceived(uint256 received, uint256 minAmount);
-    error TMStakingOnlyBeneficiary();
-    error TMStakingZeroUnlockedAmount();
-    error TMStakingSameBeneficiary();
-    error TMStakingVestingExpired();
-
-    event Update(address indexed account, address indexed token, int256 deltaAmount, int256 deltaLockedAmount);
-    event Claim(address indexed account, address indexed token, address indexed rewardToken, uint256 amount);
-    event EmergencyUpdate(address indexed account, address indexed token, int256 deltaAmount, int256 deltaLockedAmount);
-    event VestingScheduleCreated(
-        address indexed token,
-        address indexed creator,
-        address indexed beneficiary,
-        uint256 amount,
-        uint80 start,
-        uint80 cliffDuration,
-        uint80 vestingDuration
-    );
-    event VestingScheduleTransferred(
-        address indexed token, uint256 indexed index, address oldBeneficiary, address newBeneficiary
-    );
-
-    struct User {
-        uint128 amount;
-        uint128 lockedAmount;
-        uint256 pending;
-        uint256 accRewardPerShare;
-        EnumerableSet.UintSet vestingIndices;
-    }
-
-    struct VestingSchedule {
-        address beneficiary;
-        uint128 total;
-        uint128 released;
-        uint80 start;
-        uint80 cliffDuration;
-        uint80 vestingDuration;
-    }
-
-    struct Staking {
-        uint128 totalStaked;
-        uint128 totalLocked;
-        uint256 accRewardPerShare;
-        mapping(address => User) users;
-        VestingSchedule[] vestingSchedules;
-    }
-
-    address public immutable FACTORY;
+    address public immutable override FACTORY;
 
     uint256 internal constant BPS = 10_000;
     uint256 internal constant PRECISION = 1e32;
@@ -95,7 +42,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
     /**
      * @dev Initializes ReentrancyGuard dependency.
      */
-    function initialize() external initializer {
+    function initialize() external override initializer {
         __ReentrancyGuard_init();
     }
 
@@ -105,7 +52,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @return totalStaked The total staked amount of the specified token.
      * @return totalLocked The total locked amount of the specified token.
      */
-    function getTotalStake(address token) external view returns (uint256 totalStaked, uint256 totalLocked) {
+    function getTotalStake(address token) external view override returns (uint256 totalStaked, uint256 totalLocked) {
         Staking storage staking = _stakings[token];
         return (staking.totalStaked, staking.totalLocked);
     }
@@ -117,7 +64,12 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @return amount The stake amount of the specified account for the specified token.
      * @return lockedAmount The locked amount of the specified account for the specified token.
      */
-    function getStakeOf(address token, address account) external view returns (uint256 amount, uint256 lockedAmount) {
+    function getStakeOf(address token, address account)
+        external
+        view
+        override
+        returns (uint256 amount, uint256 lockedAmount)
+    {
         User storage user = _stakings[token].users[account];
         return (user.amount, user.lockedAmount);
     }
@@ -127,7 +79,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param account The address of the account.
      * @return The number of tokens staked by the specified account.
      */
-    function getNumberOfTokensOf(address account) external view returns (uint256) {
+    function getNumberOfTokensOf(address account) external view override returns (uint256) {
         return _userTokens[account].length();
     }
 
@@ -138,7 +90,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param index The index of the token.
      * @return The token staked by the specified account at the specified index.
      */
-    function getTokenOf(address account, uint256 index) external view returns (address) {
+    function getTokenOf(address account, uint256 index) external view override returns (address) {
         return _userTokens[account].at(index);
     }
 
@@ -147,7 +99,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param token The address of the token.
      * @return The total number of vesting schedules of the specified token.
      */
-    function getNumberOfVestings(address token) external view returns (uint256) {
+    function getNumberOfVestings(address token) external view override returns (uint256) {
         return _stakings[token].vestingSchedules.length;
     }
 
@@ -157,7 +109,12 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param index The index of the vesting schedule.
      * @return The vesting schedule of the specified token at the specified index.
      */
-    function getVestingScheduleAt(address token, uint256 index) external view returns (VestingSchedule memory) {
+    function getVestingScheduleAt(address token, uint256 index)
+        external
+        view
+        override
+        returns (VestingSchedule memory)
+    {
         return _stakings[token].vestingSchedules[index];
     }
 
@@ -167,7 +124,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param account The address of the account.
      * @return The number of vesting schedules of the specified token for the specified account.
      */
-    function getNumberOfVestingsOf(address token, address account) external view returns (uint256) {
+    function getNumberOfVestingsOf(address token, address account) external view override returns (uint256) {
         return _stakings[token].users[account].vestingIndices.length();
     }
 
@@ -179,7 +136,12 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param index The index of the vesting schedule.
      * @return The global index of the vesting schedule of the specified token for the specified account at the specified index.
      */
-    function getVestingIndexOf(address token, address account, uint256 index) external view returns (uint256) {
+    function getVestingIndexOf(address token, address account, uint256 index)
+        external
+        view
+        override
+        returns (uint256)
+    {
         return _stakings[token].users[account].vestingIndices.at(index);
     }
 
@@ -191,7 +153,12 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param timestamp The timestamp at which the amount of releasable tokens will be calculated.
      * @return The total vested amount of tokens by the specified token at the specified index at the specified timestamp.
      */
-    function getVestedAmount(address token, uint256 index, uint256 timestamp) external view returns (uint256) {
+    function getVestedAmount(address token, uint256 index, uint256 timestamp)
+        external
+        view
+        override
+        returns (uint256)
+    {
         VestingSchedule storage vesting = _stakings[token].vestingSchedules[index];
 
         return _vestingSchedule(vesting.total, vesting.start, vesting.cliffDuration, vesting.vestingDuration, timestamp);
@@ -203,7 +170,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param index The index of the vesting schedule.
      * @return The amount of tokens that can be released by the specified token at the specified index.
      */
-    function getReleasableAmount(address token, uint256 index) external view returns (uint256) {
+    function getReleasableAmount(address token, uint256 index) external view override returns (uint256) {
         VestingSchedule storage vesting = _stakings[token].vestingSchedules[index];
 
         return _vestingSchedule(
@@ -218,7 +185,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param account The address of the account.
      * @return pending The pending rewards of the specified account for the specified token.
      */
-    function getPendingRewards(address token, address account) external view returns (uint256 pending) {
+    function getPendingRewards(address token, address account) external view override returns (uint256 pending) {
         Staking storage staking = _stakings[token];
         User storage user = staking.users[account];
 
@@ -249,6 +216,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      */
     function deposit(address token, address to, uint256 amount, uint256 minAmount)
         external
+        override
         nonReentrant
         returns (uint256 actualAmount)
     {
@@ -269,7 +237,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param amount The amount of tokens to be withdrawn.
      * @return The amount of tokens withdrawn.
      */
-    function withdraw(address token, address to, uint256 amount) external nonReentrant returns (uint256) {
+    function withdraw(address token, address to, uint256 amount) external override nonReentrant returns (uint256) {
         if (amount == 0) revert TMStakingZeroAmount();
         if (amount > type(uint128).max) revert TMStakingOverflow();
         if (to == address(0)) revert TMStakingZeroBeneficiary();
@@ -290,7 +258,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param to The address that will receive the rewards.
      * @return The amount of tokens claimed.
      */
-    function claimRewards(address token, address to) external nonReentrant returns (uint256) {
+    function claimRewards(address token, address to) external override nonReentrant returns (uint256) {
         Staking storage staking = _stakings[token];
         User storage user = staking.users[msg.sender];
 
@@ -328,7 +296,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
         uint80 start,
         uint80 cliffDuration,
         uint80 vestingDuration
-    ) external nonReentrant returns (uint256 index) {
+    ) external override nonReentrant returns (uint256 index) {
         if (cliffDuration > vestingDuration) revert TMStakingInvalidCliffDuration();
         if (start + vestingDuration <= block.timestamp) revert TMStakingInvalidVestingSchedule();
         if (beneficiary == address(0)) revert TMStakingZeroBeneficiary();
@@ -358,7 +326,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      * @param index The index of the vesting schedule.
      * @return unlocked The amount of tokens unlocked.
      */
-    function unlock(address token, uint256 index) external nonReentrant returns (uint256 unlocked) {
+    function unlock(address token, uint256 index) external override nonReentrant returns (uint256 unlocked) {
         Staking storage staking = _stakings[token];
         VestingSchedule storage vesting = staking.vestingSchedules[index];
 
@@ -388,6 +356,7 @@ contract TMStaking is ReentrancyGuardUpgradeable {
      */
     function transferVesting(address token, address newBeneficiary, uint256 index)
         external
+        override
         nonReentrant
         returns (uint256)
     {
