@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 import "./TestHelper.sol";
 import "../src/utils/TMStaking.sol";
+import "../src/interfaces/ITMStaking.sol";
 import "./mocks/MockERC20.sol";
 
 contract TMStakingTest is TestHelper {
@@ -109,21 +110,21 @@ contract TMStakingTest is TestHelper {
         deal(token0, address(this), max + 1);
         IERC20(token0).approve(address(staking), max + 1);
 
-        vm.expectRevert(TMStaking.TMStakingZeroBeneficiary.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroBeneficiary.selector);
         staking.deposit(token0, address(0), 1, 1);
 
-        vm.expectRevert(TMStaking.TMStakingZeroAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroAmount.selector);
         staking.deposit(token0, address(this), 0, 0);
 
-        vm.expectRevert(TMStaking.TMStakingOverflow.selector);
+        vm.expectRevert(ITMStaking.TMStakingOverflow.selector);
         staking.deposit(token0, address(this), max + 1, max + 1);
 
-        vm.expectRevert(abi.encodeWithSelector(TMStaking.TMStakingInsufficientAmountReceived.selector, 1, 2));
+        vm.expectRevert(abi.encodeWithSelector(ITMStaking.TMStakingInsufficientAmountReceived.selector, 1, 2));
         staking.deposit(token0, address(this), 1, 2);
 
         staking.deposit(token0, address(this), max, max);
 
-        vm.expectRevert(TMStaking.TMStakingOverflow.selector);
+        vm.expectRevert(ITMStaking.TMStakingOverflow.selector);
         staking.deposit(token0, address(this), 1, 1);
 
         MockERC20 token = new MockERC20("Token", "TKN", 18);
@@ -131,7 +132,7 @@ contract TMStakingTest is TestHelper {
         token.mint(address(this), 1);
         token.approve(address(staking), 1);
 
-        vm.expectRevert(abi.encodeWithSelector(TMStaking.TMStakingInvalidToken.selector, address(token)));
+        vm.expectRevert(abi.encodeWithSelector(ITMStaking.TMStakingInvalidToken.selector, address(token)));
         staking.deposit(address(token), address(this), 1, 1);
     }
 
@@ -192,16 +193,16 @@ contract TMStakingTest is TestHelper {
     function test_Revert_Withdraw() public {
         uint256 max = type(uint128).max;
 
-        vm.expectRevert(TMStaking.TMStakingZeroAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroAmount.selector);
         staking.withdraw(token0, address(this), 0);
 
-        vm.expectRevert(TMStaking.TMStakingOverflow.selector);
+        vm.expectRevert(ITMStaking.TMStakingOverflow.selector);
         staking.withdraw(token0, address(this), max + 1);
 
-        vm.expectRevert(TMStaking.TMStakingZeroBeneficiary.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroBeneficiary.selector);
         staking.withdraw(token0, address(0), 1);
 
-        vm.expectRevert(abi.encodeWithSelector(TMStaking.TMStakingInsufficientStake.selector, -1, 0));
+        vm.expectRevert(abi.encodeWithSelector(ITMStaking.TMStakingInsufficientStake.selector, -1, 0));
         staking.withdraw(token0, address(this), 1);
     }
 
@@ -341,9 +342,9 @@ contract TMStakingTest is TestHelper {
         assertEq(staking.getVestingIndexOf(token0, bob, 0), 1, "test_Release::24");
         assertEq(staking.getVestingIndexOf(token1, alice, 0), 0, "test_Release::25");
 
-        TMStaking.VestingSchedule memory vesting0A = staking.getVestingScheduleAt(token0, 0);
-        TMStaking.VestingSchedule memory vesting0B = staking.getVestingScheduleAt(token0, 1);
-        TMStaking.VestingSchedule memory vesting1A = staking.getVestingScheduleAt(token1, 0);
+        ITMStaking.VestingSchedule memory vesting0A = staking.getVestingScheduleAt(token0, 0);
+        ITMStaking.VestingSchedule memory vesting0B = staking.getVestingScheduleAt(token0, 1);
+        ITMStaking.VestingSchedule memory vesting1A = staking.getVestingScheduleAt(token1, 0);
 
         VestingAmounts memory amounts0;
         VestingAmounts memory amounts1;
@@ -401,13 +402,13 @@ contract TMStakingTest is TestHelper {
         assertEq(staking.getReleasableAmount(token0, 1), 0, "test_Release::60");
         assertEq(staking.getReleasableAmount(token1, 0), 0, "test_Release::61");
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token0, 0);
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token0, 1);
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token1, 0);
 
         vesting0A = staking.getVestingScheduleAt(token0, 0);
@@ -428,13 +429,13 @@ contract TMStakingTest is TestHelper {
         assertEq(staking.getReleasableAmount(token0, 1), 0, "test_Release::69");
         assertEq(staking.getReleasableAmount(token1, 0), 0, "test_Release::70");
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token0, 0);
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token0, 1);
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token1, 0);
 
         vesting0A = staking.getVestingScheduleAt(token0, 0);
@@ -455,13 +456,13 @@ contract TMStakingTest is TestHelper {
         assertEq(staking.getReleasableAmount(token0, 1), 0, "test_Release::78");
         assertEq(staking.getReleasableAmount(token1, 0), 0, "test_Release::79");
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token0, 0);
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token0, 1);
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token1, 0);
 
         vesting0A = staking.getVestingScheduleAt(token0, 0);
@@ -506,12 +507,12 @@ contract TMStakingTest is TestHelper {
         assertEq(staking.getReleasableAmount(token0, 1), releasable0B_0, "test_Release::99");
         assertEq(staking.getReleasableAmount(token1, 0), 0, "test_Release::100");
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token0, 0);
 
         staking.unlock(token0, 1);
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token1, 0);
 
         vesting0A = staking.getVestingScheduleAt(token0, 0);
@@ -563,7 +564,7 @@ contract TMStakingTest is TestHelper {
         assertEq(staking.getReleasableAmount(token0, 1), releasable0B_1, "test_Release::123");
         assertEq(staking.getReleasableAmount(token1, 0), releasable1A_0, "test_Release::124");
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token0, 0);
 
         staking.unlock(token0, 1);
@@ -600,11 +601,11 @@ contract TMStakingTest is TestHelper {
         assertEq(amounts1.totalAmount, releasable1A_0, "test_Release::138");
         assertEq(amounts1.totalLocked, total1A - releasable1A_0, "test_Release::139");
 
-        vm.expectRevert(TMStaking.TMStakingOnlyBeneficiary.selector);
+        vm.expectRevert(ITMStaking.TMStakingOnlyBeneficiary.selector);
         vm.prank(bob);
         staking.transferVesting(token1, bob, 0);
 
-        vm.expectRevert(TMStaking.TMStakingSameBeneficiary.selector);
+        vm.expectRevert(ITMStaking.TMStakingSameBeneficiary.selector);
         vm.prank(alice);
         staking.transferVesting(token1, alice, 0);
 
@@ -643,7 +644,7 @@ contract TMStakingTest is TestHelper {
         assertEq(staking.getReleasableAmount(token0, 1), releasable0B_2, "test_Release::153");
         assertEq(staking.getReleasableAmount(token1, 0), releasable1A_1, "test_Release::154");
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token0, 0);
 
         staking.unlock(token0, 1);
@@ -704,12 +705,12 @@ contract TMStakingTest is TestHelper {
         assertEq(staking.getReleasableAmount(token0, 1), releasable0B_3, "test_Release::175");
         assertEq(staking.getReleasableAmount(token1, 0), 0, "test_Release::176");
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token0, 0);
 
         staking.unlock(token0, 1);
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token1, 0);
 
         vesting0A = staking.getVestingScheduleAt(token0, 0);
@@ -774,7 +775,7 @@ contract TMStakingTest is TestHelper {
 
         staking.unlock(token0, 1);
 
-        vm.expectRevert(TMStaking.TMStakingZeroUnlockedAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroUnlockedAmount.selector);
         staking.unlock(token1, 0);
 
         vesting0A = staking.getVestingScheduleAt(token0, 0);
@@ -829,28 +830,28 @@ contract TMStakingTest is TestHelper {
             ? (type(uint80).max, 0)
             : (uint80(bound(cliffDuration, vestingDuration + 1, type(uint80).max)), vestingDuration);
 
-        vm.expectRevert(TMStaking.TMStakingZeroBeneficiary.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroBeneficiary.selector);
         staking.createVestingSchedule(token0, address(0), amount, 0, start, cliffDuration, vestingDuration);
 
-        vm.expectRevert(TMStaking.TMStakingInvalidCliffDuration.selector);
+        vm.expectRevert(ITMStaking.TMStakingInvalidCliffDuration.selector);
         staking.createVestingSchedule(token0, beneficiary, amount, amount, start, badCliffDuration, badVestingDuration);
 
         uint80 badStart = uint80(bound(start, 0, block.timestamp - 1));
         badVestingDuration = uint80(bound(vestingDuration, 0, badStart));
 
-        vm.expectRevert(TMStaking.TMStakingInvalidVestingSchedule.selector);
+        vm.expectRevert(ITMStaking.TMStakingInvalidVestingSchedule.selector);
         staking.createVestingSchedule(token0, beneficiary, amount, amount, badStart, 0, badVestingDuration);
 
         deal(token0, address(this), uint256(type(uint128).max) + 1);
         IERC20(token0).approve(address(staking), uint256(type(uint128).max) + 1);
 
-        vm.expectRevert(TMStaking.TMStakingZeroAmount.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroAmount.selector);
         staking.createVestingSchedule(token0, beneficiary, 0, 0, start, cliffDuration, vestingDuration);
 
         if (amount == type(uint128).max) --amount;
 
         vm.expectRevert(
-            abi.encodeWithSelector(TMStaking.TMStakingInsufficientAmountReceived.selector, amount, amount + 1)
+            abi.encodeWithSelector(ITMStaking.TMStakingInsufficientAmountReceived.selector, amount, amount + 1)
         );
         staking.createVestingSchedule(token0, beneficiary, amount, amount + 1, start, cliffDuration, vestingDuration);
     }
@@ -876,35 +877,35 @@ contract TMStakingTest is TestHelper {
         );
 
         vm.prank(alice);
-        vm.expectRevert(TMStaking.TMStakingZeroBeneficiary.selector);
+        vm.expectRevert(ITMStaking.TMStakingZeroBeneficiary.selector);
         staking.transferVesting(token0, address(0), 0);
 
         vm.prank(alice);
-        vm.expectRevert(TMStaking.TMStakingSameBeneficiary.selector);
+        vm.expectRevert(ITMStaking.TMStakingSameBeneficiary.selector);
         staking.transferVesting(token0, alice, 0);
 
         if (newBeneficiary == address(0) || newBeneficiary == alice) newBeneficiary = bob;
 
-        vm.expectRevert(TMStaking.TMStakingOnlyBeneficiary.selector);
+        vm.expectRevert(ITMStaking.TMStakingOnlyBeneficiary.selector);
         vm.prank(newBeneficiary);
         staking.transferVesting(token0, newBeneficiary, 0);
 
         vm.prank(alice);
         staking.transferVesting(token0, newBeneficiary, 0);
 
-        vm.expectRevert(TMStaking.TMStakingOnlyBeneficiary.selector);
+        vm.expectRevert(ITMStaking.TMStakingOnlyBeneficiary.selector);
         vm.prank(alice);
         staking.transferVesting(token0, alice, 0);
 
         vm.warp(start + cliffDuration + vestingDuration);
 
-        vm.expectRevert(TMStaking.TMStakingVestingExpired.selector);
+        vm.expectRevert(ITMStaking.TMStakingVestingExpired.selector);
         vm.prank(newBeneficiary);
         staking.transferVesting(token0, alice, 0);
 
         staking.unlock(token0, 0);
 
-        vm.expectRevert(TMStaking.TMStakingVestingExpired.selector);
+        vm.expectRevert(ITMStaking.TMStakingVestingExpired.selector);
         vm.prank(newBeneficiary);
         staking.transferVesting(token0, alice, 0);
     }
@@ -1021,7 +1022,7 @@ contract TMStakingTest is TestHelper {
     }
 
     function test_revert_GetPendingRewards() public {
-        vm.expectRevert(abi.encodeWithSelector(TMStaking.TMStakingInvalidToken.selector, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(ITMStaking.TMStakingInvalidToken.selector, address(0)));
         staking.getPendingRewards(address(0), address(0));
     }
 }

@@ -84,6 +84,16 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
     }
 
     /**
+     * @dev Returns true if the specified `account` has staked the specified `token`.
+     * @param account The address of the account.
+     * @param token The address of the token.
+     * @return True if the specified account has staked the specified token, false otherwise.
+     */
+    function getIfUserHasStakedToken(address account, address token) external view override returns (bool) {
+        return _userTokens[account].contains(token);
+    }
+
+    /**
      * @dev Returns the token staked by the specified account at the specified index.
      * The order of the tokens is not guaranteed.
      * @param account The address of the account.
