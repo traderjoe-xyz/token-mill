@@ -152,13 +152,17 @@ contract TMLens {
      * @param userAddress Address of the user to gather data for.
      * @param start Starting index of user's staked tokens to gather data for.
      * @param offset Number of staked tokens to gather data for, starting from `start`.
+     * @param startUserVestings Starting index of user's vesting schedules per staked token to gather data for.
+     * @param offsetUserVestings Number of vesting schedules per staked token to gather data for, starting from `startUserVestings`.
      * @return userStakingData Struct containing detailed data about user's staked tokens.
      */
-    function getMultipleDetailedStakingDataPerUser(address userAddress, uint256 start, uint256 offset)
-        external
-        view
-        returns (SingleTokenUserStakingData[] memory userStakingData)
-    {
+    function getMultipleDetailedStakingDataPerUser(
+        address userAddress,
+        uint256 start,
+        uint256 offset,
+        uint256 startUserVestings,
+        uint256 offsetUserVestings
+    ) external view returns (SingleTokenUserStakingData[] memory userStakingData) {
         uint256 numberOfStakedTokens = stakingContract.getNumberOfTokensOf(userAddress);
 
         offset = start >= numberOfStakedTokens
@@ -169,7 +173,8 @@ contract TMLens {
 
         for (uint256 i; i < offset; i++) {
             address token = stakingContract.getTokenOf(userAddress, start + i);
-            userStakingData[i] = getSingleDetailedStakingDataPerUser(userAddress, token);
+            userStakingData[i] =
+                getSingleDetailedStakingDataPerUser(userAddress, token, startUserVestings, offsetUserVestings);
         }
     }
 
@@ -177,22 +182,28 @@ contract TMLens {
      * @dev Returns detailed staking data for a user, for a specified token.
      * @param userAddress Address of the user to gather data for.
      * @param tokenAddress Address of the token to gather data for.
+     * @param start Starting index of user's vesting schedules to gather data for.
+     * @param offset Number of user's vesting schedules to gather data for, starting from `start`;
      * @return singleTokenUserStakingData Struct containing detailed data about a user's stake for a token.
      */
-    function getSingleDetailedStakingDataPerUser(address userAddress, address tokenAddress)
-        public
-        view
-        returns (SingleTokenUserStakingData memory singleTokenUserStakingData)
-    {
+    function getSingleDetailedStakingDataPerUser(
+        address userAddress,
+        address tokenAddress,
+        uint256 start,
+        uint256 offset
+    ) public view returns (SingleTokenUserStakingData memory singleTokenUserStakingData) {
         if (stakingContract.getIfUserHasStakedToken(userAddress, tokenAddress)) {
             // user staked this token
             uint256 numberOfUserVestingSchedules = stakingContract.getNumberOfVestingsOf(tokenAddress, userAddress);
 
-            ITMStaking.VestingSchedule[] memory vestingSchedules =
-                new ITMStaking.VestingSchedule[](numberOfUserVestingSchedules);
+            offset = start >= numberOfUserVestingSchedules
+                ? 0
+                : (start + offset > numberOfUserVestingSchedules ? numberOfUserVestingSchedules - start : offset);
 
-            for (uint256 i; i < numberOfUserVestingSchedules; i++) {
-                uint256 globalVestingIndex = stakingContract.getVestingIndexOf(tokenAddress, userAddress, i);
+            ITMStaking.VestingSchedule[] memory vestingSchedules = new ITMStaking.VestingSchedule[](offset);
+
+            for (uint256 i; i < offset; i++) {
+                uint256 globalVestingIndex = stakingContract.getVestingIndexOf(tokenAddress, userAddress, start + i);
                 vestingSchedules[i] = stakingContract.getVestingScheduleAt(tokenAddress, globalVestingIndex);
             }
 

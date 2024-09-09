@@ -163,11 +163,11 @@ contract TestTMLens is TestHelper {
         simulateStaking();
 
         TMLens.SingleTokenUserStakingData[] memory detailedStakingData =
-            lens.getMultipleDetailedStakingDataPerUser(alice, 1, 1);
+            lens.getMultipleDetailedStakingDataPerUser(alice, 1, 1, 0, 10);
 
         assertEq(detailedStakingData.length, 0, "test_getDetailedStakingDataPerUser::1");
 
-        detailedStakingData = lens.getMultipleDetailedStakingDataPerUser(alice, 0, 1);
+        detailedStakingData = lens.getMultipleDetailedStakingDataPerUser(alice, 0, 1, 0, 10);
 
         assertEq(detailedStakingData.length, 1, "test_getDetailedStakingDataPerUser::2");
         assertEq(detailedStakingData[0].sharesAmount, 1e18, "test_getDetailedStakingDataPerUser::3");
@@ -176,7 +176,7 @@ contract TestTMLens is TestHelper {
         assertEq(detailedStakingData[0].vestingSchedules.length, 0, "test_getDetailedStakingDataPerUser::6");
 
         TMLens.SingleTokenUserStakingData memory detailedSingleStakingData =
-            lens.getSingleDetailedStakingDataPerUser(bob, token0);
+            lens.getSingleDetailedStakingDataPerUser(bob, token0, 0, 10);
 
         assertEq(detailedSingleStakingData.sharesAmount, 0, "test_getDetailedStakingDataPerUser::7");
         assertEq(detailedSingleStakingData.lockedSharesAmount, 2e18, "test_getDetailedStakingDataPerUser::8");
