@@ -1,17 +1,56 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+
 import "./TestHelper.sol";
 import "../src/TMLens.sol";
+import "../src/utils/TMStaking.sol";
+import "../src/interfaces/ITMStaking.sol";
 
 contract EmptyContract {}
 
 contract TestTMLens is TestHelper {
+    ITMStaking public staking;
     TMLens lens;
 
+    address alice = makeAddr("alice");
+    address bob = makeAddr("bob");
+
+    function setUpStaking() public {
+        address stakingImp = address(new TMStaking(address(factory)));
+        staking = ITMStaking(
+            address(
+                new TransparentUpgradeableProxy(stakingImp, address(this), abi.encodeCall(ITMStaking.initialize, ()))
+            )
+        );
+    }
+
+    function simulateStaking() public {
+        factory.updateProtocolFeeRecipient(address(1));
+
+        vm.deal(alice, 1e18);
+        vm.startPrank(alice);
+
+        wnative.deposit{value: 1e18}();
+        wnative.transfer(market0w, 1e18);
+
+        ITMMarket(market0w).swap(alice, 1e18, false, "");
+
+        IERC20(token0).approve(address(staking), 3e18);
+        staking.deposit(token0, alice, 1e18, 0);
+
+        staking.createVestingSchedule(token0, bob, 2e18, 0, uint80(block.timestamp), 100, 100);
+
+        vm.stopPrank();
+    }
+
     function setUp() public override {
+        stakingAddress = _predictContractAddress(6);
+
         super.setUp();
         setUpTokens();
+        setUpStaking();
 
         lens = new TMLens(ITMFactory(address(factory)));
     }
@@ -62,7 +101,7 @@ contract TestTMLens is TestHelper {
         assertEq(detailedMarketData.askPrices, askPrices0w, "test_getSingleDetailedMarketData::19");
         assertEq(detailedMarketData.bidPrices, bidPrices0w, "test_getSingleDetailedMarketData::20");
         assertEq(detailedMarketData.protocolPendingFees, 0, "test_getSingleDetailedMarketData::21");
-        assertEq(detailedMarketData.creatorPendingFees, 0, "test_getSingleDetailedMarketData::22");
+        assertEq(detailedMarketData.marketPendingFees, 0, "test_getSingleDetailedMarketData::22");
     }
 
     function test_getMultipleDetailedMarketData() public view {
@@ -102,7 +141,9 @@ contract TestTMLens is TestHelper {
         assertEq(detailedMarketData[1].askPrices, askPrices, "test_getMultipleDetailedMarketData::18");
         assertEq(detailedMarketData[1].bidPrices, bidPrices, "test_getMultipleDetailedMarketData::19");
         assertEq(detailedMarketData[1].protocolPendingFees, 0, "test_getMultipleDetailedMarketData::20");
-        assertEq(detailedMarketData[1].creatorPendingFees, 0, "test_getMultipleDetailedMarketData::21");
+        assertEq(detailedMarketData[1].marketPendingFees, 0, "test_getMultipleDetailedMarketData::21");
+        assertEq(detailedMarketData[1].totalStaked, 0, "test_getMultipleDetailedMarketData::22");
+        assertEq(detailedMarketData[1].totalLocked, 0, "test_getMultipleDetailedMarketData::23");
     }
 
     function test_getCreatorData() public view {
@@ -116,5 +157,62 @@ contract TestTMLens is TestHelper {
         creatorData = lens.getCreatorData(address(0));
         assertEq(creatorData.creatorMarkets.length, 0, "test_getCreatorData::5");
         assertEq(creatorData.creatorMarketPendingFees.length, 0, "test_getCreatorData::6");
+    }
+
+    function test_getDetailedStakingDataPerUser() public {
+        simulateStaking();
+
+        TMLens.SingleTokenUserStakingData[] memory detailedStakingData =
+            lens.getMultipleDetailedStakingDataPerUser(alice, 1, 1, 0, 10);
+
+        assertEq(detailedStakingData.length, 0, "test_getDetailedStakingDataPerUser::1");
+
+        detailedStakingData = lens.getMultipleDetailedStakingDataPerUser(alice, 0, 1, 0, 10);
+
+        assertEq(detailedStakingData.length, 1, "test_getDetailedStakingDataPerUser::2");
+        assertEq(detailedStakingData[0].sharesAmount, 1e18, "test_getDetailedStakingDataPerUser::3");
+        assertEq(detailedStakingData[0].lockedSharesAmount, 0, "test_getDetailedStakingDataPerUser::4");
+        assertEq(detailedStakingData[0].pendingRewards, 9e16, "test_getDetailedStakingDataPerUser::5");
+        assertEq(detailedStakingData[0].vestingSchedules.length, 0, "test_getDetailedStakingDataPerUser::6");
+
+        TMLens.SingleTokenUserStakingData memory detailedSingleStakingData =
+            lens.getSingleDetailedStakingDataPerUser(bob, token0, 0, 10);
+
+        assertEq(detailedSingleStakingData.sharesAmount, 0, "test_getDetailedStakingDataPerUser::7");
+        assertEq(detailedSingleStakingData.lockedSharesAmount, 2e18, "test_getDetailedStakingDataPerUser::8");
+        assertEq(detailedSingleStakingData.pendingRewards, 0, "test_getDetailedStakingDataPerUser::9");
+        assertEq(detailedSingleStakingData.vestingSchedules.length, 1, "test_getDetailedStakingDataPerUser::10");
+
+        ITMStaking.VestingSchedule memory vestingSchedule = detailedSingleStakingData.vestingSchedules[0];
+
+        assertEq(vestingSchedule.beneficiary, bob, "test_getDetailedStakingDataPerUser::11");
+        assertEq(vestingSchedule.total, 2e18, "test_getDetailedStakingDataPerUser::12");
+        assertEq(vestingSchedule.released, 0, "test_getDetailedStakingDataPerUser::13");
+        assertEq(vestingSchedule.start, 1, "test_getDetailedStakingDataPerUser::14");
+        assertEq(vestingSchedule.cliffDuration, 100, "test_getDetailedStakingDataPerUser::15");
+        assertEq(vestingSchedule.vestingDuration, 100, "test_getDetailedStakingDataPerUser::16");
+
+        TMLens.DetailedMarketData memory detailedMarketData = lens.getSingleDetailedMarketData(market0w);
+        assertEq(detailedMarketData.totalStaked, 1e18, "test_getDetailedStakingDataPerUser::17");
+        assertEq(detailedMarketData.totalLocked, 2e18, "test_getDetailedStakingDataPerUser::18");
+    }
+
+    function test_getSingleDetailedTokenStakingData() public {
+        simulateStaking();
+
+        TMLens.DetailedTokenStakingData memory tokenStakingData = lens.getSingleDetailedTokenStakingData(token0);
+
+        assertEq(tokenStakingData.totalStaked, 1e18, "test_getSingleDetailedTokenStakingData::1");
+        assertEq(tokenStakingData.totalLocked, 2e18, "test_getSingleDetailedTokenStakingData::2");
+        assertEq(tokenStakingData.vestingSchedules.length, 1, "test_getSingleDetailedTokenStakingData::3");
+
+        ITMStaking.VestingSchedule memory vestingSchedule = tokenStakingData.vestingSchedules[0];
+
+        assertEq(vestingSchedule.beneficiary, bob, "test_getSingleDetailedTokenStakingData::4");
+        assertEq(vestingSchedule.total, 2e18, "test_getSingleDetailedTokenStakingData::5");
+        assertEq(vestingSchedule.released, 0, "test_getSingleDetailedTokenStakingData::6");
+        assertEq(vestingSchedule.start, 1, "test_getSingleDetailedTokenStakingData::7");
+        assertEq(vestingSchedule.cliffDuration, 100, "test_getSingleDetailedTokenStakingData::8");
+        assertEq(vestingSchedule.vestingDuration, 100, "test_getSingleDetailedTokenStakingData::9");
     }
 }

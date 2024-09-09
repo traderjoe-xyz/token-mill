@@ -5,6 +5,7 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 
 import {ITMFactory} from "./interfaces/ITMFactory.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
+import {ITMStaking} from "./interfaces/ITMStaking.sol";
 
 /**
  * @title Token Mill Lens
@@ -44,7 +45,22 @@ contract TMLens {
         uint256[] askPrices;
         uint256[] bidPrices;
         uint256 protocolPendingFees;
-        uint256 creatorPendingFees;
+        uint256 marketPendingFees;
+        uint256 totalStaked;
+        uint256 totalLocked;
+    }
+
+    struct DetailedTokenStakingData {
+        uint256 totalStaked;
+        uint256 totalLocked;
+        ITMStaking.VestingSchedule[] vestingSchedules;
+    }
+
+    struct SingleTokenUserStakingData {
+        uint256 sharesAmount;
+        uint256 lockedSharesAmount;
+        uint256 pendingRewards;
+        ITMStaking.VestingSchedule[] vestingSchedules;
     }
 
     struct CreatorData {
@@ -53,9 +69,11 @@ contract TMLens {
     }
 
     ITMFactory private _TMFactory;
+    ITMStaking private stakingContract;
 
     constructor(ITMFactory TMFactory) {
         _TMFactory = TMFactory;
+        stakingContract = ITMStaking(_TMFactory.STAKING());
     }
 
     /**
@@ -120,13 +138,114 @@ contract TMLens {
 
         for (uint256 i; i < creatorMarketsLength; i++) {
             address marketAddress = _TMFactory.getCreatorMarketAt(creatorAddress, i);
-            (, uint256 creatorFees) = ITMMarket(marketAddress).getPendingFees();
+            (, uint256 marketFees) = ITMMarket(marketAddress).getPendingFees();
 
             creatorMarkets[i] = marketAddress;
-            creatorMarketPendingFees[i] = creatorFees;
+            creatorMarketPendingFees[i] = marketFees;
         }
 
         creatorData = CreatorData({creatorMarkets: creatorMarkets, creatorMarketPendingFees: creatorMarketPendingFees});
+    }
+
+    /**
+     * @dev Returns staking data for a user, for a specified chunk.
+     * @param userAddress Address of the user to gather data for.
+     * @param start Starting index of user's staked tokens to gather data for.
+     * @param offset Number of staked tokens to gather data for, starting from `start`.
+     * @param startUserVestings Starting index of user's vesting schedules per staked token to gather data for.
+     * @param offsetUserVestings Number of vesting schedules per staked token to gather data for, starting from `startUserVestings`.
+     * @return userStakingData Struct containing detailed data about user's staked tokens.
+     */
+    function getMultipleDetailedStakingDataPerUser(
+        address userAddress,
+        uint256 start,
+        uint256 offset,
+        uint256 startUserVestings,
+        uint256 offsetUserVestings
+    ) external view returns (SingleTokenUserStakingData[] memory userStakingData) {
+        uint256 numberOfStakedTokens = stakingContract.getNumberOfTokensOf(userAddress);
+
+        offset = start >= numberOfStakedTokens
+            ? 0
+            : (start + offset > numberOfStakedTokens ? numberOfStakedTokens - start : offset);
+
+        userStakingData = new SingleTokenUserStakingData[](offset);
+
+        for (uint256 i; i < offset; i++) {
+            address token = stakingContract.getTokenOf(userAddress, start + i);
+            userStakingData[i] =
+                getSingleDetailedStakingDataPerUser(userAddress, token, startUserVestings, offsetUserVestings);
+        }
+    }
+
+    /**
+     * @dev Returns detailed staking data for a user, for a specified token.
+     * @param userAddress Address of the user to gather data for.
+     * @param tokenAddress Address of the token to gather data for.
+     * @param start Starting index of user's vesting schedules to gather data for.
+     * @param offset Number of user's vesting schedules to gather data for, starting from `start`;
+     * @return singleTokenUserStakingData Struct containing detailed data about a user's stake for a token.
+     */
+    function getSingleDetailedStakingDataPerUser(
+        address userAddress,
+        address tokenAddress,
+        uint256 start,
+        uint256 offset
+    ) public view returns (SingleTokenUserStakingData memory singleTokenUserStakingData) {
+        if (stakingContract.getIfUserHasStakedToken(userAddress, tokenAddress)) {
+            // user staked this token
+            uint256 numberOfUserVestingSchedules = stakingContract.getNumberOfVestingsOf(tokenAddress, userAddress);
+
+            offset = start >= numberOfUserVestingSchedules
+                ? 0
+                : (start + offset > numberOfUserVestingSchedules ? numberOfUserVestingSchedules - start : offset);
+
+            ITMStaking.VestingSchedule[] memory vestingSchedules = new ITMStaking.VestingSchedule[](offset);
+
+            for (uint256 i; i < offset; i++) {
+                uint256 globalVestingIndex = stakingContract.getVestingIndexOf(tokenAddress, userAddress, start + i);
+                vestingSchedules[i] = stakingContract.getVestingScheduleAt(tokenAddress, globalVestingIndex);
+            }
+
+            (uint256 amount, uint256 lockedAmount) = stakingContract.getStakeOf(tokenAddress, userAddress);
+
+            singleTokenUserStakingData = SingleTokenUserStakingData({
+                sharesAmount: amount,
+                lockedSharesAmount: lockedAmount,
+                pendingRewards: stakingContract.getPendingRewards(tokenAddress, userAddress),
+                vestingSchedules: vestingSchedules
+            });
+        }
+    }
+
+    /**
+     * @dev Returns detailed data about the staking of a specified base token.
+     * @param tokenAddress Address of the base token to gather data for.
+     * @return detailedTokenStakingData Struct containing detailed staking data for `tokenAddress`.
+     */
+    function getSingleDetailedTokenStakingData(address tokenAddress)
+        public
+        view
+        returns (DetailedTokenStakingData memory detailedTokenStakingData)
+    {
+        if (_TMFactory.getMarketOf(tokenAddress) != address(0)) {
+            // valid token
+            (uint256 totalStaked, uint256 totalLocked) = stakingContract.getTotalStake(tokenAddress);
+            uint256 vestingSchedulesLength = stakingContract.getNumberOfVestings(tokenAddress);
+
+            ITMStaking.VestingSchedule[] memory vestingSchedules =
+                new ITMStaking.VestingSchedule[](vestingSchedulesLength);
+
+            for (uint256 i; i < vestingSchedulesLength; i++) {
+                vestingSchedules[i] = stakingContract.getVestingScheduleAt(tokenAddress, i);
+            }
+
+            detailedTokenStakingData = DetailedTokenStakingData({
+                totalStaked: totalStaked,
+                totalLocked: totalLocked,
+                vestingSchedules: vestingSchedules
+            });
+        }
     }
 
     /**
@@ -146,7 +265,8 @@ contract TMLens {
                 if (marketAddress == _TMFactory.getMarketOf(baseToken)) {
                     address quoteToken = market.getQuoteToken();
                     uint256 circulatingSupply = market.getCirculatingSupply();
-                    (uint256 protocolFees, uint256 creatorFees) = market.getPendingFees();
+                    (uint256 protocolFees, uint256 marketFees) = market.getPendingFees();
+                    (uint256 totalStaked, uint256 totalLocked) = stakingContract.getTotalStake(baseToken);
 
                     detailedMarketData = DetailedMarketData({
                         marketExists: true,
@@ -168,7 +288,9 @@ contract TMLens {
                         askPrices: market.getPricePoints(true),
                         bidPrices: market.getPricePoints(false),
                         protocolPendingFees: protocolFees,
-                        creatorPendingFees: creatorFees
+                        marketPendingFees: marketFees,
+                        totalStaked: totalStaked,
+                        totalLocked: totalLocked
                     });
                 }
             } catch {}
