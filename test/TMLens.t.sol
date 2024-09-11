@@ -35,7 +35,7 @@ contract TestTMLens is TestHelper {
         wnative.deposit{value: 1e18}();
         wnative.transfer(market0w, 1e18);
 
-        ITMMarket(market0w).swap(alice, 1e18, false, "");
+        ITMMarket(market0w).swap(alice, 1e18, false, "", alice);
 
         IERC20(token0).approve(address(staking), 3e18);
         staking.deposit(token0, alice, 1e18, 0);
@@ -75,13 +75,13 @@ contract TestTMLens is TestHelper {
 
     function test_getSingleDetailedMarketData() public {
         EmptyContract ec = new EmptyContract();
-        TMLens.DetailedMarketData memory detailedMarketData = lens.getSingleDetailedMarketData(address(ec));
+        TMLens.DetailedMarketData memory detailedMarketData = lens.getSingleDetailedMarketData(address(ec), alice);
         assertEq(detailedMarketData.marketExists, false, "test_getSingleDetailedMarketData::1");
 
-        detailedMarketData = lens.getSingleDetailedMarketData(address(0));
+        detailedMarketData = lens.getSingleDetailedMarketData(address(0), address(0));
         assertEq(detailedMarketData.marketExists, false, "test_getSingleDetailedMarketData::2");
 
-        detailedMarketData = lens.getSingleDetailedMarketData(market0w);
+        detailedMarketData = lens.getSingleDetailedMarketData(market0w, alice);
         assertEq(detailedMarketData.marketExists, true, "test_getSingleDetailedMarketData::3");
         assertEq(detailedMarketData.quoteToken, address(wnative), "test_getSingleDetailedMarketData::4");
         assertEq(detailedMarketData.baseToken, token0, "test_getSingleDetailedMarketData::5");
@@ -93,15 +93,20 @@ contract TestTMLens is TestHelper {
         assertEq(detailedMarketData.quoteTokenSymbol, "WNATIVE", "test_getSingleDetailedMarketData::11");
         assertEq(detailedMarketData.baseTokenSymbol, "T0", "test_getSingleDetailedMarketData::12");
         assertEq(detailedMarketData.marketCreator, address(this), "test_getSingleDetailedMarketData::13");
-        assertEq(detailedMarketData.protocolShare, 1e17, "test_getSingleDetailedMarketData::14");
-        assertEq(detailedMarketData.totalSupply, 500_000_000e18, "test_getSingleDetailedMarketData::15");
-        assertEq(detailedMarketData.circulatingSupply, 0, "test_getSingleDetailedMarketData::16");
-        assertEq(detailedMarketData.spotPriceFillBid, 0, "test_getSingleDetailedMarketData::17");
-        assertEq(detailedMarketData.spotPriceFillAsk, 0, "test_getSingleDetailedMarketData::18");
-        assertEq(detailedMarketData.askPrices, askPrices0w, "test_getSingleDetailedMarketData::19");
-        assertEq(detailedMarketData.bidPrices, bidPrices0w, "test_getSingleDetailedMarketData::20");
-        assertEq(detailedMarketData.protocolPendingFees, 0, "test_getSingleDetailedMarketData::21");
-        assertEq(detailedMarketData.marketPendingFees, 0, "test_getSingleDetailedMarketData::22");
+        assertEq(detailedMarketData.protocolShare, 0.2e4, "test_getSingleDetailedMarketData::14");
+        assertEq(detailedMarketData.creatorShare, 0.2e4, "test_getSingleDetailedMarketData::15");
+        assertEq(detailedMarketData.referrerShare, 0.2e4, "test_getSingleDetailedMarketData::16");
+        assertEq(detailedMarketData.stakingShare, 0.4e4, "test_getSingleDetailedMarketData::17");
+        assertEq(detailedMarketData.totalSupply, 500_000_000e18, "test_getSingleDetailedMarketData::18");
+        assertEq(detailedMarketData.circulatingSupply, 0, "test_getSingleDetailedMarketData::19");
+        assertEq(detailedMarketData.spotPriceFillBid, 0, "test_getSingleDetailedMarketData::20");
+        assertEq(detailedMarketData.spotPriceFillAsk, 0, "test_getSingleDetailedMarketData::21");
+        assertEq(detailedMarketData.askPrices, askPrices0w, "test_getSingleDetailedMarketData::22");
+        assertEq(detailedMarketData.bidPrices, bidPrices0w, "test_getSingleDetailedMarketData::23");
+        assertEq(detailedMarketData.protocolPendingFees, 0, "test_getSingleDetailedMarketData::24");
+        assertEq(detailedMarketData.creatorPendingFees, 0, "test_getSingleDetailedMarketData::25");
+        assertEq(detailedMarketData.referrerPendingFees, 0, "test_getSingleDetailedMarketData::26");
+        assertEq(detailedMarketData.stakingPendingFees, 0, "test_getSingleDetailedMarketData::27");
     }
 
     function test_getMultipleDetailedMarketData() public view {
@@ -109,7 +114,8 @@ contract TestTMLens is TestHelper {
         marketAddresses[0] = market0w;
         marketAddresses[1] = market21;
 
-        TMLens.DetailedMarketData[] memory detailedMarketData = lens.getMultipleDetailedMarketData(marketAddresses);
+        TMLens.DetailedMarketData[] memory detailedMarketData =
+            lens.getMultipleDetailedMarketData(marketAddresses, alice);
         assertEq(detailedMarketData.length, 2, "test_getMultipleDetailedMarketData::1");
 
         uint256[] memory askPrices = new uint256[](3);
@@ -133,17 +139,22 @@ contract TestTMLens is TestHelper {
         assertEq(detailedMarketData[1].quoteTokenSymbol, "T1", "test_getMultipleDetailedMarketData::10");
         assertEq(detailedMarketData[1].baseTokenSymbol, "T2", "test_getMultipleDetailedMarketData::11");
         assertEq(detailedMarketData[1].marketCreator, address(this), "test_getMultipleDetailedMarketData::12");
-        assertEq(detailedMarketData[1].protocolShare, 1e17, "test_getMultipleDetailedMarketData::13");
-        assertEq(detailedMarketData[1].totalSupply, 50_000_000e18, "test_getMultipleDetailedMarketData::14");
-        assertEq(detailedMarketData[1].circulatingSupply, 0, "test_getMultipleDetailedMarketData::15");
-        assertEq(detailedMarketData[1].spotPriceFillBid, bidPrices[0], "test_getMultipleDetailedMarketData::16");
-        assertEq(detailedMarketData[1].spotPriceFillAsk, askPrices[0], "test_getMultipleDetailedMarketData::17");
-        assertEq(detailedMarketData[1].askPrices, askPrices, "test_getMultipleDetailedMarketData::18");
-        assertEq(detailedMarketData[1].bidPrices, bidPrices, "test_getMultipleDetailedMarketData::19");
-        assertEq(detailedMarketData[1].protocolPendingFees, 0, "test_getMultipleDetailedMarketData::20");
-        assertEq(detailedMarketData[1].marketPendingFees, 0, "test_getMultipleDetailedMarketData::21");
-        assertEq(detailedMarketData[1].totalStaked, 0, "test_getMultipleDetailedMarketData::22");
-        assertEq(detailedMarketData[1].totalLocked, 0, "test_getMultipleDetailedMarketData::23");
+        assertEq(detailedMarketData[1].protocolShare, 0.2e4, "test_getMultipleDetailedMarketData::13");
+        assertEq(detailedMarketData[1].creatorShare, 0.2e4, "test_getMultipleDetailedMarketData::14");
+        assertEq(detailedMarketData[1].referrerShare, 0.2e4, "test_getMultipleDetailedMarketData::15");
+        assertEq(detailedMarketData[1].stakingShare, 0.4e4, "test_getMultipleDetailedMarketData::16");
+        assertEq(detailedMarketData[1].totalSupply, 50_000_000e18, "test_getMultipleDetailedMarketData::17");
+        assertEq(detailedMarketData[1].circulatingSupply, 0, "test_getMultipleDetailedMarketData::18");
+        assertEq(detailedMarketData[1].spotPriceFillBid, bidPrices[0], "test_getMultipleDetailedMarketData::19");
+        assertEq(detailedMarketData[1].spotPriceFillAsk, askPrices[0], "test_getMultipleDetailedMarketData::20");
+        assertEq(detailedMarketData[1].askPrices, askPrices, "test_getMultipleDetailedMarketData::21");
+        assertEq(detailedMarketData[1].bidPrices, bidPrices, "test_getMultipleDetailedMarketData::22");
+        assertEq(detailedMarketData[1].protocolPendingFees, 0, "test_getMultipleDetailedMarketData::23");
+        assertEq(detailedMarketData[1].creatorPendingFees, 0, "test_getMultipleDetailedMarketData::24");
+        assertEq(detailedMarketData[1].referrerPendingFees, 0, "test_getMultipleDetailedMarketData::25");
+        assertEq(detailedMarketData[1].stakingPendingFees, 0, "test_getMultipleDetailedMarketData::26");
+        assertEq(detailedMarketData[1].totalStaked, 0, "test_getMultipleDetailedMarketData::27");
+        assertEq(detailedMarketData[1].totalLocked, 0, "test_getMultipleDetailedMarketData::28");
     }
 
     function test_getCreatorData() public view {
@@ -172,7 +183,7 @@ contract TestTMLens is TestHelper {
         assertEq(detailedStakingData.length, 1, "test_getDetailedStakingDataPerUser::2");
         assertEq(detailedStakingData[0].sharesAmount, 1e18, "test_getDetailedStakingDataPerUser::3");
         assertEq(detailedStakingData[0].lockedSharesAmount, 0, "test_getDetailedStakingDataPerUser::4");
-        assertEq(detailedStakingData[0].pendingRewards, 9e16, "test_getDetailedStakingDataPerUser::5");
+        assertEq(detailedStakingData[0].pendingRewards, 4e16, "test_getDetailedStakingDataPerUser::5");
         assertEq(detailedStakingData[0].vestingSchedules.length, 0, "test_getDetailedStakingDataPerUser::6");
 
         TMLens.SingleTokenUserStakingData memory detailedSingleStakingData =
@@ -192,7 +203,7 @@ contract TestTMLens is TestHelper {
         assertEq(vestingSchedule.cliffDuration, 100, "test_getDetailedStakingDataPerUser::15");
         assertEq(vestingSchedule.vestingDuration, 100, "test_getDetailedStakingDataPerUser::16");
 
-        TMLens.DetailedMarketData memory detailedMarketData = lens.getSingleDetailedMarketData(market0w);
+        TMLens.DetailedMarketData memory detailedMarketData = lens.getSingleDetailedMarketData(market0w, address(0));
         assertEq(detailedMarketData.totalStaked, 1e18, "test_getDetailedStakingDataPerUser::17");
         assertEq(detailedMarketData.totalLocked, 2e18, "test_getDetailedStakingDataPerUser::18");
     }

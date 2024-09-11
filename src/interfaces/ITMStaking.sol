@@ -83,7 +83,6 @@ interface ITMStaking {
     function getVestedAmount(address token, uint256 index, uint256 timestamp) external view returns (uint256);
     function getVestingIndexOf(address token, address account, uint256 index) external view returns (uint256);
     function getVestingScheduleAt(address token, uint256 index) external view returns (VestingSchedule memory);
-    function getIfUserHasStakedToken(address account, address token) external view returns (bool);
     function initialize() external;
     function transferVesting(address token, address newBeneficiary, uint256 index) external returns (uint256);
     function unlock(address token, uint256 index) external returns (uint256 unlocked);

@@ -38,6 +38,9 @@ contract TMLens {
         string baseTokenSymbol;
         address marketCreator;
         uint256 protocolShare;
+        uint256 creatorShare;
+        uint256 referrerShare;
+        uint256 stakingShare;
         uint256 totalSupply;
         uint256 circulatingSupply;
         uint256 spotPriceFillBid;
@@ -45,7 +48,9 @@ contract TMLens {
         uint256[] askPrices;
         uint256[] bidPrices;
         uint256 protocolPendingFees;
-        uint256 marketPendingFees;
+        uint256 creatorPendingFees;
+        uint256 referrerPendingFees;
+        uint256 stakingPendingFees;
         uint256 totalStaked;
         uint256 totalLocked;
     }
@@ -112,7 +117,7 @@ contract TMLens {
      * @param marketAddresses Array of market addresses to gather data for.
      * @return detailedMarketData Array of structs, each containing detailed market data.
      */
-    function getMultipleDetailedMarketData(address[] calldata marketAddresses)
+    function getMultipleDetailedMarketData(address[] calldata marketAddresses, address user)
         external
         view
         returns (DetailedMarketData[] memory detailedMarketData)
@@ -121,7 +126,7 @@ contract TMLens {
         detailedMarketData = new DetailedMarketData[](length);
 
         for (uint256 i; i < length; i++) {
-            detailedMarketData[i] = getSingleDetailedMarketData(marketAddresses[i]);
+            detailedMarketData[i] = getSingleDetailedMarketData(marketAddresses[i], user);
         }
     }
 
@@ -138,10 +143,10 @@ contract TMLens {
 
         for (uint256 i; i < creatorMarketsLength; i++) {
             address marketAddress = _TMFactory.getCreatorMarketAt(creatorAddress, i);
-            (, uint256 marketFees) = ITMMarket(marketAddress).getPendingFees();
+            (, uint256 creatorFees,,) = ITMMarket(marketAddress).getPendingFees(creatorAddress);
 
             creatorMarkets[i] = marketAddress;
-            creatorMarketPendingFees[i] = marketFees;
+            creatorMarketPendingFees[i] = creatorFees;
         }
 
         creatorData = CreatorData({creatorMarkets: creatorMarkets, creatorMarketPendingFees: creatorMarketPendingFees});
@@ -192,7 +197,9 @@ contract TMLens {
         uint256 start,
         uint256 offset
     ) public view returns (SingleTokenUserStakingData memory singleTokenUserStakingData) {
-        if (stakingContract.getIfUserHasStakedToken(userAddress, tokenAddress)) {
+        (uint256 amount, uint256 lockedAmount) = stakingContract.getStakeOf(tokenAddress, userAddress);
+
+        if ((amount | lockedAmount) != 0) {
             // user staked this token
             uint256 numberOfUserVestingSchedules = stakingContract.getNumberOfVestingsOf(tokenAddress, userAddress);
 
@@ -206,8 +213,6 @@ contract TMLens {
                 uint256 globalVestingIndex = stakingContract.getVestingIndexOf(tokenAddress, userAddress, start + i);
                 vestingSchedules[i] = stakingContract.getVestingScheduleAt(tokenAddress, globalVestingIndex);
             }
-
-            (uint256 amount, uint256 lockedAmount) = stakingContract.getStakeOf(tokenAddress, userAddress);
 
             singleTokenUserStakingData = SingleTokenUserStakingData({
                 sharesAmount: amount,
@@ -253,7 +258,7 @@ contract TMLens {
      * @param marketAddress Address of the market to gather data for.
      * @return detailedMarketData Struct containing detailed data about a market.
      */
-    function getSingleDetailedMarketData(address marketAddress)
+    function getSingleDetailedMarketData(address marketAddress, address user)
         public
         view
         returns (DetailedMarketData memory detailedMarketData)
@@ -265,33 +270,38 @@ contract TMLens {
                 if (marketAddress == _TMFactory.getMarketOf(baseToken)) {
                     address quoteToken = market.getQuoteToken();
                     uint256 circulatingSupply = market.getCirculatingSupply();
-                    (uint256 protocolFees, uint256 marketFees) = market.getPendingFees();
-                    (uint256 totalStaked, uint256 totalLocked) = stakingContract.getTotalStake(baseToken);
 
-                    detailedMarketData = DetailedMarketData({
-                        marketExists: true,
-                        quoteToken: quoteToken,
-                        baseToken: baseToken,
-                        baseTokenType: _TMFactory.getTokenType(baseToken),
-                        quoteTokenDecimals: IERC20Metadata(quoteToken).decimals(),
-                        baseTokenDecimals: IERC20Metadata(baseToken).decimals(),
-                        quoteTokenName: IERC20Metadata(quoteToken).name(),
-                        baseTokenName: IERC20Metadata(baseToken).name(),
-                        quoteTokenSymbol: IERC20Metadata(quoteToken).symbol(),
-                        baseTokenSymbol: IERC20Metadata(baseToken).symbol(),
-                        marketCreator: _TMFactory.getCreatorOf(marketAddress),
-                        protocolShare: _TMFactory.getProtocolShareOf(marketAddress),
-                        totalSupply: market.getTotalSupply(),
-                        circulatingSupply: circulatingSupply,
-                        spotPriceFillBid: market.getPriceAt(circulatingSupply, true),
-                        spotPriceFillAsk: market.getPriceAt(circulatingSupply, false),
-                        askPrices: market.getPricePoints(true),
-                        bidPrices: market.getPricePoints(false),
-                        protocolPendingFees: protocolFees,
-                        marketPendingFees: marketFees,
-                        totalStaked: totalStaked,
-                        totalLocked: totalLocked
-                    });
+                    detailedMarketData.marketExists = true;
+                    detailedMarketData.quoteToken = market.getQuoteToken();
+                    detailedMarketData.baseToken = baseToken;
+                    detailedMarketData.baseTokenType = _TMFactory.getTokenType(baseToken);
+                    detailedMarketData.quoteTokenDecimals = IERC20Metadata(quoteToken).decimals();
+                    detailedMarketData.baseTokenDecimals = IERC20Metadata(baseToken).decimals();
+                    detailedMarketData.quoteTokenName = IERC20Metadata(quoteToken).name();
+                    detailedMarketData.baseTokenName = IERC20Metadata(baseToken).name();
+                    detailedMarketData.quoteTokenSymbol = IERC20Metadata(quoteToken).symbol();
+                    detailedMarketData.baseTokenSymbol = IERC20Metadata(baseToken).symbol();
+                    detailedMarketData.marketCreator = _TMFactory.getCreatorOf(marketAddress);
+                    (
+                        detailedMarketData.protocolShare,
+                        detailedMarketData.creatorShare,
+                        detailedMarketData.referrerShare,
+                        detailedMarketData.stakingShare
+                    ) = _TMFactory.getFeeSharesOf(marketAddress);
+                    detailedMarketData.totalSupply = market.getTotalSupply();
+                    detailedMarketData.circulatingSupply = circulatingSupply;
+                    detailedMarketData.spotPriceFillBid = market.getPriceAt(circulatingSupply, true);
+                    detailedMarketData.spotPriceFillAsk = market.getPriceAt(circulatingSupply, false);
+                    detailedMarketData.askPrices = market.getPricePoints(true);
+                    detailedMarketData.bidPrices = market.getPricePoints(false);
+                    (
+                        detailedMarketData.protocolPendingFees,
+                        detailedMarketData.creatorPendingFees,
+                        detailedMarketData.referrerPendingFees,
+                        detailedMarketData.stakingPendingFees
+                    ) = market.getPendingFees(user);
+                    (detailedMarketData.totalStaked, detailedMarketData.totalLocked) =
+                        stakingContract.getTotalStake(baseToken);
                 }
             } catch {}
         }
