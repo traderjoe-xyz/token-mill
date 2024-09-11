@@ -18,14 +18,19 @@ import {ITMMarket} from "./interfaces/ITMMarket.sol";
 contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     using SafeERC20 for IERC20;
 
+    uint256 private constant PRECISION = 1e18;
+
     bool internal _locked;
     uint120 internal _initialized;
     uint128 internal _baseReserve;
 
-    uint256 internal _quoteReserve;
+    uint128 internal _quoteReserve;
+    uint128 internal _totalReferrerFees;
 
-    uint256 internal _protocolUnclaimedFees;
-    uint256 internal _stakingUnclaimedFees;
+    uint128 internal _creatorUnclaimedFees;
+    uint128 internal _stakingUnclaimedFees;
+
+    mapping(address => uint256) internal _referrerFees;
 
     /**
      * @dev Modifier to prevent reentrancy.
@@ -113,7 +118,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
             return _pricePoints(_pricePointsLength() - 1, askPrice);
         }
 
-        circulatingSupply = circulatingSupply * 1e18 / _basePrecision();
+        circulatingSupply = circulatingSupply * PRECISION / _basePrecision();
         uint256 widthScaled = _widthScaled();
 
         uint256 i = circulatingSupply / widthScaled;
@@ -144,11 +149,20 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
 
     /**
      * @dev Returns the pending fees.
+     * @param referrer The referrer address.
      * @return protocolFees The protocol fees.
+     * @return creatorFees The creator fees.
+     * @return referrerFees The referrer fees.
      * @return stakingFees The staking fees.
      */
-    function getPendingFees() external view override returns (uint256 protocolFees, uint256 stakingFees) {
-        (, protocolFees, stakingFees) = _getPendingFees(ITMFactory(_factory()));
+    function getPendingFees(address referrer)
+        external
+        view
+        override
+        returns (uint256 protocolFees, uint256 creatorFees, uint256 referrerFees, uint256 stakingFees)
+    {
+        (, protocolFees, creatorFees, stakingFees) = _getPendingFees(ITMFactory(_factory()));
+        referrerFees = _referrerFees[referrer];
     }
 
     /**
@@ -187,7 +201,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @return deltaBaseAmount The delta base amount.
      * @return deltaQuoteAmount The delta quote amount.
      */
-    function swap(address recipient, int256 deltaAmount, bool swapB2Q, bytes calldata data)
+    function swap(address recipient, int256 deltaAmount, bool swapB2Q, bytes calldata data, address referrer)
         external
         override
         nonReentrant
@@ -208,109 +222,154 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
             : (Math.abs(deltaBaseAmount), Math.abs(deltaQuoteAmount), IERC20(_baseToken()), IERC20(_quoteToken()));
 
         if (toSend > 0) IERC20(tokenToSend).safeTransfer(recipient, toSend);
-        if (
-            data.length > 0
-                && ITokenMillCallback(msg.sender).tokenMillSwapCallback(deltaBaseAmount, deltaQuoteAmount, data)
-                    != ITokenMillCallback.tokenMillSwapCallback.selector
-        ) {
-            revert TMMarket__InvalidSwapCallback();
+        if (data.length > 0) {
+            bytes memory cdata = new bytes(160 + data.length);
+            uint256 success;
+
+            assembly {
+                mstore(cdata, 0xc556a189) // tokenMillSwapCallback(int256,int256,bytes)
+
+                mstore(add(cdata, 32), deltaBaseAmount)
+                mstore(add(cdata, 64), deltaQuoteAmount)
+                mstore(add(cdata, 96), 96)
+                mstore(add(cdata, 128), data.length)
+                calldatacopy(add(cdata, 160), data.offset, data.length)
+
+                success := call(gas(), caller(), 0, add(28, cdata), add(160, data.length), 0, 4)
+
+                switch success
+                case 0 {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+                default { success := and(eq(returndatasize(), 4), eq(shr(224, mload(0)), 0xc556a189)) } // tokenMillSwapCallback(int256,int256,bytes)
+            }
+
+            if (success == 0) revert TMMarket__InvalidSwapCallback();
         }
+
+        emit Swap(msg.sender, recipient, referrer, deltaBaseAmount, deltaQuoteAmount);
 
         uint256 balance = tokenToReceive.balanceOf(address(this));
         if (balance > type(uint128).max) revert TMMarket__ReserveOverflow();
 
         swapB2Q
             ? _updateReservesOnB2Q(baseReserve, quoteReserve, toSend, toReceive, balance)
-            : _updateReservesOnQ2B(baseReserve, quoteReserve, toSend, toReceive, balance);
-
-        emit Swap(msg.sender, recipient, deltaBaseAmount, deltaQuoteAmount);
+            : _updateReservesOnQ2B(referrer, circulatingSupply, baseReserve, quoteReserve, toSend, toReceive, balance);
     }
 
     /**
-     * @dev Claims the fees.
-     * @param caller The caller of the function.
-     * @param protocolFeeRecipient The protocol fee recipient. If it's address(0), the fees will be cached.
-     * @param stakingFeeRecipient The staking fee recipient. If it's address(0), the fees will be cached.
-     * @return protocolFees The protocol fees.
-     * @return stakingFees The staking fees.
+     * @dev Claims the fees for the caller.
+     * @param caller The caller of the function. This will be used to claim the referrer fees.
+     * @param protocol The protocol fee recipient.
+     * @param creator The creator of the market.
+     * @param staking The staking contract address.
+     * @return The protocol fees claimed.
+     * @return claimedFees The total fees claimed.
      */
-    function claimFees(address caller, address protocolFeeRecipient, address stakingFeeRecipient)
+    function claimFees(address caller, address protocol, address creator, address staking)
         external
         override
         nonReentrant
-        returns (uint256 protocolFees, uint256 stakingFees)
+        returns (uint256, uint256 claimedFees)
     {
         ITMFactory factory = ITMFactory(_factory());
 
         if (msg.sender != address(factory)) revert TMMarket__OnlyFactory();
 
-        (uint256 quoteReserve, uint256 pendingProtocolFees, uint256 pendingStakingFees) = _getPendingFees(factory);
+        (
+            uint256 quoteReserve,
+            uint256 protocolUnclaimedFees,
+            uint256 creatorUnclaimedFees,
+            uint256 stakingUnclaimedFees
+        ) = _getPendingFees(factory);
 
-        if (protocolFeeRecipient == address(0)) {
-            _protocolUnclaimedFees = pendingProtocolFees;
-        } else {
-            protocolFees = pendingProtocolFees;
-            _protocolUnclaimedFees = 0;
-        }
-
-        if (stakingFeeRecipient == address(0)) {
-            _stakingUnclaimedFees = pendingStakingFees;
-        } else {
-            stakingFees = pendingStakingFees;
+        if (caller == staking) {
+            claimedFees = stakingUnclaimedFees;
             _stakingUnclaimedFees = 0;
+        } else {
+            _stakingUnclaimedFees = uint128(stakingUnclaimedFees);
         }
 
-        uint256 totalFees = stakingFees + protocolFees;
+        if (caller == creator) {
+            claimedFees += creatorUnclaimedFees;
+            _creatorUnclaimedFees = 0;
+        } else {
+            _creatorUnclaimedFees = uint128(creatorUnclaimedFees);
+        }
+
+        uint256 referrerFees = _referrerFees[caller];
+
+        if (referrerFees > 0) {
+            _referrerFees[caller] = 0;
+            _totalReferrerFees -= uint128(referrerFees);
+
+            claimedFees += referrerFees;
+        }
+
+        uint256 totalFees = protocolUnclaimedFees + claimedFees;
 
         if (totalFees > 0) {
-            _quoteReserve = quoteReserve - totalFees;
+            _quoteReserve = uint128(quoteReserve - totalFees);
 
             IERC20 quoteToken = IERC20(_quoteToken());
 
-            if (protocolFees > 0) {
-                quoteToken.safeTransfer(protocolFeeRecipient, protocolFees);
+            if (protocolUnclaimedFees > 0) quoteToken.safeTransfer(protocol, protocolUnclaimedFees);
+            if (claimedFees > 0) quoteToken.safeTransfer(caller, claimedFees);
 
-                emit ProtocolFeesClaimed(caller, protocolFeeRecipient, protocolFees);
-            }
-
-            if (stakingFees > 0) {
-                quoteToken.safeTransfer(stakingFeeRecipient, stakingFees);
-
-                emit StakingFeesClaimed(caller, stakingFeeRecipient, stakingFees);
-            }
+            emit FeesClaimed(caller, protocolUnclaimedFees, claimedFees);
         }
+
+        return (protocolUnclaimedFees, claimedFees);
     }
 
     /**
      * @dev Returns the pending fees.
      * @param factory The factory contract.
-     * @return The quote reserve, protocol unclaimed fees, and staking unclaimed fees.
+     * @return quoteReserve The quote reserve.
+     * @return protocolUnclaimedFees The protocol unclaimed fees.
+     * @return creatorUnclaimedFees The creator unclaimed fees.
+     * @return stakingUnclaimedFees The staking unclaimed fees.
      */
-    function _getPendingFees(ITMFactory factory) internal view returns (uint256, uint256, uint256) {
-        uint256 protocolUnclaimedFees = _protocolUnclaimedFees;
-        uint256 stakingUnclaimedFees = _stakingUnclaimedFees;
+    function _getPendingFees(ITMFactory factory)
+        internal
+        view
+        returns (
+            uint256 quoteReserve,
+            uint256 protocolUnclaimedFees,
+            uint256 creatorUnclaimedFees,
+            uint256 stakingUnclaimedFees
+        )
+    {
+        stakingUnclaimedFees = _stakingUnclaimedFees;
+        creatorUnclaimedFees = _creatorUnclaimedFees;
 
-        uint256 quoteReserve = _quoteReserve;
+        quoteReserve = _quoteReserve;
         (, uint256 minQuoteAmount) = _getQuoteAmount(0, _totalSupply() - _baseReserve, false, true);
 
         if (quoteReserve > minQuoteAmount) {
-            uint256 totalUnclaimedFees = protocolUnclaimedFees + stakingUnclaimedFees;
+            uint256 totalReferrerFees = _totalReferrerFees;
+
+            uint256 totalUnclaimedFees = totalReferrerFees + stakingUnclaimedFees + creatorUnclaimedFees;
             uint256 totalFees = quoteReserve - minQuoteAmount;
 
             if (totalFees > totalUnclaimedFees) {
                 uint256 fees = totalFees - totalUnclaimedFees;
 
-                uint256 protocolShare = factory.getProtocolShareOf(address(this));
-                uint256 protocolFees = fees * protocolShare / 1e18;
+                (uint256 protocolShare, uint256 creatorShare,, uint256 stakingShare) =
+                    factory.getFeeSharesOf(address(this));
 
-                if (protocolFees > fees) revert TMMarket__InvalidFees();
+                uint256 totalShare = protocolShare + creatorShare + stakingShare;
 
-                protocolUnclaimedFees += protocolFees;
-                stakingUnclaimedFees += fees - protocolFees;
+                uint256 stakingFees = fees * stakingShare / totalShare;
+                uint256 creatorFees = fees * creatorShare / totalShare;
+                uint256 protocolFees = fees - stakingFees - creatorFees;
+
+                protocolUnclaimedFees = protocolFees;
+                creatorUnclaimedFees += creatorFees;
+                stakingUnclaimedFees += stakingFees;
             }
         }
-
-        return (quoteReserve, protocolUnclaimedFees, stakingUnclaimedFees);
     }
 
     /**
@@ -339,7 +398,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         if (baseReserve + toReceive > baseBalance) revert TMMarket__InsufficientAmount();
 
         _baseReserve = uint128(baseBalance);
-        _quoteReserve = quoteReserve - toSend;
+        _quoteReserve = uint128(quoteReserve - toSend);
     }
 
     /**
@@ -351,6 +410,8 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @param quoteBalance The quote balance.
      */
     function _updateReservesOnQ2B(
+        address referrer,
+        uint256 circulatingSupply,
         uint256 baseReserve,
         uint256 quoteReserve,
         uint256 toSend,
@@ -359,8 +420,33 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     ) internal {
         if (quoteReserve + toReceive > quoteBalance) revert TMMarket__InsufficientAmount();
 
+        if (referrer != address(0)) {
+            uint256 share;
+            uint256 totalShare;
+
+            {
+                (uint256 protocolShare, uint256 creatorShare, uint256 referrerShare, uint256 stakingShare) =
+                    ITMFactory(_factory()).getFeeSharesOf(address(this));
+
+                share = referrerShare;
+                totalShare = protocolShare + creatorShare + referrerShare + stakingShare;
+            }
+
+            if (share > 0) {
+                (, uint256 buybackAmount) = _getQuoteAmount(circulatingSupply, toSend, false, true);
+                uint256 minQuoteAmount = quoteReserve + buybackAmount;
+
+                if (quoteBalance > minQuoteAmount) {
+                    uint256 referrerFees = (quoteBalance - minQuoteAmount) * share / totalShare;
+
+                    _referrerFees[referrer] += referrerFees;
+                    _totalReferrerFees += uint128(referrerFees);
+                }
+            }
+        }
+
         _baseReserve = uint128(baseReserve - toSend);
-        _quoteReserve = quoteBalance;
+        _quoteReserve = uint128(quoteBalance);
     }
 
     /**

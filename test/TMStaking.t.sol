@@ -856,7 +856,7 @@ contract TMStakingTest is TestHelper {
         staking.createVestingSchedule(token0, beneficiary, amount, amount + 1, start, cliffDuration, vestingDuration);
     }
 
-    function test_Fuzz_Revert_transferVesting(address newBeneficiary, uint256 amount) public {
+    function test_Fuzz_Revert_transferVesting(uint256 amount) public {
         amount = bound(amount, 1, type(uint128).max);
 
         deal(token0, address(this), amount);
@@ -884,7 +884,7 @@ contract TMStakingTest is TestHelper {
         vm.expectRevert(ITMStaking.TMStakingSameBeneficiary.selector);
         staking.transferVesting(token0, alice, 0);
 
-        if (newBeneficiary == address(0) || newBeneficiary == alice) newBeneficiary = bob;
+        address newBeneficiary = bob;
 
         vm.expectRevert(ITMStaking.TMStakingOnlyBeneficiary.selector);
         vm.prank(newBeneficiary);
@@ -919,7 +919,7 @@ contract TMStakingTest is TestHelper {
         deal(token0, address(this), totalAmount);
         IERC20(token0).approve(address(staking), amountA + amountB);
 
-        (, uint256 pendingRewards) = ITMMarket(market0w).getPendingFees();
+        (,,, uint256 pendingRewards) = ITMMarket(market0w).getPendingFees(address(staking));
 
         assertEq(pendingRewards, 0, "test_Claim::1");
         assertEq(staking.getPendingRewards(token0, alice), 0, "test_Claim::2");
@@ -928,17 +928,17 @@ contract TMStakingTest is TestHelper {
         staking.deposit(token0, alice, amountA, amountA);
         staking.createVestingSchedule(token0, bob, uint128(amountB), uint128(amountB), uint80(block.timestamp), 10, 100);
 
-        (, pendingRewards) = ITMMarket(market0w).getPendingFees();
+        (,,, pendingRewards) = ITMMarket(market0w).getPendingFees(address(staking));
 
         assertEq(pendingRewards, 0, "test_Claim::4");
         assertEq(staking.getPendingRewards(token0, alice), 0, "test_Claim::5");
         assertEq(staking.getPendingRewards(token0, bob), 0, "test_Claim::6");
 
         router.swapExactIn{value: 1e18}(
-            abi.encodePacked(address(0), uint32(3 << 24), token0), address(this), 1e18, 0, block.timestamp
+            abi.encodePacked(address(0), uint32(3 << 24), token0), address(this), 1e18, 0, block.timestamp, address(0)
         );
 
-        (, pendingRewards) = ITMMarket(market0w).getPendingFees();
+        (,,, pendingRewards) = ITMMarket(market0w).getPendingFees(address(staking));
         uint256 pendingRewardsA_1 = staking.getPendingRewards(token0, alice);
         uint256 pendingRewardsB_1 = staking.getPendingRewards(token0, bob);
 
@@ -956,10 +956,10 @@ contract TMStakingTest is TestHelper {
         assertEq(IERC20(wnative).balanceOf(bob), 0, "test_Claim::13");
 
         router.swapExactIn{value: 10e18}(
-            abi.encodePacked(address(0), uint32(3 << 24), token0), address(this), 10e18, 0, block.timestamp
+            abi.encodePacked(address(0), uint32(3 << 24), token0), address(this), 10e18, 0, block.timestamp, address(0)
         );
 
-        (, pendingRewards) = ITMMarket(market0w).getPendingFees();
+        (,,, pendingRewards) = ITMMarket(market0w).getPendingFees(address(staking));
         uint256 pendingRewardsA_2 = staking.getPendingRewards(token0, alice);
         uint256 pendingRewardsB_2 = staking.getPendingRewards(token0, bob);
 
@@ -983,10 +983,10 @@ contract TMStakingTest is TestHelper {
         staking.unlock(token0, 0);
 
         router.swapExactIn{value: 1e18}(
-            abi.encodePacked(address(0), uint32(3 << 24), token0), address(this), 1e18, 0, block.timestamp
+            abi.encodePacked(address(0), uint32(3 << 24), token0), address(this), 1e18, 0, block.timestamp, address(0)
         );
 
-        (, pendingRewards) = ITMMarket(market0w).getPendingFees();
+        (,,, pendingRewards) = ITMMarket(market0w).getPendingFees(address(staking));
         uint256 pendingRewardsA_3 = staking.getPendingRewards(token0, alice);
         uint256 pendingRewardsB_3 = staking.getPendingRewards(token0, bob);
 

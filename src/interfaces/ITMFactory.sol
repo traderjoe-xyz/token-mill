@@ -9,12 +9,13 @@ interface ITMFactory {
     error TMFactory__InvalidBalance();
     error TMFactory__InvalidCaller();
     error TMFactory__InvalidQuoteToken();
-    error TMFactory__InvalidProtocolShare();
+    error TMFactory__InvalidFeeShares();
     error TMFactory__QuoteTokenAlreadyAdded();
     error TMFactory__QuoteTokenNotFound();
     error TMFactory__MaxQuoteTokensExceeded();
     error TMFactory__InvalidTokenType();
     error TMFactory__InvalidRecipient();
+    error TMFactory__InvalidProtocolShare();
     error TMFactory__AddressZero();
     error TMFactory__SameTokens();
     error TMFactory__ZeroFeeRecipients();
@@ -31,16 +32,36 @@ interface ITMFactory {
         uint8 decimals,
         uint256[] packedPrices
     );
-    event MarketParametersUpdated(address indexed market, uint256 protocolShare, address creator);
-    event ProtocolShareUpdated(uint256 protocolShare);
+    event MarketFeeSharesUpdated(
+        address indexed market, uint256 protocolShare, uint256 creatorShare, uint256 referrerShare, uint256 stakingShare
+    );
+    event ProtocolSharesUpdated(uint256 protocolShare);
+    event MarketCreatorUpdated(address indexed market, address indexed creator);
     event TokenImplementationUpdated(uint96 tokenType, address implementation);
     event QuoteTokenAdded(address quoteToken);
     event QuoteTokenRemoved(address quoteToken);
     event ProtocolFeeRecipientUpdated(address recipient);
 
     struct MarketParameters {
-        uint96 protocolShare;
+        uint16 protocolShare;
+        uint16 creatorShare;
+        uint16 referrerShare;
+        uint16 stakingShare;
         address creator;
+    }
+
+    struct MarketCreationParameters {
+        uint96 tokenType;
+        string name;
+        string symbol;
+        address quoteToken;
+        uint256 totalSupply;
+        uint16 creatorShare;
+        uint16 referrerShare;
+        uint16 stakingShare;
+        uint256[] bidPrices;
+        uint256[] askPrices;
+        bytes args;
     }
 
     function STAKING() external view returns (address);
@@ -51,7 +72,7 @@ interface ITMFactory {
 
     function getCreatorMarketAt(address creator, uint256 index) external view returns (address);
 
-    function getProtocolShareOf(address market) external view returns (uint256);
+    function getFeeSharesOf(address market) external view returns (uint256, uint256, uint256, uint256);
 
     function getTokenType(address token) external view returns (uint256);
 
@@ -73,26 +94,20 @@ interface ITMFactory {
 
     function getTokenImplementation(uint96 tokenType) external view returns (address);
 
-    function createMarketAndToken(
-        uint96 tokenType,
-        string memory name,
-        string memory symbol,
-        address quoteToken,
-        uint256 totalSupply,
-        uint256[] memory bidPrices,
-        uint256[] memory askPrices,
-        bytes memory args
-    ) external returns (address baseToken, address market);
+    function createMarketAndToken(MarketCreationParameters calldata parameters)
+        external
+        returns (address baseToken, address market);
 
-    function updateCreator(address market, address creator) external;
+    function updateCreatorOf(address market, address creator) external;
 
-    function claimFees(address market) external returns (uint256 protocolFees, uint256 stakingFees);
+    function updateFeeSharesOf(address market, uint16 creatorShare, uint16 referrerShare, uint16 stakingShare)
+        external;
 
-    function updateProtocolShare(uint64 protocolShare) external;
+    function claimFees(address market) external returns (uint256 protocolFees, uint256 claimedFees);
+
+    function updateProtocolShare(uint16 protocolShare) external;
 
     function updateProtocolFeeRecipient(address recipient) external;
-
-    function updateProtocolShareOf(address market, uint64 protocolShare) external;
 
     function updateTokenImplementation(uint96 tokenType, address implementation) external;
 

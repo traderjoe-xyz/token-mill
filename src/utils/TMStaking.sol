@@ -208,8 +208,10 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         pending = user.pending;
 
         if (totalShares > 0) {
-            (, uint256 totalPendingReward) = ITMMarket(market).getPendingFees();
-            uint256 accRewardPerShare = staking.accRewardPerShare + (totalPendingReward * PRECISION) / totalShares;
+            (,, uint256 referrerFees, uint256 stakingFees) = ITMMarket(market).getPendingFees(address(this));
+
+            uint256 accRewardPerShare =
+                staking.accRewardPerShare + ((stakingFees + referrerFees) * PRECISION) / totalShares;
 
             pending += (shares * (accRewardPerShare - user.accRewardPerShare)) / PRECISION;
         }

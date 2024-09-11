@@ -19,23 +19,32 @@ interface IRouter {
 
     function getWNative() external view returns (address);
 
-    function swapExactIn(bytes memory route, address to, uint256 amountIn, uint256 amountOutMin, uint256 deadline)
-        external
-        payable
-        returns (uint256, uint256);
+    function swapExactIn(
+        bytes memory route,
+        address to,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        uint256 deadline,
+        address referrer
+    ) external payable returns (uint256, uint256);
 
     function swapExactInSupportingFeeOnTransferTokens(
         bytes memory route,
         address to,
         uint256 amountIn,
         uint256 amountOutMin,
-        uint256 deadline
+        uint256 deadline,
+        address referrer
     ) external payable returns (uint256, uint256);
 
-    function swapExactOut(bytes memory route, address to, uint256 amountOut, uint256 amountInMax, uint256 deadline)
-        external
-        payable
-        returns (uint256, uint256);
+    function swapExactOut(
+        bytes memory route,
+        address to,
+        uint256 amountOut,
+        uint256 amountInMax,
+        uint256 deadline,
+        address referrer
+    ) external payable returns (uint256, uint256);
 
     function simulate(bytes[] calldata routes, uint256 amount, bool exactIn) external payable;
 

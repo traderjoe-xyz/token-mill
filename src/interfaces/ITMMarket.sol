@@ -19,9 +19,14 @@ interface ITMMarket is IPricePoints {
     error TMMarket__AlreadyInitialized();
     error TMMarket__InvalidCirculatingSupply();
 
-    event Swap(address indexed sender, address indexed recipient, int256 deltaBaseAmount, int256 deltaQuoteAmount);
-    event StakingFeesClaimed(address indexed caller, address indexed recipient, uint256 fees);
-    event ProtocolFeesClaimed(address indexed caller, address indexed recipient, uint256 fees);
+    event Swap(
+        address indexed sender,
+        address indexed recipient,
+        address indexed referrer,
+        int256 deltaBaseAmount,
+        int256 deltaQuoteAmount
+    );
+    event FeesClaimed(address indexed caller, uint256 protocolFees, uint256 claimedFees);
 
     function initialize() external;
 
@@ -39,7 +44,10 @@ interface ITMMarket is IPricePoints {
 
     function getPricePoints(bool bid) external pure returns (uint256[] memory);
 
-    function getPendingFees() external view returns (uint256 protocolFees, uint256 stakingFees);
+    function getPendingFees(address referrer)
+        external
+        view
+        returns (uint256 protocolFees, uint256 creatorFees, uint256 referrerFees, uint256 stakingFees);
 
     function getDeltaAmounts(int256 deltaAmount, bool swapB2Q)
         external
@@ -48,11 +56,11 @@ interface ITMMarket is IPricePoints {
 
     function getReserves() external view returns (uint256 baseReserve, uint256 quoteReserve);
 
-    function swap(address recipient, int256 deltaAmount, bool swapB2Q, bytes calldata data)
+    function swap(address recipient, int256 deltaAmount, bool swapB2Q, bytes calldata data, address referrer)
         external
         returns (int256 deltaBaseAmount, int256 deltaQuoteAmount);
 
-    function claimFees(address caller, address protocolFeeRecipient, address stakingFeeRecipient)
+    function claimFees(address caller, address protocol, address creator, address staking)
         external
-        returns (uint256 protocolFees, uint256 stakingFees);
+        returns (uint256 protocolFees, uint256 claimedFees);
 }

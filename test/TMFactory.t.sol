@@ -23,7 +23,9 @@ contract TMFactoryTest is Test {
         factory = TMFactory(
             address(
                 new TransparentUpgradeableProxy(
-                    factoryImp, address(this), abi.encodeCall(TMFactory.initialize, (0.1e18, address(this)))
+                    factoryImp,
+                    address(this),
+                    abi.encodeCall(TMFactory.initialize, (0.2e4, feeRecipient, address(this)))
                 )
             )
         );
@@ -33,7 +35,8 @@ contract TMFactoryTest is Test {
 
     function test_Constructor() public view {
         assertEq(factory.owner(), address(this), "test_Constructor::1");
-        assertEq(factory.getProtocolShare(), 0.1e18, "test_Constructor::2");
+        assertEq(factory.getProtocolShare(), 0.2e4, "test_Constructor::2");
+        assertEq(factory.getProtocolFeeRecipient(), feeRecipient, "test_Constructor::3");
     }
 
     function test_Fuzz_UpdateTokenImplementation(address implementation, uint96 tokenType) public {
@@ -135,37 +138,30 @@ contract TMFactoryTest is Test {
         assertTrue(factory.isQuoteToken(token2), "test_Fuzz_RemoveQuoteToken::16");
     }
 
-    function test_Fuzz_UpdateProtocolShare(uint64 shares) public {
-        shares = uint64(bound(shares, 0, 1e18));
+    function test_Fuzz_UpdateProtocolShare(uint16 pShares) public {
+        pShares = uint16(bound(pShares, 0, 1e4));
 
-        assertEq(factory.getProtocolShare(), 0.1e18, "test_Fuzz_UpdateProtocolShare::1");
+        assertEq(factory.getProtocolShare(), 0.2e4, "test_Fuzz_UpdateProtocolShare::1");
 
-        factory.updateProtocolShare(shares);
+        factory.updateProtocolShare(pShares);
 
-        assertEq(factory.getProtocolShare(), shares, "test_Fuzz_UpdateProtocolShare::2");
-
-        factory.updateProtocolShare(0);
-
-        assertEq(factory.getProtocolShare(), 0, "test_Fuzz_UpdateProtocolShare::3");
-
-        factory.updateProtocolShare(1e18);
-
-        assertEq(factory.getProtocolShare(), 1e18, "test_Fuzz_UpdateProtocolShare::4");
+        assertEq(factory.getProtocolShare(), pShares, "test_Fuzz_UpdateProtocolShare::2");
 
         vm.expectRevert(ITMFactory.TMFactory__InvalidProtocolShare.selector);
-        factory.updateProtocolShare(uint64(bound(shares, 1e18 + 1, type(uint64).max)));
+        factory.updateProtocolShare(uint16(bound(pShares, 1e4 + 1, type(uint16).max)));
     }
 
     function test_Fuzz_UpdateProtocolFeeRecipient(address recipient) public {
-        assertEq(factory.getProtocolFeeRecipient(), address(0), "test_Fuzz_UpdateProtocolFeeRecipient::1");
+        assertEq(factory.getProtocolFeeRecipient(), feeRecipient, "test_Fuzz_UpdateProtocolFeeRecipient::1");
+
+        recipient = recipient == address(0) ? alice : recipient;
 
         factory.updateProtocolFeeRecipient(recipient);
 
         assertEq(factory.getProtocolFeeRecipient(), recipient, "test_Fuzz_UpdateProtocolFeeRecipient::2");
 
+        vm.expectRevert(ITMFactory.TMFactory__AddressZero.selector);
         factory.updateProtocolFeeRecipient(address(0));
-
-        assertEq(factory.getProtocolFeeRecipient(), address(0), "test_Fuzz_UpdateProtocolFeeRecipient::3");
     }
 
     function test_Fuzz_CreateTokenAndMarket(
@@ -173,11 +169,17 @@ contract TMFactoryTest is Test {
         string memory name,
         string memory symbol,
         uint8 decimals,
-        uint256 amount
+        uint256 amount,
+        uint16 creatorShare,
+        uint16 referrerShare,
+        uint16 stakingShare
     ) public {
         vm.assume(sender != proxyAdmin);
 
         decimals = uint8(bound(decimals, 0, 18));
+        creatorShare = uint16(bound(creatorShare, 0, 0.8e4));
+        referrerShare = uint16(bound(referrerShare, 0, 0.8e4 - creatorShare));
+        stakingShare = 0.8e4 - creatorShare - referrerShare;
 
         TMERC20 implementation = new TMERC20(address(factory));
         factory.updateTokenImplementation(1, address(implementation));
@@ -189,53 +191,103 @@ contract TMFactoryTest is Test {
 
         amount = bound(amount, 10 ** decimals, uint256(type(uint128).max) * 10 ** decimals / 1e18);
 
+        ITMFactory.MarketCreationParameters memory params = ITMFactory.MarketCreationParameters(
+            1,
+            name,
+            symbol,
+            wnative,
+            amount,
+            creatorShare,
+            referrerShare,
+            stakingShare,
+            prices,
+            prices,
+            abi.encode(decimals)
+        );
+
         vm.prank(sender);
-        (address token, address market) =
-            factory.createMarketAndToken(1, name, symbol, wnative, amount, prices, prices, abi.encode(decimals));
+        (address token, address market) = factory.createMarketAndToken(params);
 
         assertEq(factory.getCreatorOf(market), sender, "test_Fuzz_CreateTokenAndMarket::1");
-        assertEq(factory.getProtocolShareOf(market), 0.1e18, "test_Fuzz_CreateTokenAndMarket::2");
-        assertEq(factory.getTokenType(token), 1, "test_Fuzz_CreateTokenAndMarket::3");
-        assertEq(factory.getMarketOf(token), market, "test_Fuzz_CreateTokenAndMarket::4");
+
+        (uint256 pShare, uint256 cShare, uint256 rShare, uint256 sShare) = factory.getFeeSharesOf(market);
+
+        assertEq(pShare, 0.2e4, "test_Fuzz_CreateTokenAndMarket::2");
+        assertEq(cShare, creatorShare, "test_Fuzz_CreateTokenAndMarket::3");
+        assertEq(rShare, referrerShare, "test_Fuzz_CreateTokenAndMarket::4");
+        assertEq(sShare, stakingShare, "test_Fuzz_CreateTokenAndMarket::5");
+        assertEq(factory.getTokenType(token), 1, "test_Fuzz_CreateTokenAndMarket::6");
+        assertEq(factory.getMarketOf(token), market, "test_Fuzz_CreateTokenAndMarket::7");
 
         (bool tokenAisBase, address market_) = factory.getMarket(token, wnative);
 
-        assertEq(tokenAisBase, true, "test_Fuzz_CreateTokenAndMarket::5");
-        assertEq(market_, market, "test_Fuzz_CreateTokenAndMarket::6");
+        assertEq(tokenAisBase, true, "test_Fuzz_CreateTokenAndMarket::8");
+        assertEq(market_, market, "test_Fuzz_CreateTokenAndMarket::9");
 
         (tokenAisBase, market_) = factory.getMarket(wnative, token);
 
-        assertEq(tokenAisBase, false, "test_Fuzz_CreateTokenAndMarket::7");
-        assertEq(market_, market, "test_Fuzz_CreateTokenAndMarket::8");
+        assertEq(tokenAisBase, false, "test_Fuzz_CreateTokenAndMarket::10");
+        assertEq(market_, market, "test_Fuzz_CreateTokenAndMarket::11");
 
-        assertEq(factory.getMarketsLength(), 1, "test_Fuzz_CreateTokenAndMarket::9");
-        assertEq(factory.getMarketAt(0), market, "test_Fuzz_CreateTokenAndMarket::10");
+        assertEq(factory.getMarketsLength(), 1, "test_Fuzz_CreateTokenAndMarket::12");
+        assertEq(factory.getMarketAt(0), market, "test_Fuzz_CreateTokenAndMarket::13");
     }
 
-    function test_Fuzz_Revert_CreateTokenAndMarket(address token, uint96 tokenType) public {
+    function test_Fuzz_Revert_CreateTokenAndMarket(
+        address token,
+        uint96 tokenType,
+        uint16 creatorShare,
+        uint16 referrerShare,
+        uint16 stakingShare
+    ) public {
         token = address(uint160(bound(uint160(token), 0x0a, type(uint160).max)));
         tokenType = uint96(bound(tokenType, 1, type(uint96).max));
 
         vm.assume(token != address(factory));
 
+        ITMFactory.MarketCreationParameters memory params;
+        params.totalSupply = 1e18;
+
+        params.tokenType = tokenType;
+
         vm.expectRevert(ITMFactory.TMFactory__InvalidTokenType.selector);
-        factory.createMarketAndToken(tokenType, "", "", address(0), 0, new uint256[](2), new uint256[](2), new bytes(0));
+        factory.createMarketAndToken(params);
 
         address badToken = address(new BadERC20(address(factory)));
 
         factory.updateTokenImplementation(tokenType, badToken);
 
+        params.quoteToken = wnative;
+
         uint256[] memory prices = new uint256[](2);
         prices[0] = 0;
         prices[1] = 1e18;
+        params.bidPrices = prices;
+        params.askPrices = prices;
 
         vm.expectRevert(ITMFactory.TMFactory__InvalidQuoteToken.selector);
-        factory.createMarketAndToken(tokenType, "", "", token, 0, prices, prices, new bytes(0));
+        factory.createMarketAndToken(params);
 
         factory.addQuoteToken(wnative);
 
+        uint256 total = uint256(creatorShare) + referrerShare;
+
+        stakingShare =
+            uint16(bound(stakingShare, 0, total > 0.8e4 ? stakingShare : total < 0.8e4 ? 0.8e4 - total - 1 : 1));
+
+        params.creatorShare = creatorShare;
+        params.referrerShare = referrerShare;
+        params.stakingShare = stakingShare;
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidFeeShares.selector);
+        factory.createMarketAndToken(params);
+
+        params.creatorShare = 0.2e4;
+        params.referrerShare = 0.2e4;
+        params.stakingShare = 0.4e4;
+
         vm.expectRevert(ITMFactory.TMFactory__InvalidBalance.selector);
-        factory.createMarketAndToken(tokenType, "", "", wnative, 1e18, prices, prices, new bytes(0));
+        factory.createMarketAndToken(params);
     }
 
     function test_Fuzz_UpdateCreator(address sender, address other) public {
@@ -255,7 +307,7 @@ contract TMFactoryTest is Test {
         assertEq(factory.getCreatorMarketAt(sender, 0), market, "test_Fuzz_UpdateCreator::4");
 
         vm.prank(sender);
-        factory.updateCreator(market, other);
+        factory.updateCreatorOf(market, other);
 
         assertEq(factory.getCreatorOf(market), other, "test_Fuzz_UpdateCreator::5");
         assertEq(factory.getCreatorMarketsLength(sender), 0, "test_Fuzz_UpdateCreator::6");
@@ -264,10 +316,10 @@ contract TMFactoryTest is Test {
 
         vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
         vm.prank(sender);
-        factory.updateCreator(market, sender);
+        factory.updateCreatorOf(market, sender);
 
         vm.prank(other);
-        factory.updateCreator(market, sender);
+        factory.updateCreatorOf(market, sender);
 
         assertEq(factory.getCreatorOf(market), sender, "test_Fuzz_UpdateCreator::9");
         assertEq(factory.getCreatorMarketsLength(sender), 1, "test_Fuzz_UpdateCreator::10");
@@ -298,7 +350,7 @@ contract TMFactoryTest is Test {
         assertEq(factory.getCreatorMarketAt(creator1, 0), market3, "test_UpdateCreator::10");
 
         vm.prank(creator0);
-        factory.updateCreator(market0, creator1);
+        factory.updateCreatorOf(market0, creator1);
 
         assertEq(factory.getCreatorOf(market0), creator1, "test_UpdateCreator::11");
         assertEq(factory.getCreatorOf(market1), creator0, "test_UpdateCreator::12");
@@ -314,7 +366,7 @@ contract TMFactoryTest is Test {
         assertEq(factory.getCreatorMarketAt(creator1, 1), market0, "test_UpdateCreator::20");
 
         vm.prank(creator0);
-        factory.updateCreator(market1, creator1);
+        factory.updateCreatorOf(market1, creator1);
 
         assertEq(factory.getCreatorOf(market0), creator1, "test_UpdateCreator::21");
         assertEq(factory.getCreatorOf(market1), creator1, "test_UpdateCreator::22");
@@ -330,7 +382,7 @@ contract TMFactoryTest is Test {
         assertEq(factory.getCreatorMarketAt(creator1, 2), market1, "test_UpdateCreator::30");
 
         vm.prank(creator1);
-        factory.updateCreator(market3, creator0);
+        factory.updateCreatorOf(market3, creator0);
 
         assertEq(factory.getCreatorOf(market0), creator1, "test_UpdateCreator::31");
         assertEq(factory.getCreatorOf(market1), creator1, "test_UpdateCreator::32");
@@ -346,7 +398,7 @@ contract TMFactoryTest is Test {
         assertEq(factory.getCreatorMarketAt(creator1, 1), market0, "test_UpdateCreator::40");
 
         vm.prank(creator1);
-        factory.updateCreator(market1, creator1);
+        factory.updateCreatorOf(market1, creator1);
 
         assertEq(factory.getCreatorOf(market0), creator1, "test_UpdateCreator::41");
         assertEq(factory.getCreatorOf(market1), creator1, "test_UpdateCreator::42");
@@ -362,36 +414,93 @@ contract TMFactoryTest is Test {
         assertEq(factory.getCreatorMarketAt(creator1, 1), market1, "test_UpdateCreator::50");
     }
 
-    function test_Fuzz_UpdateProtocolShareOf(uint64 shares) public {
-        shares = uint64(bound(shares, 0, 1e18));
+    struct Fees {
+        uint256 protocolFees;
+        uint256 creatorFees;
+        uint256 referrerFees;
+        uint256 stakingFees;
+    }
+
+    function test_Fuzz_UpdateFeeShareOf(uint16 cShares, uint16 rShares, uint16 sShares) public {
+        cShares = uint16(bound(cShares, 0, 0.8e4));
+        rShares = uint16(bound(rShares, 0, 0.8e4 - cShares));
+        sShares = 0.8e4 - cShares - rShares;
 
         (, address market1) = _setUpAndCreateToken(alice);
         (, address market2) = _setUpAndCreateToken(bob);
 
-        assertEq(factory.getProtocolShareOf(market1), 0.1e18, "test_Fuzz_UpdateProtocolShareOf::1");
-        assertEq(factory.getProtocolShareOf(market2), 0.1e18, "test_Fuzz_UpdateProtocolShareOf::2");
+        Fees memory fees1;
+        Fees memory fees2;
 
-        factory.updateProtocolShareOf(market1, shares);
+        (fees1.protocolFees, fees1.creatorFees, fees1.referrerFees, fees1.stakingFees) = factory.getFeeSharesOf(market1);
+        (fees2.protocolFees, fees2.creatorFees, fees2.referrerFees, fees2.stakingFees) = factory.getFeeSharesOf(market2);
 
-        assertEq(factory.getProtocolShareOf(market1), shares, "test_Fuzz_UpdateProtocolShareOf::3");
-        assertEq(factory.getProtocolShareOf(market2), 0.1e18, "test_Fuzz_UpdateProtocolShareOf::4");
+        assertEq(fees1.protocolFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::1");
+        assertEq(fees1.creatorFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::2");
+        assertEq(fees1.referrerFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::3");
+        assertEq(fees1.stakingFees, 0.4e4, "test_Fuzz_UpdateFeeShareOf::4");
 
-        factory.updateProtocolShareOf(market1, 0);
-        factory.updateProtocolShareOf(market2, shares);
+        assertEq(fees2.protocolFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::5");
+        assertEq(fees2.creatorFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::6");
+        assertEq(fees2.referrerFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::7");
+        assertEq(fees2.stakingFees, 0.4e4, "test_Fuzz_UpdateFeeShareOf::8");
 
-        assertEq(factory.getProtocolShareOf(market1), 0, "test_Fuzz_UpdateProtocolShareOf::5");
-        assertEq(factory.getProtocolShareOf(market2), shares, "test_Fuzz_UpdateProtocolShareOf::6");
-
-        vm.expectRevert(ITMFactory.TMFactory__InvalidProtocolShare.selector);
-        factory.updateProtocolShareOf(market1, uint64(bound(shares, 1e18 + 1, type(uint64).max)));
-
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
         vm.prank(alice);
-        factory.updateProtocolShareOf(market1, 1e18);
+        factory.updateFeeSharesOf(market1, cShares, rShares, sShares);
 
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, bob));
+        (fees1.protocolFees, fees1.creatorFees, fees1.referrerFees, fees1.stakingFees) = factory.getFeeSharesOf(market1);
+        (fees2.protocolFees, fees2.creatorFees, fees2.referrerFees, fees2.stakingFees) = factory.getFeeSharesOf(market2);
+
+        assertEq(fees1.protocolFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::9");
+        assertEq(fees1.creatorFees, cShares, "test_Fuzz_UpdateFeeShareOf::10");
+        assertEq(fees1.referrerFees, rShares, "test_Fuzz_UpdateFeeShareOf::11");
+        assertEq(fees1.stakingFees, sShares, "test_Fuzz_UpdateFeeShareOf::12");
+
+        assertEq(fees2.protocolFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::13");
+        assertEq(fees2.creatorFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::14");
+        assertEq(fees2.referrerFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::15");
+        assertEq(fees2.stakingFees, 0.4e4, "test_Fuzz_UpdateFeeShareOf::16");
+
         vm.prank(bob);
-        factory.updateProtocolShareOf(market1, 1e18);
+        factory.updateFeeSharesOf(market2, cShares, rShares, sShares);
+
+        (fees1.protocolFees, fees1.creatorFees, fees1.referrerFees, fees1.stakingFees) = factory.getFeeSharesOf(market1);
+        (fees2.protocolFees, fees2.creatorFees, fees2.referrerFees, fees2.stakingFees) = factory.getFeeSharesOf(market2);
+
+        assertEq(fees1.protocolFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::17");
+        assertEq(fees1.creatorFees, cShares, "test_Fuzz_UpdateFeeShareOf::18");
+        assertEq(fees1.referrerFees, rShares, "test_Fuzz_UpdateFeeShareOf::19");
+        assertEq(fees1.stakingFees, sShares, "test_Fuzz_UpdateFeeShareOf::20");
+
+        assertEq(fees2.protocolFees, 0.2e4, "test_Fuzz_UpdateFeeShareOf::21");
+        assertEq(fees2.creatorFees, cShares, "test_Fuzz_UpdateFeeShareOf::22");
+        assertEq(fees2.referrerFees, rShares, "test_Fuzz_UpdateFeeShareOf::23");
+        assertEq(fees2.stakingFees, sShares, "test_Fuzz_UpdateFeeShareOf::24");
+
+        uint256 total = cShares + rShares;
+        if (total == 0.8e4) sShares = 1;
+        else if (total < 0.8e4) sShares = uint16(bound(sShares, 0, 0.8e4 - total - 1));
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidFeeShares.selector);
+        vm.prank(alice);
+        factory.updateFeeSharesOf(market1, cShares, rShares, sShares);
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidFeeShares.selector);
+        vm.prank(bob);
+        factory.updateFeeSharesOf(market2, cShares, rShares, sShares);
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
+        vm.prank(alice);
+        factory.updateFeeSharesOf(market2, 0, 0, 0);
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidCaller.selector);
+        vm.prank(bob);
+        factory.updateFeeSharesOf(market1, 0, 0, 0);
+    }
+
+    struct FeesClaimed {
+        uint256 protocol;
+        uint256 amount;
     }
 
     function test_ClaimFees() public {
@@ -401,68 +510,119 @@ contract TMFactoryTest is Test {
 
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token1);
 
-        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp);
+        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp, alice);
 
-        (uint256 protocol1, uint256 staking1) = ITMMarket(market1).getPendingFees();
+        Fees memory pendingFees1;
+        (pendingFees1.protocolFees, pendingFees1.creatorFees, pendingFees1.referrerFees, pendingFees1.stakingFees) =
+            ITMMarket(market1).getPendingFees(alice);
 
-        factory.updateProtocolFeeRecipient(feeRecipient);
+        FeesClaimed memory stakingClaimed;
 
         vm.prank(staking);
-        (uint256 protocol1Claimed, uint256 staking1Claimed) = factory.claimFees(market1);
+        (stakingClaimed.protocol, stakingClaimed.amount) = factory.claimFees(market1);
 
-        assertEq(protocol1Claimed, protocol1, "test_ClaimFees::1");
-        assertEq(staking1Claimed, staking1, "test_ClaimFees::2");
+        assertEq(stakingClaimed.protocol, pendingFees1.protocolFees, "test_ClaimFees::1");
+        assertEq(stakingClaimed.amount, pendingFees1.stakingFees, "test_ClaimFees::2");
+        assertGt(pendingFees1.creatorFees, 0, "test_ClaimFees::3");
+        assertGt(pendingFees1.stakingFees, 0, "test_ClaimFees::4");
 
-        assertEq(IERC20(wnative).balanceOf(feeRecipient), protocol1, "test_ClaimFees::2");
-        assertEq(IERC20(wnative).balanceOf(staking), staking1, "test_ClaimFees::2");
-
-        {
-            (uint256 protocolA, uint256 stakingA) = ITMMarket(market1).getPendingFees();
-
-            assertEq(protocolA, 0, "test_ClaimFees::3");
-            assertEq(stakingA, 0, "test_ClaimFees::4");
-        }
-
-        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp);
-
-        (uint256 protocol2, uint256 staking2) = ITMMarket(market1).getPendingFees();
-
-        assertApproxEqAbs(protocol2, protocol1, 1, "test_ClaimFees::9");
-        assertApproxEqAbs(staking2, staking1, 1, "test_ClaimFees::10");
-
-        vm.prank(feeRecipient);
-        (uint256 protocol2Claimed, uint256 staking2Claimed) = factory.claimFees(market1);
-
-        assertEq(protocol2Claimed, protocol2, "test_ClaimFees::11");
-        assertEq(staking2Claimed, 0, "test_ClaimFees::12");
-
-        assertEq(IERC20(wnative).balanceOf(feeRecipient), protocol1 + protocol2, "test_ClaimFees::13");
-        assertEq(IERC20(wnative).balanceOf(staking), staking1, "test_ClaimFees::14");
+        assertEq(IERC20(wnative).balanceOf(feeRecipient), stakingClaimed.protocol, "test_ClaimFees::5");
+        assertEq(IERC20(wnative).balanceOf(staking), stakingClaimed.amount, "test_ClaimFees::6");
 
         {
-            (uint256 protocol3, uint256 staking3) = ITMMarket(market1).getPendingFees();
+            Fees memory pendingFees;
 
-            assertEq(protocol3, 0, "test_ClaimFees::13");
-            assertEq(staking3, staking2, "test_ClaimFees::14");
+            (pendingFees.protocolFees, pendingFees.creatorFees, pendingFees.referrerFees, pendingFees.stakingFees) =
+                ITMMarket(market1).getPendingFees(alice);
+
+            assertEq(pendingFees.protocolFees, 0, "test_ClaimFees::7");
+            assertEq(pendingFees.creatorFees, pendingFees1.creatorFees, "test_ClaimFees::8");
+            assertEq(pendingFees.referrerFees, pendingFees1.referrerFees, "test_ClaimFees::9");
+            assertEq(pendingFees.stakingFees, 0, "test_ClaimFees::10");
         }
+
+        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp, address(staking));
+
+        Fees memory pendingFees2;
+
+        (pendingFees2.protocolFees, pendingFees2.creatorFees, pendingFees2.referrerFees, pendingFees2.stakingFees) =
+            ITMMarket(market1).getPendingFees(address(staking));
+
+        assertApproxEqAbs(pendingFees2.protocolFees, pendingFees1.protocolFees, 1, "test_ClaimFees::11");
+        assertApproxEqAbs(pendingFees2.creatorFees, 2 * pendingFees1.creatorFees, 1, "test_ClaimFees::12");
+        assertApproxEqAbs(pendingFees2.referrerFees, pendingFees1.referrerFees, 1, "test_ClaimFees::13");
+        assertApproxEqAbs(pendingFees2.stakingFees, pendingFees1.stakingFees, 1, "test_ClaimFees::14");
+
+        FeesClaimed memory creatorClaimed;
+
+        vm.prank(alice);
+        (creatorClaimed.protocol, creatorClaimed.amount) = factory.claimFees(market1);
+
+        assertEq(creatorClaimed.protocol, pendingFees2.protocolFees, "test_ClaimFees::15");
+        assertEq(creatorClaimed.amount, pendingFees2.creatorFees + pendingFees1.referrerFees, "test_ClaimFees::16");
+
+        assertEq(
+            IERC20(wnative).balanceOf(feeRecipient),
+            stakingClaimed.protocol + creatorClaimed.protocol,
+            "test_ClaimFees::17"
+        );
+        assertEq(IERC20(wnative).balanceOf(alice), creatorClaimed.amount, "test_ClaimFees::18");
 
         {
-            vm.prank(staking);
-            (uint256 protocol3Claimed, uint256 staking3Claimed) = factory.claimFees(market1);
+            Fees memory pendingFees;
 
-            assertEq(protocol3Claimed, 0, "test_ClaimFees::15");
-            assertEq(staking3Claimed, staking2, "test_ClaimFees::16");
+            (pendingFees.protocolFees, pendingFees.creatorFees, pendingFees.referrerFees, pendingFees.stakingFees) =
+                ITMMarket(market1).getPendingFees(alice);
+
+            assertEq(pendingFees.protocolFees, 0, "test_ClaimFees::19");
+            assertEq(pendingFees.creatorFees, 0, "test_ClaimFees::20");
+            assertEq(pendingFees.referrerFees, 0, "test_ClaimFees::21");
+            assertEq(pendingFees.stakingFees, pendingFees2.stakingFees, "test_ClaimFees::22");
+
+            (pendingFees.protocolFees, pendingFees.creatorFees, pendingFees.referrerFees, pendingFees.stakingFees) =
+                ITMMarket(market1).getPendingFees(address(staking));
+
+            assertEq(pendingFees.protocolFees, 0, "test_ClaimFees::23");
+            assertEq(pendingFees.creatorFees, 0, "test_ClaimFees::24");
+            assertEq(pendingFees.referrerFees, pendingFees2.referrerFees, "test_ClaimFees::25");
+            assertEq(pendingFees.stakingFees, pendingFees2.stakingFees, "test_ClaimFees::26");
         }
 
-        assertEq(IERC20(wnative).balanceOf(feeRecipient), protocol1 + protocol2, "test_ClaimFees::17");
-        assertEq(IERC20(wnative).balanceOf(staking), staking1 + staking2, "test_ClaimFees::18");
+        FeesClaimed memory stakingClaimed2;
+
+        vm.prank(staking);
+        (stakingClaimed2.protocol, stakingClaimed2.amount) = factory.claimFees(market1);
+
+        assertEq(stakingClaimed2.protocol, 0, "test_ClaimFees::27");
+        assertEq(stakingClaimed2.amount, pendingFees2.stakingFees + pendingFees2.referrerFees, "test_ClaimFees::28");
+
+        assertEq(
+            IERC20(wnative).balanceOf(staking), stakingClaimed.amount + stakingClaimed2.amount, "test_ClaimFees::29"
+        );
 
         {
-            (uint256 protocolA, uint256 stakingA) = ITMMarket(market1).getPendingFees();
+            Fees memory pendingFees;
 
-            assertEq(protocolA, 0, "test_ClaimFees::3");
-            assertEq(stakingA, 0, "test_ClaimFees::4");
+            (pendingFees.protocolFees, pendingFees.creatorFees, pendingFees.referrerFees, pendingFees.stakingFees) =
+                ITMMarket(market1).getPendingFees(address(staking));
+
+            assertEq(pendingFees.protocolFees, 0, "test_ClaimFees::30");
+            assertEq(pendingFees.creatorFees, 0, "test_ClaimFees::31");
+            assertEq(pendingFees.referrerFees, 0, "test_ClaimFees::32");
+            assertEq(pendingFees.stakingFees, 0, "test_ClaimFees::33");
         }
+
+        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp, address(0));
+
+        Fees memory pendingFees3;
+
+        (pendingFees3.protocolFees, pendingFees3.creatorFees, pendingFees3.referrerFees, pendingFees3.stakingFees) =
+            ITMMarket(market1).getPendingFees(address(0));
+
+        assertApproxEqAbs(pendingFees3.protocolFees, pendingFees1.protocolFees * 1e4 / 0.8e4, 1, "test_ClaimFees::34");
+        assertApproxEqAbs(pendingFees3.creatorFees, pendingFees1.creatorFees * 1e4 / 0.8e4, 1, "test_ClaimFees::35");
+        assertApproxEqAbs(pendingFees3.referrerFees, 0, 1, "test_ClaimFees::36");
+        assertApproxEqAbs(pendingFees3.stakingFees, pendingFees1.stakingFees * 1e4 / 0.8e4, 1, "test_ClaimFees::37");
     }
 
     function test_ClaimFeesAndUpdateProtocolFees() public {
@@ -472,19 +632,54 @@ contract TMFactoryTest is Test {
 
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token1);
 
-        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp);
+        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp, alice);
 
-        (uint256 protocol1, uint256 staking1) = ITMMarket(market1).getPendingFees();
+        Fees memory pendingFees1;
 
-        assertGt(protocol1, 0, "test_ClaimFeesAndUpdateProtocolFees::1");
-        assertGt(staking1, 0, "test_ClaimFeesAndUpdateProtocolFees::2");
+        (pendingFees1.protocolFees, pendingFees1.creatorFees, pendingFees1.referrerFees, pendingFees1.stakingFees) =
+            ITMMarket(market1).getPendingFees(alice);
 
-        factory.updateProtocolShareOf(market1, 0.5e18);
+        assertGt(pendingFees1.protocolFees, 0, "test_ClaimFeesAndUpdateProtocolFees::1");
+        assertGt(pendingFees1.creatorFees, 0, "test_ClaimFeesAndUpdateProtocolFees::2");
+        assertGt(pendingFees1.referrerFees, 0, "test_ClaimFeesAndUpdateProtocolFees::3");
+        assertGt(pendingFees1.stakingFees, 0, "test_ClaimFeesAndUpdateProtocolFees::4");
 
-        (uint256 protocol1_, uint256 staking1_) = ITMMarket(market1).getPendingFees();
+        vm.prank(alice);
+        factory.updateFeeSharesOf(market1, 0, 0, 0.8e4);
 
-        assertEq(protocol1_, protocol1, "test_ClaimFeesAndUpdateProtocolFees::3");
-        assertEq(staking1_, staking1, "test_ClaimFeesAndUpdateProtocolFees::4");
+        Fees memory pendingFees2;
+
+        (pendingFees2.protocolFees, pendingFees2.creatorFees, pendingFees2.referrerFees, pendingFees2.stakingFees) =
+            ITMMarket(market1).getPendingFees(alice);
+
+        assertEq(pendingFees2.protocolFees, 0, "test_ClaimFeesAndUpdateProtocolFees::5");
+        assertEq(pendingFees2.creatorFees, 0, "test_ClaimFeesAndUpdateProtocolFees::6");
+        assertEq(pendingFees2.referrerFees, 0, "test_ClaimFeesAndUpdateProtocolFees::7");
+        assertEq(pendingFees2.stakingFees, pendingFees1.stakingFees, "test_ClaimFeesAndUpdateProtocolFees::8");
+        assertEq(
+            IERC20(wnative).balanceOf(feeRecipient), pendingFees1.protocolFees, "test_ClaimFeesAndUpdateProtocolFees::9"
+        );
+        assertEq(
+            IERC20(wnative).balanceOf(alice),
+            pendingFees1.creatorFees + pendingFees1.referrerFees,
+            "test_ClaimFeesAndUpdateProtocolFees::10"
+        );
+
+        router.swapExactIn{value: 1e18}(route, address(1), 1e18, 0, block.timestamp, alice);
+
+        Fees memory pendingFees3;
+
+        (pendingFees3.protocolFees, pendingFees3.creatorFees, pendingFees3.referrerFees, pendingFees3.stakingFees) =
+            ITMMarket(market1).getPendingFees(alice);
+
+        assertEq(pendingFees3.protocolFees, pendingFees1.protocolFees, "test_ClaimFeesAndUpdateProtocolFees::11");
+        assertEq(pendingFees3.creatorFees, 0, "test_ClaimFeesAndUpdateProtocolFees::12");
+        assertEq(pendingFees3.referrerFees, 0, "test_ClaimFeesAndUpdateProtocolFees::13");
+        assertEq(
+            pendingFees3.stakingFees,
+            2 * pendingFees1.stakingFees + pendingFees1.creatorFees + pendingFees1.referrerFees,
+            "test_ClaimFeesAndUpdateProtocolFees::14"
+        );
     }
 
     function _setUpAndCreateToken(address sender) internal returns (address token, address market) {
@@ -512,10 +707,12 @@ contract TMFactoryTest is Test {
         bidPrices[0] = askPrices[0] * ratio / 1e18;
         bidPrices[1] = askPrices[1] * ratio / 1e18;
 
-        vm.prank(sender);
-        (token, market) = factory.createMarketAndToken(
-            1, "Test", "TST", wnative, 100_000_000e18, bidPrices, askPrices, abi.encode(18)
+        ITMFactory.MarketCreationParameters memory params = ITMFactory.MarketCreationParameters(
+            1, "Test", "TST", wnative, 100_000_000e18, 0.2e4, 0.2e4, 0.4e4, bidPrices, askPrices, abi.encode(18)
         );
+
+        vm.prank(sender);
+        (token, market) = factory.createMarketAndToken(params);
     }
 }
 

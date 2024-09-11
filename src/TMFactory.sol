@@ -21,12 +21,12 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     uint256 private constant MAX_QUOTE_TOKENS = 64;
-    uint64 private constant MAX_PROTOCOL_SHARE = 1e18;
+    uint16 private constant BPS = 1e4;
 
     address public immutable override STAKING;
 
     address private _protocolFeeRecipient;
-    uint64 private _protocolShare;
+    uint16 private _protocolShare;
 
     mapping(address market => MarketParameters) private _parameters;
     mapping(address token => uint256 packedToken) private _tokens;
@@ -48,12 +48,17 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     /**
      * @dev Initializer for the TokenMill Factory contract.
      * @param protocolShare The protocol share percentage.
-     * @param initialOwner The initial owner of the contract.
+     * @param protocolFeeRecipient The address of the protocol fee recipient.
+     * @param initialOwner The address of the initial owner.
      */
-    function initialize(uint64 protocolShare, address initialOwner) external initializer {
+    function initialize(uint16 protocolShare, address protocolFeeRecipient, address initialOwner)
+        external
+        initializer
+    {
         __Ownable_init(initialOwner);
 
         _updateProtocolShare(protocolShare);
+        _updateProtocolFeeRecipient(protocolFeeRecipient);
     }
 
     /**
@@ -85,12 +90,22 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     }
 
     /**
-     * @dev Gets the protocol share of the specified market.
+     * @dev Gets the fee shares of the specified market, which includes the protocol, referrer, and staking shares.
      * @param market The address of the market.
-     * @return The protocol share of the market.
+     * @return protocolShare The protocol share percentage.
+     * @return creatorShare The creator share percentage.
+     * @return referrerShare The referrer share percentage.
+     * @return stakingShare The staking share percentage.
      */
-    function getProtocolShareOf(address market) external view override returns (uint256) {
-        return _parameters[market].protocolShare;
+    function getFeeSharesOf(address market)
+        external
+        view
+        override
+        returns (uint256 protocolShare, uint256 creatorShare, uint256 referrerShare, uint256 stakingShare)
+    {
+        MarketParameters storage parameters = _parameters[market];
+
+        return (parameters.protocolShare, parameters.creatorShare, parameters.referrerShare, parameters.stakingShare);
     }
 
     /**
@@ -187,31 +202,19 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
     /**
      * @dev Creates a new market and token.
-     * @param tokenType The token type.
-     * @param name The name of the token.
-     * @param symbol The symbol of the token.
-     * @param quoteToken The address of the quote token.
-     * @param totalSupply The total supply of the token.
-     * @param bidPrices The bid prices of the market.
-     * @param askPrices The ask prices of the market.
-     * @param args The additional arguments to be passed to the token.
+     * @param parameters The market creation parameters.
      * @return baseToken The address of the base token.
      * @return market The address of the market.
      */
-    function createMarketAndToken(
-        uint96 tokenType,
-        string memory name,
-        string memory symbol,
-        address quoteToken,
-        uint256 totalSupply,
-        uint256[] memory bidPrices,
-        uint256[] memory askPrices,
-        bytes memory args
-    ) external override returns (address baseToken, address market) {
-        baseToken = _createToken(tokenType, name, symbol, args);
+    function createMarketAndToken(MarketCreationParameters calldata parameters)
+        external
+        override
+        returns (address baseToken, address market)
+    {
+        baseToken = _createToken(parameters);
 
-        uint256[] memory packedPrices = ImmutableHelper.packPrices(bidPrices, askPrices);
-        market = _createMarket(tokenType, name, symbol, baseToken, quoteToken, totalSupply, packedPrices);
+        uint256[] memory packedPrices = ImmutableHelper.packPrices(parameters.bidPrices, parameters.askPrices);
+        market = _createMarket(parameters, packedPrices, baseToken);
 
         return (baseToken, market);
     }
@@ -221,7 +224,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * @param market The address of the market.
      * @param creator The address of the creator.
      */
-    function updateCreator(address market, address creator) external override {
+    function updateCreatorOf(address market, address creator) external override {
         MarketParameters storage parameters = _parameters[market];
 
         if (msg.sender != parameters.creator) revert TMFactory__InvalidCaller();
@@ -231,7 +234,37 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
         parameters.creator = creator;
 
-        emit MarketParametersUpdated(market, parameters.protocolShare, creator);
+        emit MarketCreatorUpdated(market, creator);
+    }
+
+    /**
+     * @dev Updates the fee shares of the specified market.
+     * @param market The address of the market.
+     * @param creatorShare The creator share percentage.
+     * @param referrerShare The referrer share percentage.
+     * @param stakingShare The staking share percentage.
+     */
+    function updateFeeSharesOf(address market, uint16 creatorShare, uint16 referrerShare, uint16 stakingShare)
+        external
+        override
+    {
+        MarketParameters storage parameters = _parameters[market];
+
+        if (msg.sender != parameters.creator) revert TMFactory__InvalidCaller();
+
+        uint256 protocolShare = parameters.protocolShare;
+
+        if (protocolShare + creatorShare + referrerShare + stakingShare != BPS) {
+            revert TMFactory__InvalidFeeShares();
+        }
+
+        ITMMarket(market).claimFees(msg.sender, _protocolFeeRecipient, msg.sender, STAKING);
+
+        parameters.creatorShare = creatorShare;
+        parameters.referrerShare = referrerShare;
+        parameters.stakingShare = stakingShare;
+
+        emit MarketFeeSharesUpdated(market, protocolShare, creatorShare, referrerShare, stakingShare);
     }
 
     /**
@@ -240,22 +273,17 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * Claim the protocol fees if the protocolFeeRecipient is not address(0).
      * @param market The address of the market.
      * @return protocolFees The protocol fees claimed.
-     * @return stakingFees The staking fees claimed.
+     * @return claimedFees The total fees claimed.
      */
-    function claimFees(address market) external override returns (uint256 protocolFees, uint256 stakingFees) {
-        address protocolFeeRecipient = _protocolFeeRecipient;
-        address stakingFeeRecipient = msg.sender == STAKING ? STAKING : address(0);
-
-        if (uint160(protocolFeeRecipient) | uint160(stakingFeeRecipient) == 0) revert TMFactory__ZeroFeeRecipients();
-
-        return ITMMarket(market).claimFees(msg.sender, protocolFeeRecipient, stakingFeeRecipient);
+    function claimFees(address market) external override returns (uint256 protocolFees, uint256 claimedFees) {
+        return ITMMarket(market).claimFees(msg.sender, _protocolFeeRecipient, _parameters[market].creator, STAKING);
     }
 
     /**
      * @dev Updates the protocol share percentage.
      * @param protocolShare The protocol share percentage.
      */
-    function updateProtocolShare(uint64 protocolShare) external override onlyOwner {
+    function updateProtocolShare(uint16 protocolShare) external override onlyOwner {
         _updateProtocolShare(protocolShare);
     }
 
@@ -264,26 +292,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * @param protocolFeeRecipient The address of the protocol fee recipient.
      */
     function updateProtocolFeeRecipient(address protocolFeeRecipient) external override onlyOwner {
-        _protocolFeeRecipient = protocolFeeRecipient;
-
-        emit ProtocolFeeRecipientUpdated(protocolFeeRecipient);
-    }
-
-    /**
-     * @dev Updates the protocol share of the specified market.
-     * @param market The address of the market.
-     * @param protocolShare The protocol share percentage.
-     */
-    function updateProtocolShareOf(address market, uint64 protocolShare) external override onlyOwner {
-        if (protocolShare > MAX_PROTOCOL_SHARE) revert TMFactory__InvalidProtocolShare();
-
-        MarketParameters storage parameters = _parameters[market];
-
-        ITMMarket(market).claimFees(msg.sender, _protocolFeeRecipient, address(0));
-
-        parameters.protocolShare = protocolShare;
-
-        emit MarketParametersUpdated(market, protocolShare, parameters.creator);
+        _updateProtocolFeeRecipient(protocolFeeRecipient);
     }
 
     /**
@@ -366,88 +375,92 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * @dev Updates the protocol share percentage.
      * @param protocolShare The protocol share percentage.
      */
-    function _updateProtocolShare(uint64 protocolShare) private {
-        if (protocolShare > MAX_PROTOCOL_SHARE) revert TMFactory__InvalidProtocolShare();
+    function _updateProtocolShare(uint16 protocolShare) private {
+        if (protocolShare > BPS) revert TMFactory__InvalidProtocolShare();
 
         _protocolShare = protocolShare;
 
-        emit ProtocolShareUpdated(protocolShare);
+        emit ProtocolSharesUpdated(protocolShare);
+    }
+
+    /**
+     * @dev Updates the protocol fee recipient.
+     * @param protocolFeeRecipient The address of the protocol fee recipient.
+     */
+    function _updateProtocolFeeRecipient(address protocolFeeRecipient) private {
+        if (protocolFeeRecipient == address(0)) revert TMFactory__AddressZero();
+
+        _protocolFeeRecipient = protocolFeeRecipient;
+
+        emit ProtocolFeeRecipientUpdated(protocolFeeRecipient);
     }
 
     /**
      * @dev Creates a new token.
-     * @param tokenType The token type.
-     * @param name The name of the token.
-     * @param symbol The symbol of the token.
-     * @param args The additional arguments to be passed to the token.
+     * @param p The market creation parameters.
      * @return token The address of the token.
      */
-    function _createToken(uint96 tokenType, string memory name, string memory symbol, bytes memory args)
-        internal
-        returns (address token)
-    {
-        address implementation = _implementations[tokenType];
+    function _createToken(MarketCreationParameters calldata p) internal returns (address token) {
+        address implementation = _implementations[p.tokenType];
         if (implementation == address(0)) revert TMFactory__InvalidTokenType();
 
         token = Clones.clone(implementation);
 
-        ITMBaseERC20(token).initialize(name, symbol, args);
+        ITMBaseERC20(token).initialize(p.name, p.symbol, p.args);
     }
 
     /**
      * @dev Creates a new market.
-     * @param tokenType The token type.
-     * @param name The name of the market.
-     * @param symbol The symbol of the market.
-     * @param baseToken The address of the base token.
-     * @param quoteToken The address of the quote token.
-     * @param totalSupply The total supply of the market.
+     * @param p The market creation parameters.
      * @param packedPrices The packed prices of the market.
+     * @param baseToken The address of the base token.
      * @return market The address of the market.
      */
-    function _createMarket(
-        uint96 tokenType,
-        string memory name,
-        string memory symbol,
-        address baseToken,
-        address quoteToken,
-        uint256 totalSupply,
-        uint256[] memory packedPrices
-    ) internal returns (address market) {
-        if (baseToken == quoteToken) revert TMFactory__SameTokens();
-        if (!_quoteTokens.contains(quoteToken)) revert TMFactory__InvalidQuoteToken();
+    function _createMarket(MarketCreationParameters calldata p, uint256[] memory packedPrices, address baseToken)
+        internal
+        returns (address market)
+    {
+        if (baseToken == p.quoteToken) revert TMFactory__SameTokens();
+        if (!_quoteTokens.contains(p.quoteToken)) revert TMFactory__InvalidQuoteToken();
 
         bytes memory immutableArgs =
-            ImmutableHelper.getImmutableArgs(address(this), baseToken, quoteToken, totalSupply, packedPrices);
+            ImmutableHelper.getImmutableArgs(address(this), baseToken, p.quoteToken, p.totalSupply, packedPrices);
 
         market = ImmutableCreate.create(type(TMMarket).runtimeCode, immutableArgs);
 
         emit MarketCreated(
-            quoteToken,
+            p.quoteToken,
             msg.sender,
             baseToken,
             market,
-            totalSupply,
-            name,
-            symbol,
+            p.totalSupply,
+            p.name,
+            p.symbol,
             IERC20Metadata(baseToken).decimals(),
             packedPrices
         );
 
-        uint64 protocolShare = _protocolShare;
+        uint16 protocolShare = _protocolShare;
 
         _allMarkets.push(market);
-        _markets[baseToken][quoteToken] = _encodeMarket(1, market);
-        _markets[quoteToken][baseToken] = _encodeMarket(0, market);
-        _tokens[baseToken] = _encodeToken(tokenType, market);
-        _parameters[market] = MarketParameters(protocolShare, msg.sender);
+        _markets[baseToken][p.quoteToken] = _encodeMarket(1, market);
+        _markets[p.quoteToken][baseToken] = _encodeMarket(0, market);
+        _tokens[baseToken] = _encodeToken(p.tokenType, market);
+
+        if (uint256(protocolShare) + p.creatorShare + p.referrerShare + p.stakingShare != BPS) {
+            revert TMFactory__InvalidFeeShares();
+        }
+
+        _parameters[market] =
+            MarketParameters(protocolShare, p.creatorShare, p.referrerShare, p.stakingShare, msg.sender);
         _creatorMarkets[msg.sender].add(market);
 
-        emit MarketParametersUpdated(market, protocolShare, msg.sender);
+        emit MarketFeeSharesUpdated(market, protocolShare, p.creatorShare, p.referrerShare, p.stakingShare);
+        emit MarketCreatorUpdated(market, msg.sender);
 
         ITMMarket(market).initialize();
-        ITMBaseERC20(baseToken).factoryMint(market, totalSupply);
+        ITMBaseERC20(baseToken).factoryMint(market, p.totalSupply);
 
-        if (IERC20(baseToken).balanceOf(market) != totalSupply) revert TMFactory__InvalidBalance();
+        if (IERC20(baseToken).balanceOf(market) != p.totalSupply) revert TMFactory__InvalidBalance();
     }
 }
