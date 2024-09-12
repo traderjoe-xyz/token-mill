@@ -5,7 +5,6 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/ut
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import {CliffVestingContract} from "../CliffVestingContract.sol";
 import {ITMMarket} from "../interfaces/ITMMarket.sol";
 import {ITMFactory} from "../interfaces/ITMFactory.sol";
 import {ITMStaking} from "../interfaces/ITMStaking.sol";
