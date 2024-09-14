@@ -317,7 +317,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
             if (protocolUnclaimedFees > 0) quoteToken.safeTransfer(protocol, protocolUnclaimedFees);
             if (claimedFees > 0) quoteToken.safeTransfer(caller, claimedFees);
 
-            emit FeesClaimed(caller, protocolUnclaimedFees, claimedFees);
+            emit FeesClaimed(caller, protocolUnclaimedFees, referrerFees, claimedFees);
         }
 
         return (protocolUnclaimedFees, claimedFees);

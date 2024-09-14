@@ -26,7 +26,9 @@ interface ITMMarket is IPricePoints {
         int256 deltaBaseAmount,
         int256 deltaQuoteAmount
     );
-    event FeesClaimed(address indexed caller, uint256 protocolFees, uint256 claimedFees);
+    event FeesClaimed(
+        address indexed caller, uint256 claimedProtocolFees, uint256 claimedReferrerFees, uint256 claimedFees
+    );
 
     function initialize() external;
 
