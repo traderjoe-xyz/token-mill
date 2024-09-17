@@ -408,7 +408,7 @@ contract Router is IRouter {
                     revert Router__InvalidId();
                 }
             } else if (v == 3) {
-                (int256 deltaBaseAmount, int256 deltaQuoteAmount) =
+                (int256 deltaBaseAmount, int256 deltaQuoteAmount,) =
                     ITMMarket(pair).getDeltaAmounts(-int256(amount), t == 1);
 
                 if (t == 1) {

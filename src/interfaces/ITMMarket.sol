@@ -19,16 +19,8 @@ interface ITMMarket is IPricePoints {
     error TMMarket__AlreadyInitialized();
     error TMMarket__InvalidCirculatingSupply();
 
-    event Swap(
-        address indexed sender,
-        address indexed recipient,
-        address indexed referrer,
-        int256 deltaBaseAmount,
-        int256 deltaQuoteAmount
-    );
-    event FeesClaimed(
-        address indexed caller, uint256 claimedProtocolFees, uint256 claimedReferrerFees, uint256 claimedFees
-    );
+    event Swap(address indexed sender, address indexed recipient, int256 deltaBaseAmount, int256 deltaQuoteAmount);
+    event FeesClaimed(address indexed token, address indexed caller, uint256 claimedFees);
 
     function initialize() external;
 
@@ -46,15 +38,12 @@ interface ITMMarket is IPricePoints {
 
     function getPricePoints(bool bid) external pure returns (uint256[] memory);
 
-    function getPendingFees(address referrer)
-        external
-        view
-        returns (uint256 protocolFees, uint256 creatorFees, uint256 referrerFees, uint256 stakingFees);
+    function getPendingFees() external view returns (uint256 creatorFees, uint256 stakingFees);
 
     function getDeltaAmounts(int256 deltaAmount, bool swapB2Q)
         external
         view
-        returns (int256 deltaBaseAmount, int256 deltaQuoteAmount);
+        returns (int256 deltaBaseAmount, int256 deltaQuoteAmount, uint256 quoteFees);
 
     function getReserves() external view returns (uint256 baseReserve, uint256 quoteReserve);
 
@@ -62,7 +51,5 @@ interface ITMMarket is IPricePoints {
         external
         returns (int256 deltaBaseAmount, int256 deltaQuoteAmount);
 
-    function claimFees(address caller, address protocol, address creator, address staking)
-        external
-        returns (uint256 protocolFees, uint256 claimedFees);
+    function claimFees(address caller, address creator, address staking) external returns (uint256 claimedFees);
 }

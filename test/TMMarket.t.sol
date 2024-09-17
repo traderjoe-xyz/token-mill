@@ -97,72 +97,59 @@ contract TestTMMarket is TestHelper {
         deal(address(wnative), address(market0w), 100e18);
         (int256 deltaBaseAmount,) = ITMMarket(market0w).swap(address(this), 1e18, false, new bytes(0), address(0));
 
+        uint256 balance = wnative.balanceOf(address(factory));
+
         (uint256 baseReserve, uint256 quoteReserve) = ITMMarket(market0w).getReserves();
 
         assertEq(baseReserve, 500_000_000e18 - uint256(-deltaBaseAmount), "test_Revert_Swap::1");
-        assertEq(quoteReserve, 100e18, "test_Revert_Swap::2");
+        assertEq(quoteReserve, 100e18 - balance, "test_Revert_Swap::2");
 
         vm.expectRevert(ITMMarket.TMMarket__InsufficientAmount.selector);
         ITMMarket(market0w).swap(address(this), 1e18, true, new bytes(0), address(0));
     }
 
     struct Fees {
-        uint256 protocolFees;
         uint256 creatorFees;
-        uint256 referrerFees;
         uint256 stakingFees;
     }
 
     function test_ClaimFees() external {
         Fees memory fees;
-        (fees.protocolFees, fees.creatorFees, fees.referrerFees, fees.stakingFees) =
-            ITMMarket(market0w).getPendingFees(address(this));
+        (fees.creatorFees, fees.stakingFees) = ITMMarket(market0w).getPendingFees();
 
-        assertEq(fees.protocolFees, 0, "test_ClaimFees::1");
-        assertEq(fees.creatorFees, 0, "test_ClaimFees::2");
-        assertEq(fees.referrerFees, 0, "test_ClaimFees::3");
-        assertEq(fees.stakingFees, 0, "test_ClaimFees::4");
+        assertEq(fees.creatorFees, 0, "test_ClaimFees::1");
+        assertEq(fees.stakingFees, 0, "test_ClaimFees::2");
 
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
         (, uint256 amountOut) =
             router.swapExactIn{value: 10e18}(route, address(this), 10e18, 0, block.timestamp, address(this));
 
-        (fees.protocolFees, fees.creatorFees, fees.referrerFees, fees.stakingFees) =
-            ITMMarket(market0w).getPendingFees(address(this));
+        (fees.creatorFees, fees.stakingFees) = ITMMarket(market0w).getPendingFees();
 
-        assertGt(fees.protocolFees, 0, "test_ClaimFees::5");
-        assertGt(fees.creatorFees, 0, "test_ClaimFees::6");
-        assertGt(fees.referrerFees, 0, "test_ClaimFees::7");
-        assertGt(fees.stakingFees, 0, "test_ClaimFees::8");
+        assertGt(fees.creatorFees, 0, "test_ClaimFees::3");
+        assertGt(fees.stakingFees, 0, "test_ClaimFees::4");
 
         vm.prank(address(factory));
-        ITMMarket(market0w).claimFees(address(this), address(this), address(this), address(this));
+        ITMMarket(market0w).claimFees(address(this), address(this), address(this));
 
-        assertEq(
-            wnative.balanceOf(address(this)),
-            fees.protocolFees + fees.creatorFees + fees.referrerFees + fees.stakingFees,
-            "test_ClaimFees::9"
-        );
+        assertEq(wnative.balanceOf(address(this)), fees.creatorFees + fees.stakingFees, "test_ClaimFees::5");
 
-        (fees.protocolFees, fees.creatorFees, fees.referrerFees, fees.stakingFees) =
-            ITMMarket(market0w).getPendingFees(address(this));
+        (fees.creatorFees, fees.stakingFees) = ITMMarket(market0w).getPendingFees();
 
-        assertEq(fees.protocolFees, 0, "test_ClaimFees::10");
-        assertEq(fees.creatorFees, 0, "test_ClaimFees::11");
-        assertEq(fees.referrerFees, 0, "test_ClaimFees::12");
-        assertEq(fees.stakingFees, 0, "test_ClaimFees::13");
+        assertEq(fees.creatorFees, 0, "test_ClaimFees::6");
+        assertEq(fees.stakingFees, 0, "test_ClaimFees::7");
 
         IERC20(token0).approve(address(router), amountOut);
         route = abi.encodePacked(token0, uint32(3 << 24), address(wnative));
 
         router.swapExactIn(route, address(this), amountOut, 0, block.timestamp, address(0));
 
-        assertApproxEqAbs(IERC20(wnative).balanceOf(market0w), 0, 1, "test_ClaimFees::14");
+        assertApproxEqAbs(IERC20(wnative).balanceOf(market0w), 0, 1, "test_ClaimFees::8");
     }
 
     function test_Revert_ClaimFees() external {
         vm.expectRevert(ITMMarket.TMMarket__OnlyFactory.selector);
-        ITMMarket(market0w).claimFees(address(0), address(0), address(0), address(0));
+        ITMMarket(market0w).claimFees(address(0), address(0), address(0));
     }
 
     function tokenMillSwapCallback(int256, int256, bytes calldata data) external returns (bytes32) {
@@ -184,80 +171,51 @@ contract TestTMMarket is TestHelper {
 
     function test_unclaimedClaimedFees() external {
         Fees memory fees;
-        (fees.protocolFees, fees.creatorFees, fees.referrerFees, fees.stakingFees) =
-            ITMMarket(market0w).getPendingFees(address(this));
+        (fees.creatorFees, fees.stakingFees) = ITMMarket(market0w).getPendingFees();
 
-        assertEq(fees.protocolFees, 0, "test_unclaimedClaimedFees::1");
-        assertEq(fees.creatorFees, 0, "test_unclaimedClaimedFees::2");
-        assertEq(fees.referrerFees, 0, "test_unclaimedClaimedFees::3");
-        assertEq(fees.stakingFees, 0, "test_unclaimedClaimedFees::4");
+        assertEq(fees.creatorFees, 0, "test_unclaimedClaimedFees::1");
+        assertEq(fees.stakingFees, 0, "test_unclaimedClaimedFees::2");
 
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
         (, uint256 amountOut) =
             router.swapExactIn{value: 10e18}(route, address(this), 10e18, 0, block.timestamp, address(this));
 
-        (fees.protocolFees, fees.creatorFees, fees.referrerFees, fees.stakingFees) =
-            ITMMarket(market0w).getPendingFees(address(this));
+        (fees.creatorFees, fees.stakingFees) = ITMMarket(market0w).getPendingFees();
 
-        assertGt(fees.protocolFees, 0, "test_unclaimedClaimedFees::5");
-        assertGt(fees.creatorFees, 0, "test_unclaimedClaimedFees::6");
-        assertGt(fees.referrerFees, 0, "test_unclaimedClaimedFees::7");
-        assertGt(fees.stakingFees, 0, "test_unclaimedClaimedFees::8");
+        assertGt(fees.creatorFees, 0, "test_unclaimedClaimedFees::3");
+        assertGt(fees.stakingFees, 0, "test_unclaimedClaimedFees::4");
 
         vm.prank(address(factory));
-        (uint256 protocolFeesClaimed1, uint256 feesClaimed1) =
-            ITMMarket(market0w).claimFees(address(this), address(this), address(0), address(0));
+        uint256 feesClaimed1 = ITMMarket(market0w).claimFees(address(this), address(0), address(0));
 
         Fees memory unclaimedFees;
 
-        (unclaimedFees.protocolFees, unclaimedFees.creatorFees, unclaimedFees.referrerFees, unclaimedFees.stakingFees) =
-            ITMMarket(market0w).getPendingFees(address(this));
+        (unclaimedFees.creatorFees, unclaimedFees.stakingFees) = ITMMarket(market0w).getPendingFees();
 
-        assertEq(protocolFeesClaimed1, fees.protocolFees, "test_unclaimedClaimedFees::9");
-        assertEq(feesClaimed1, fees.referrerFees, "test_unclaimedClaimedFees::10");
-        assertEq(unclaimedFees.protocolFees, 0, "test_unclaimedClaimedFees::11");
-        assertEq(unclaimedFees.creatorFees, fees.creatorFees, "test_unclaimedClaimedFees::12");
-        assertEq(unclaimedFees.referrerFees, 0, "test_unclaimedClaimedFees::13");
-        assertEq(unclaimedFees.stakingFees, fees.stakingFees, "test_unclaimedClaimedFees::14");
-        assertEq(
-            wnative.balanceOf(address(this)), fees.referrerFees + fees.protocolFees, "test_unclaimedClaimedFees::15"
-        );
+        assertEq(unclaimedFees.creatorFees, fees.creatorFees, "test_unclaimedClaimedFees::5");
+        assertEq(unclaimedFees.stakingFees, fees.stakingFees, "test_unclaimedClaimedFees::6");
 
         (, uint256 amountOut2) =
             router.swapExactIn{value: 10e18}(route, address(this), 10e18, 0, block.timestamp, address(this));
 
         vm.prank(address(factory));
-        (uint256 protocolFeesClaimed2, uint256 feesClaimed2) =
-            ITMMarket(market0w).claimFees(address(this), address(this), address(this), address(this));
+        uint256 feesClaimed2 = ITMMarket(market0w).claimFees(address(this), address(this), address(this));
 
-        assertEq(
-            wnative.balanceOf(address(this)),
-            protocolFeesClaimed1 + feesClaimed1 + protocolFeesClaimed2 + feesClaimed2,
-            "test_unclaimedClaimedFees::16"
-        );
+        assertEq(wnative.balanceOf(address(this)), feesClaimed1 + feesClaimed2, "test_unclaimedClaimedFees::7");
         assertApproxEqAbs(
-            protocolFeesClaimed1 + protocolFeesClaimed2, fees.protocolFees * 2, 1, "test_unclaimedClaimedFees::17"
-        );
-        assertApproxEqAbs(
-            feesClaimed1 + feesClaimed2,
-            (fees.referrerFees + fees.creatorFees + fees.stakingFees) * 2,
-            1,
-            "test_unclaimedClaimedFees::18"
+            feesClaimed1 + feesClaimed2, (fees.creatorFees + fees.stakingFees) * 2, 1, "test_unclaimedClaimedFees::8"
         );
 
-        (fees.protocolFees, fees.creatorFees, fees.referrerFees, fees.stakingFees) =
-            ITMMarket(market0w).getPendingFees(address(this));
+        (fees.creatorFees, fees.stakingFees) = ITMMarket(market0w).getPendingFees();
 
-        assertEq(fees.protocolFees, 0, "test_unclaimedClaimedFees::19");
-        assertEq(fees.creatorFees, 0, "test_unclaimedClaimedFees::20");
-        assertEq(fees.referrerFees, 0, "test_unclaimedClaimedFees::21");
-        assertEq(fees.stakingFees, 0, "test_unclaimedClaimedFees::22");
+        assertEq(fees.creatorFees, 0, "test_unclaimedClaimedFees::9");
+        assertEq(fees.stakingFees, 0, "test_unclaimedClaimedFees::10");
 
         IERC20(token0).approve(address(router), amountOut + amountOut2);
         route = abi.encodePacked(token0, uint32(3 << 24), address(wnative));
 
         router.swapExactIn(route, address(this), amountOut + amountOut2, 0, block.timestamp, address(0));
 
-        assertApproxEqAbs(IERC20(wnative).balanceOf(market0w), 0, 1, "test_unclaimedClaimedFees::23");
+        assertApproxEqAbs(IERC20(wnative).balanceOf(market0w), 0, 1, "test_unclaimedClaimedFees::11");
     }
 }

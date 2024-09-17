@@ -919,7 +919,7 @@ contract TMStakingTest is TestHelper {
         deal(token0, address(this), totalAmount);
         IERC20(token0).approve(address(staking), amountA + amountB);
 
-        (,,, uint256 pendingRewards) = ITMMarket(market0w).getPendingFees(address(staking));
+        (, uint256 pendingRewards) = ITMMarket(market0w).getPendingFees();
 
         assertEq(pendingRewards, 0, "test_Claim::1");
         assertEq(staking.getPendingRewards(token0, alice), 0, "test_Claim::2");
@@ -928,7 +928,7 @@ contract TMStakingTest is TestHelper {
         staking.deposit(token0, alice, amountA, amountA);
         staking.createVestingSchedule(token0, bob, uint128(amountB), uint128(amountB), uint80(block.timestamp), 10, 100);
 
-        (,,, pendingRewards) = ITMMarket(market0w).getPendingFees(address(staking));
+        (, pendingRewards) = ITMMarket(market0w).getPendingFees();
 
         assertEq(pendingRewards, 0, "test_Claim::4");
         assertEq(staking.getPendingRewards(token0, alice), 0, "test_Claim::5");
@@ -938,7 +938,7 @@ contract TMStakingTest is TestHelper {
             abi.encodePacked(address(0), uint32(3 << 24), token0), address(this), 1e18, 0, block.timestamp, address(0)
         );
 
-        (,,, pendingRewards) = ITMMarket(market0w).getPendingFees(address(staking));
+        (, pendingRewards) = ITMMarket(market0w).getPendingFees();
         uint256 pendingRewardsA_1 = staking.getPendingRewards(token0, alice);
         uint256 pendingRewardsB_1 = staking.getPendingRewards(token0, bob);
 
@@ -959,7 +959,7 @@ contract TMStakingTest is TestHelper {
             abi.encodePacked(address(0), uint32(3 << 24), token0), address(this), 10e18, 0, block.timestamp, address(0)
         );
 
-        (,,, pendingRewards) = ITMMarket(market0w).getPendingFees(address(staking));
+        (, pendingRewards) = ITMMarket(market0w).getPendingFees();
         uint256 pendingRewardsA_2 = staking.getPendingRewards(token0, alice);
         uint256 pendingRewardsB_2 = staking.getPendingRewards(token0, bob);
 
@@ -986,7 +986,7 @@ contract TMStakingTest is TestHelper {
             abi.encodePacked(address(0), uint32(3 << 24), token0), address(this), 1e18, 0, block.timestamp, address(0)
         );
 
-        (,,, pendingRewards) = ITMMarket(market0w).getPendingFees(address(staking));
+        (, pendingRewards) = ITMMarket(market0w).getPendingFees();
         uint256 pendingRewardsA_3 = staking.getPendingRewards(token0, alice);
         uint256 pendingRewardsB_3 = staking.getPendingRewards(token0, bob);
 

@@ -70,17 +70,7 @@ contract TestHelper is Test {
         bidPrices0w.push(askPrices0w[2] * 95 / 100);
 
         ITMFactory.MarketCreationParameters memory params = ITMFactory.MarketCreationParameters(
-            1,
-            "Token0",
-            "T0",
-            address(wnative),
-            500_000_000e18,
-            0.2e4,
-            0.2e4,
-            0.4e4,
-            bidPrices0w,
-            askPrices0w,
-            abi.encode(18)
+            1, "Token0", "T0", address(wnative), 500_000_000e18, 0.2e4, 0.6e4, bidPrices0w, askPrices0w, abi.encode(18)
         );
 
         (token0, market0w) = factory.createMarketAndToken(params);
@@ -98,17 +88,7 @@ contract TestHelper is Test {
         bidPrices[2] = askPrices[2];
 
         params = ITMFactory.MarketCreationParameters(
-            1,
-            "Token1",
-            "T1",
-            address(token0),
-            100_000_000e18,
-            0.2e4,
-            0.2e4,
-            0.4e4,
-            bidPrices,
-            askPrices,
-            abi.encode(18)
+            1, "Token1", "T1", address(token0), 100_000_000e18, 0.2e4, 0.6e4, bidPrices, askPrices, abi.encode(18)
         );
 
         (token1, market10) = factory.createMarketAndToken(params);
@@ -124,7 +104,7 @@ contract TestHelper is Test {
         bidPrices[2] = 20e18;
 
         params = ITMFactory.MarketCreationParameters(
-            1, "Token2", "T2", address(token1), 50_000_000e18, 0.2e4, 0.2e4, 0.4e4, bidPrices, askPrices, abi.encode(18)
+            1, "Token2", "T2", address(token1), 50_000_000e18, 0.2e4, 0.6e4, bidPrices, askPrices, abi.encode(18)
         );
 
         (token2, market21) = factory.createMarketAndToken(params);
@@ -147,7 +127,7 @@ contract TestHelper is Test {
         factory.updateTokenImplementation(2, address(new TransferTaxToken(address(factory), 0.1e18)));
 
         ITMFactory.MarketCreationParameters memory params = ITMFactory.MarketCreationParameters(
-            2, "TaxToken", "TT", address(wnative), 500_000_000e18, 0.2e4, 0.2e4, 0.4e4, prices, prices, new bytes(0)
+            2, "TaxToken", "TT", address(wnative), 500_000_000e18, 0.2e4, 0.6e4, prices, prices, new bytes(0)
         );
 
         (taxToken, market) = factory.createMarketAndToken(params);

@@ -68,7 +68,7 @@ contract TestRouterMultipleVersion is Test {
         bidPrices[2] = 1000e18;
 
         ITMFactory.MarketCreationParameters memory params = ITMFactory.MarketCreationParameters(
-            1, "Token0", "T0", address(wavax), 500_000_000e18, 0.2e4, 0.2e4, 0.4e4, bidPrices, askPrices, abi.encode(18)
+            1, "Token0", "T0", address(wavax), 500_000_000e18, 0.2e4, 0.6e4, bidPrices, askPrices, abi.encode(18)
         );
 
         (token0, market0w) = factory.createMarketAndToken(params);
@@ -82,7 +82,7 @@ contract TestRouterMultipleVersion is Test {
         bidPrices[2] = 11e18;
 
         params = ITMFactory.MarketCreationParameters(
-            1, "Token1", "T1", address(usdc), 100_000_000e18, 0.2e4, 0.2e4, 0.4e4, bidPrices, askPrices, abi.encode(18)
+            1, "Token1", "T1", address(usdc), 100_000_000e18, 0.2e4, 0.6e4, bidPrices, askPrices, abi.encode(18)
         );
 
         (token1, market1u) = factory.createMarketAndToken(params);
@@ -312,7 +312,7 @@ contract TestRouterMultipleVersion is Test {
         uint256 expectedAmountOut = (v1UsdcBalance * amountIn * 997) / (v1WavaxBalance * 1000 + amountIn * 997);
         (, expectedAmountOut,) = IV2_1Pair(v2_1wu).getSwapOut(uint128(expectedAmountOut), false);
         (expectedAmountOut,) = IV2_0Router(v2_0Router).getSwapOut(v2_0wu, expectedAmountOut, true);
-        (int256 deltaBase,) = ITMMarket(market1u).getDeltaAmounts(int256(expectedAmountOut), false);
+        (int256 deltaBase,,) = ITMMarket(market1u).getDeltaAmounts(int256(expectedAmountOut), false);
 
         expectedAmountOut = uint256(-deltaBase);
 
@@ -330,7 +330,7 @@ contract TestRouterMultipleVersion is Test {
         v1WavaxBalance = wavax.balanceOf(v1wu);
 
         uint256 amountIn2 = amountOut;
-        (, int256 deltaQuote) = ITMMarket(market1u).getDeltaAmounts(int256(amountIn2), true);
+        (, int256 deltaQuote,) = ITMMarket(market1u).getDeltaAmounts(int256(amountIn2), true);
         (uint256 expectedAmountOut2,) = IV2_0Router(v2_0Router).getSwapOut(v2_0wu, uint256(-deltaQuote), false);
         (, expectedAmountOut2,) = IV2_1Pair(v2_1wu).getSwapOut(uint128(expectedAmountOut2), true);
         expectedAmountOut2 =
@@ -573,7 +573,7 @@ contract TestRouterMultipleVersion is Test {
         uint256 v1WavaxBalance = wavax.balanceOf(v1wu);
 
         uint256 expectedAmountOut = 100e18;
-        (, int256 deltaQuote) = ITMMarket(market1u).getDeltaAmounts(-int256(expectedAmountOut), false);
+        (, int256 deltaQuote,) = ITMMarket(market1u).getDeltaAmounts(-int256(expectedAmountOut), false);
         (uint256 expectedAmountIn,) = IV2_0Router(v2_0Router).getSwapIn(v2_0wu, uint256(deltaQuote), true);
         (expectedAmountIn,,) = IV2_1Pair(v2_1wu).getSwapIn(uint128(expectedAmountIn), false);
         expectedAmountIn =
@@ -599,7 +599,7 @@ contract TestRouterMultipleVersion is Test {
             (v1UsdcBalance * expectedAmountOut2 * 1000 - 1) / ((v1WavaxBalance - expectedAmountOut2) * 997) + 1;
         (expectedAmountIn2,,) = IV2_1Pair(v2_1wu).getSwapIn(uint128(expectedAmountIn2), true);
         (expectedAmountIn2,) = IV2_0Router(v2_0Router).getSwapIn(v2_0wu, expectedAmountIn2, false);
-        (int256 deltaBase,) = ITMMarket(market1u).getDeltaAmounts(-int256(expectedAmountIn2), true);
+        (int256 deltaBase,,) = ITMMarket(market1u).getDeltaAmounts(-int256(expectedAmountIn2), true);
         expectedAmountIn2 = uint256(deltaBase);
 
         (uint256 amountIn2, uint256 amountOut2) = router.swapExactOut(

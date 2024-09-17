@@ -53,6 +53,8 @@ contract TestTMLens is TestHelper {
         setUpStaking();
 
         lens = new TMLens(ITMFactory(address(factory)));
+
+        factory.updateReferrerShare(0.2e4);
     }
 
     function test_getAggregateMarketData() public view {
@@ -96,7 +98,7 @@ contract TestTMLens is TestHelper {
         assertEq(detailedMarketData.protocolShare, 0.2e4, "test_getSingleDetailedMarketData::14");
         assertEq(detailedMarketData.creatorShare, 0.2e4, "test_getSingleDetailedMarketData::15");
         assertEq(detailedMarketData.referrerShare, 0.2e4, "test_getSingleDetailedMarketData::16");
-        assertEq(detailedMarketData.stakingShare, 0.4e4, "test_getSingleDetailedMarketData::17");
+        assertEq(detailedMarketData.stakingShare, 0.6e4, "test_getSingleDetailedMarketData::17");
         assertEq(detailedMarketData.totalSupply, 500_000_000e18, "test_getSingleDetailedMarketData::18");
         assertEq(detailedMarketData.circulatingSupply, 0, "test_getSingleDetailedMarketData::19");
         assertEq(detailedMarketData.spotPriceFillBid, 0, "test_getSingleDetailedMarketData::20");
@@ -142,7 +144,7 @@ contract TestTMLens is TestHelper {
         assertEq(detailedMarketData[1].protocolShare, 0.2e4, "test_getMultipleDetailedMarketData::13");
         assertEq(detailedMarketData[1].creatorShare, 0.2e4, "test_getMultipleDetailedMarketData::14");
         assertEq(detailedMarketData[1].referrerShare, 0.2e4, "test_getMultipleDetailedMarketData::15");
-        assertEq(detailedMarketData[1].stakingShare, 0.4e4, "test_getMultipleDetailedMarketData::16");
+        assertEq(detailedMarketData[1].stakingShare, 0.6e4, "test_getMultipleDetailedMarketData::16");
         assertEq(detailedMarketData[1].totalSupply, 50_000_000e18, "test_getMultipleDetailedMarketData::17");
         assertEq(detailedMarketData[1].circulatingSupply, 0, "test_getMultipleDetailedMarketData::18");
         assertEq(detailedMarketData[1].spotPriceFillBid, bidPrices[0], "test_getMultipleDetailedMarketData::19");
@@ -183,7 +185,7 @@ contract TestTMLens is TestHelper {
         assertEq(detailedStakingData.length, 1, "test_getDetailedStakingDataPerUser::2");
         assertEq(detailedStakingData[0].sharesAmount, 1e18, "test_getDetailedStakingDataPerUser::3");
         assertEq(detailedStakingData[0].lockedSharesAmount, 0, "test_getDetailedStakingDataPerUser::4");
-        assertEq(detailedStakingData[0].pendingRewards, 4e16, "test_getDetailedStakingDataPerUser::5");
+        assertEq(detailedStakingData[0].pendingRewards, 6e16, "test_getDetailedStakingDataPerUser::5");
         assertEq(detailedStakingData[0].vestingSchedules.length, 0, "test_getDetailedStakingDataPerUser::6");
 
         TMLens.SingleTokenUserStakingData memory detailedSingleStakingData =

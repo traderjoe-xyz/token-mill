@@ -143,7 +143,7 @@ contract TMLens {
 
         for (uint256 i; i < creatorMarketsLength; i++) {
             address marketAddress = _TMFactory.getCreatorMarketAt(creatorAddress, i);
-            (, uint256 creatorFees,,) = ITMMarket(marketAddress).getPendingFees(creatorAddress);
+            (uint256 creatorFees,) = ITMMarket(marketAddress).getPendingFees();
 
             creatorMarkets[i] = marketAddress;
             creatorMarketPendingFees[i] = creatorFees;
@@ -282,24 +282,19 @@ contract TMLens {
                     detailedMarketData.quoteTokenSymbol = IERC20Metadata(quoteToken).symbol();
                     detailedMarketData.baseTokenSymbol = IERC20Metadata(baseToken).symbol();
                     detailedMarketData.marketCreator = _TMFactory.getCreatorOf(marketAddress);
-                    (
-                        detailedMarketData.protocolShare,
-                        detailedMarketData.creatorShare,
-                        detailedMarketData.referrerShare,
-                        detailedMarketData.stakingShare
-                    ) = _TMFactory.getFeeSharesOf(marketAddress);
+                    (detailedMarketData.protocolShare, detailedMarketData.creatorShare, detailedMarketData.stakingShare)
+                    = _TMFactory.getFeeSharesOf(marketAddress);
+                    detailedMarketData.referrerShare = _TMFactory.getReferrerShare();
                     detailedMarketData.totalSupply = market.getTotalSupply();
                     detailedMarketData.circulatingSupply = circulatingSupply;
                     detailedMarketData.spotPriceFillBid = market.getPriceAt(circulatingSupply, true);
                     detailedMarketData.spotPriceFillAsk = market.getPriceAt(circulatingSupply, false);
                     detailedMarketData.askPrices = market.getPricePoints(true);
                     detailedMarketData.bidPrices = market.getPricePoints(false);
-                    (
-                        detailedMarketData.protocolPendingFees,
-                        detailedMarketData.creatorPendingFees,
-                        detailedMarketData.referrerPendingFees,
-                        detailedMarketData.stakingPendingFees
-                    ) = market.getPendingFees(user);
+                    (detailedMarketData.creatorPendingFees, detailedMarketData.stakingPendingFees) =
+                        market.getPendingFees();
+                    detailedMarketData.protocolPendingFees = _TMFactory.getProtocolFees(baseToken);
+                    detailedMarketData.referrerPendingFees = _TMFactory.getReferrerFeesOf(baseToken, user);
                     (detailedMarketData.totalStaked, detailedMarketData.totalLocked) =
                         stakingContract.getTotalStake(baseToken);
                 }
