@@ -264,9 +264,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         nonReentrant
         returns (uint256 claimedFees)
     {
-        ITMFactory factory = ITMFactory(_factory());
-
-        if (msg.sender != address(factory)) revert TMMarket__OnlyFactory();
+        if (msg.sender != _factory()) revert TMMarket__OnlyFactory();
 
         (uint256 quoteReserve, uint256 creatorUnclaimedFees, uint256 stakingUnclaimedFees) = _getPendingFees();
 

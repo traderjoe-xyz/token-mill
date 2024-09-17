@@ -406,6 +406,10 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         _updateProtocolShare(protocolShare);
     }
 
+    /**
+     * @dev Updates the referrer share percentage.
+     * @param referrerShare The referrer share percentage.
+     */
     function updateReferrerShare(uint16 referrerShare) external override onlyOwner {
         if (referrerShare > BPS) revert TMFactory__InvalidReferrerShare();
 
