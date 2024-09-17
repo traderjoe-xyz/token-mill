@@ -159,6 +159,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @param swapB2Q Whether to swap base to quote (true) or quote to base (false).
      * @return deltaBaseAmount The delta base amount.
      * @return deltaQuoteAmount The delta quote amount.
+     * @return quoteFees The quote fees.
      */
     function getDeltaAmounts(int256 deltaAmount, bool swapB2Q)
         external
