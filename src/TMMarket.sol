@@ -20,23 +20,21 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
 
     uint256 private constant PRECISION = 1e18;
 
-    bool internal _locked;
-    uint120 internal _initialized;
-    uint128 internal _baseReserve;
+    uint256 internal _state; // 0: uninitialized, 1: invalid, 2: locked, 3: initialized and unlocked
 
     uint128 internal _quoteReserve;
-    uint128 internal _creatorUnclaimedFees;
+    uint128 internal _baseReserve;
 
+    uint128 internal _creatorUnclaimedFees;
     uint128 internal _stakingUnclaimedFees;
 
     /**
      * @dev Modifier to prevent reentrancy.
      */
     modifier nonReentrant() {
-        if (_locked) revert TMMarket__ReentrantCall();
-        _locked = true;
+        if ((_state ^= 1) & 1 != 0) revert TMMarket__ReentrantCall();
         _;
-        _locked = false;
+        _state ^= 1;
     }
 
     /**
@@ -44,9 +42,9 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      */
     function initialize() external override {
         if (msg.sender != _factory()) revert TMMarket__OnlyFactory();
-        if (_initialized != 0) revert TMMarket__AlreadyInitialized();
+        if (_state != 0) revert TMMarket__AlreadyInitialized();
 
-        _initialized = 1;
+        _state = 3;
         _baseReserve = uint128(_totalSupply());
     }
 
@@ -150,7 +148,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @return stakingFees The staking fees.
      */
     function getPendingFees() external view override returns (uint256 creatorFees, uint256 stakingFees) {
-        (, creatorFees, stakingFees) = _getPendingFees();
+        return (_creatorUnclaimedFees, _stakingUnclaimedFees);
     }
 
     /**
@@ -266,24 +264,18 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     {
         if (msg.sender != _factory()) revert TMMarket__OnlyFactory();
 
-        (uint256 quoteReserve, uint256 creatorUnclaimedFees, uint256 stakingUnclaimedFees) = _getPendingFees();
-
         if (caller == staking) {
-            claimedFees = stakingUnclaimedFees;
+            claimedFees = _stakingUnclaimedFees;
             _stakingUnclaimedFees = 0;
-        } else {
-            _stakingUnclaimedFees = uint128(stakingUnclaimedFees);
         }
 
         if (caller == creator) {
-            claimedFees += creatorUnclaimedFees;
+            claimedFees += _creatorUnclaimedFees;
             _creatorUnclaimedFees = 0;
-        } else {
-            _creatorUnclaimedFees = uint128(creatorUnclaimedFees);
         }
 
         if (claimedFees > 0) {
-            _quoteReserve = uint128(quoteReserve - claimedFees);
+            _quoteReserve -= uint128(claimedFees);
 
             IERC20 quoteToken = IERC20(_quoteToken());
 
@@ -293,34 +285,6 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         }
 
         return claimedFees;
-    }
-
-    /**
-     * @dev Returns the pending fees.
-     * @return quoteReserve The quote reserve.
-     * @return creatorUnclaimedFees The creator unclaimed fees.
-     * @return stakingUnclaimedFees The staking unclaimed fees.
-     */
-    function _getPendingFees()
-        internal
-        view
-        returns (uint256 quoteReserve, uint256 creatorUnclaimedFees, uint256 stakingUnclaimedFees)
-    {
-        quoteReserve = _quoteReserve;
-        stakingUnclaimedFees = _stakingUnclaimedFees;
-        creatorUnclaimedFees = _creatorUnclaimedFees;
-
-        uint256 totalUnclaimedFees = stakingUnclaimedFees + creatorUnclaimedFees;
-
-        (uint256 totalFees) = _getFees(0, _totalSupply() - _baseReserve, quoteReserve - totalUnclaimedFees);
-
-        if (totalFees > 0) {
-            (, uint256 creatorShare, uint256 stakingShare) = _getFeeShares();
-            uint256 creatorFees = totalFees * creatorShare / (creatorShare + stakingShare);
-
-            creatorUnclaimedFees += creatorFees;
-            stakingUnclaimedFees += totalFees - creatorFees;
-        }
     }
 
     /**
@@ -411,7 +375,15 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         if (fees > 0) {
             {
                 (uint256 protocolShare, uint256 creatorShare, uint256 stakingShare) = _getFeeShares();
-                fees = fees * protocolShare / (protocolShare + creatorShare + stakingShare);
+
+                uint256 totalShare = protocolShare + creatorShare + stakingShare;
+
+                uint256 creatorFees = fees * creatorShare / totalShare;
+                uint256 stakingFees = fees * stakingShare / totalShare;
+                fees -= creatorFees + stakingFees;
+
+                _creatorUnclaimedFees += uint128(creatorFees);
+                _stakingUnclaimedFees += uint128(stakingFees);
             }
 
             quoteBalance -= fees;
