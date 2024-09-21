@@ -19,7 +19,13 @@ interface ITMMarket is IPricePoints {
     error TMMarket__AlreadyInitialized();
     error TMMarket__InvalidCirculatingSupply();
 
-    event Swap(address indexed sender, address indexed recipient, int256 deltaBaseAmount, int256 deltaQuoteAmount);
+    event Swap(
+        address indexed sender,
+        address indexed recipient,
+        int256 deltaBaseAmount,
+        int256 deltaQuoteAmount,
+        uint256 quoteFees
+    );
     event FeesClaimed(address indexed token, address indexed caller, uint256 claimedFees);
 
     function initialize() external;

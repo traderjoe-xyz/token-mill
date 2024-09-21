@@ -239,14 +239,17 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
             if (success == 0) revert TMMarket__InvalidSwapCallback();
         }
 
-        emit Swap(msg.sender, recipient, deltaBaseAmount, deltaQuoteAmount);
+        uint256 quoteFees;
+        {
+            uint256 balance = tokenToReceive.balanceOf(address(this));
+            if (balance > type(uint128).max) revert TMMarket__ReserveOverflow();
 
-        uint256 balance = tokenToReceive.balanceOf(address(this));
-        if (balance > type(uint128).max) revert TMMarket__ReserveOverflow();
+            quoteFees = swapB2Q
+                ? _updateReservesOnB2Q(baseReserve, quoteReserve, toSend, toReceive, balance)
+                : _updateReservesOnQ2B(referrer, circulatingSupply, baseReserve, quoteReserve, toSend, toReceive, balance);
+        }
 
-        swapB2Q
-            ? _updateReservesOnB2Q(baseReserve, quoteReserve, toSend, toReceive, balance)
-            : _updateReservesOnQ2B(referrer, circulatingSupply, baseReserve, quoteReserve, toSend, toReceive, balance);
+        emit Swap(msg.sender, recipient, deltaBaseAmount, deltaQuoteAmount, quoteFees);
     }
 
     /**
@@ -344,11 +347,13 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 toSend,
         uint256 toReceive,
         uint256 baseBalance
-    ) internal {
+    ) internal returns (uint256) {
         if (baseReserve + toReceive > baseBalance) revert TMMarket__InsufficientAmount();
 
         _baseReserve = uint128(baseBalance);
         _quoteReserve = uint128(quoteReserve - toSend);
+
+        return 0;
     }
 
     /**
@@ -367,20 +372,21 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 toSend,
         uint256 toReceive,
         uint256 quoteBalance
-    ) internal {
+    ) internal returns (uint256) {
         if (quoteReserve + toReceive > quoteBalance) revert TMMarket__InsufficientAmount();
 
-        uint256 fees = _getFees(circulatingSupply, toSend, quoteBalance - quoteReserve);
+        uint256 totalFees = _getFees(circulatingSupply, toSend, quoteBalance - quoteReserve);
 
-        if (fees > 0) {
+        if (totalFees > 0) {
+            uint256 fees;
             {
                 (uint256 protocolShare, uint256 creatorShare, uint256 stakingShare) = _getFeeShares();
 
                 uint256 totalShare = protocolShare + creatorShare + stakingShare;
 
-                uint256 creatorFees = fees * creatorShare / totalShare;
-                uint256 stakingFees = fees * stakingShare / totalShare;
-                fees -= creatorFees + stakingFees;
+                uint256 creatorFees = totalFees * creatorShare / totalShare;
+                uint256 stakingFees = totalFees * stakingShare / totalShare;
+                fees = totalFees - creatorFees - stakingFees;
 
                 _creatorUnclaimedFees += uint128(creatorFees);
                 _stakingUnclaimedFees += uint128(stakingFees);
@@ -397,6 +403,8 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
 
         _baseReserve = uint128(baseReserve - toSend);
         _quoteReserve = uint128(quoteBalance);
+
+        return totalFees;
     }
 
     /**
