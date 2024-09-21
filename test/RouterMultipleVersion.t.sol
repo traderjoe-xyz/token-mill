@@ -43,7 +43,7 @@ contract TestRouterMultipleVersion is Test {
                 new TransparentUpgradeableProxy(
                     factoryImp,
                     address(this),
-                    abi.encodeCall(TMFactory.initialize, (0.2e4, address(this), address(this)))
+                    abi.encodeCall(TMFactory.initialize, (0.2e4, 0.5e4, address(this), address(this)))
                 )
             )
         );

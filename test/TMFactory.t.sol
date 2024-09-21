@@ -25,7 +25,7 @@ contract TMFactoryTest is Test {
                 new TransparentUpgradeableProxy(
                     factoryImp,
                     address(this),
-                    abi.encodeCall(TMFactory.initialize, (0.2e4, feeRecipient, address(this)))
+                    abi.encodeCall(TMFactory.initialize, (0.2e4, 0.5e4, feeRecipient, address(this)))
                 )
             )
         );
@@ -154,7 +154,7 @@ contract TMFactoryTest is Test {
     function test_Fuzz_UpdateReferrerShare(uint16 referrerShares) public {
         uint16 rShares = uint16(bound(referrerShares, 0, 1e4));
 
-        assertEq(factory.getReferrerShare(), 0e4, "test_Fuzz_UpdateReferrerShare::1");
+        assertEq(factory.getReferrerShare(), 0.5e4, "test_Fuzz_UpdateReferrerShare::1");
 
         factory.updateReferrerShare(rShares);
 

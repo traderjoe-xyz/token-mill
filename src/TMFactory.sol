@@ -53,16 +53,18 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     /**
      * @dev Initializer for the TokenMill Factory contract.
      * @param protocolShare The protocol share percentage.
+     * @param referrerShare The referrer share percentage.
      * @param protocolFeeRecipient The address of the protocol fee recipient.
      * @param initialOwner The address of the initial owner.
      */
-    function initialize(uint16 protocolShare, address protocolFeeRecipient, address initialOwner)
+    function initialize(uint16 protocolShare, uint16 referrerShare, address protocolFeeRecipient, address initialOwner)
         external
         initializer
     {
         __Ownable_init(initialOwner);
 
         _updateProtocolShare(protocolShare);
+        _updateReferrerShare(referrerShare);
         _updateProtocolFeeRecipient(protocolFeeRecipient);
     }
 
@@ -142,7 +144,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
     /**
      * @dev Gets the referrer share percentage. The referrer share percentage is the percentage of the protocol fees
-     * that will be distributed to the referrer.
+     * that will be distributed to the referrer (if any).
      * @return The referrer share percentage.
      */
     function getReferrerShare() external view override returns (uint256) {
@@ -411,11 +413,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * @param referrerShare The referrer share percentage.
      */
     function updateReferrerShare(uint16 referrerShare) external override onlyOwner {
-        if (referrerShare > BPS) revert TMFactory__InvalidReferrerShare();
-
-        _referrerShare = referrerShare;
-
-        emit ReferrerShareUpdated(referrerShare);
+        _updateReferrerShare(referrerShare);
     }
 
     /**
@@ -512,6 +510,18 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         _defaultProtocolShare = protocolShare;
 
         emit ProtocolSharesUpdated(protocolShare);
+    }
+
+    /**
+     * @dev Updates the referrer share percentage.
+     * @param referrerShare The referrer share percentage.
+     */
+    function _updateReferrerShare(uint16 referrerShare) private {
+        if (referrerShare > BPS) revert TMFactory__InvalidReferrerShare();
+
+        _referrerShare = referrerShare;
+
+        emit ReferrerShareUpdated(referrerShare);
     }
 
     /**
