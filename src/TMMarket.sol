@@ -94,7 +94,9 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @return quoteReserve The quote reserve (including the pending fees).
      */
     function getReserves() external view override returns (uint256 baseReserve, uint256 quoteReserve) {
-        return _getReserves();
+        (baseReserve, quoteReserve) = _getReserves();
+
+        quoteReserve -= _creatorUnclaimedFees + _stakingUnclaimedFees;
     }
 
     /**

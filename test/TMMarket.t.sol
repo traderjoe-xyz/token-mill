@@ -100,9 +100,10 @@ contract TestTMMarket is TestHelper {
         uint256 balance = wnative.balanceOf(address(factory));
 
         (uint256 baseReserve, uint256 quoteReserve) = ITMMarket(market0w).getReserves();
+        (uint256 creatorFees, uint256 stakingFees) = ITMMarket(market0w).getPendingFees();
 
         assertEq(baseReserve, 500_000_000e18 - uint256(-deltaBaseAmount), "test_Revert_Swap::1");
-        assertEq(quoteReserve, 100e18 - balance, "test_Revert_Swap::2");
+        assertEq(quoteReserve, 100e18 - balance - creatorFees - stakingFees, "test_Revert_Swap::2");
 
         vm.expectRevert(ITMMarket.TMMarket__InsufficientAmount.selector);
         ITMMarket(market0w).swap(address(this), 1e18, true, new bytes(0), address(0));
