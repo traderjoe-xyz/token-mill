@@ -18,6 +18,7 @@ import {ITMFactory} from "./interfaces/ITMFactory.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
 import {IWNative} from "./interfaces/IWNative.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
+import {ICliffVestingContract} from "./interfaces/ICliffVestingContract.sol";
 
 /**
  * @title Router Contract
@@ -263,6 +264,92 @@ contract Router is IRouter {
             : swapExactOut(route, msg.sender, amount, type(uint256).max, block.timestamp, address(0));
 
         revert Router__Simulation(exactIn ? amountOut : amountIn);
+    }
+
+    /**
+     * @dev Creates a new TM market, then immediately purchases and creates vesting schedules for tokens.
+     * @param args Arguments for creating a new TM market and purchasing tokens.
+     * @param vestingContract Address of the CliffVestingContract.
+     * @param vestings Array of vesting schedules to create with purchased tokens.
+     * @return baseToken Address of the created token.
+     * @return market Address of the created TM market.
+     * @return baseAmountReceived Amount of the token purchased from the new market.
+     */
+    function createTMMarketAndVesting(
+        TMMarketCreationAndPurchaseArgs memory args,
+        address vestingContract,
+        VestingArgs[] memory vestings
+    ) external payable override returns (address baseToken, address market, uint256 baseAmountReceived) {
+        if (vestings.length == 0 || vestingContract == address(0)) {
+            revert Router__InvalidCreateTMMarketAndVestingInputs();
+        }
+
+        if (args.quoteToken == address(0) ? msg.value != args.quoteTokenAmountIn : msg.value != 0) {
+            revert Router__InvalidNativeAmountSent();
+        }
+
+        (baseToken, market) = _tmFactory.createMarketAndToken(
+            args.tokenType,
+            args.name,
+            args.symbol,
+            args.quoteToken == address(0) ? address(_wnative) : args.quoteToken,
+            args.totalSupply,
+            args.bidPrices,
+            args.askPrices,
+            args.args
+        );
+
+        _tmFactory.updateCreator(market, msg.sender);
+
+        {
+            address quoteToken = args.quoteToken;
+
+            uint256 balanceBefore = _balanceOf(quoteToken, market);
+            _transfer(quoteToken, msg.sender, market, args.quoteTokenAmountIn);
+            uint256 transferredAmount = _balanceOf(quoteToken, market) - balanceBefore;
+
+            (int256 deltaBaseAmount,) =
+                ITMMarket(market).swap(address(this), int256(transferredAmount), false, new bytes(0));
+
+            baseAmountReceived = Math.abs(deltaBaseAmount);
+
+            if (baseAmountReceived < args.baseTokenAmountOutMin) {
+                revert Router__InsufficientReceivedBase();
+            }
+        }
+
+        IERC20(baseToken).forceApprove(vestingContract, baseAmountReceived);
+
+        {
+            uint256 totalPercentageAmountBps;
+            uint256 totalAmountVested;
+            uint256 amountToVest;
+
+            for (uint256 i; i < vestings.length; ++i) {
+                if (i == vestings.length - 1) {
+                    amountToVest = baseAmountReceived - totalAmountVested; // includes dust
+                } else {
+                    amountToVest = baseAmountReceived * vestings[i].percentageAmountBps / 10_000;
+                    totalAmountVested += amountToVest;
+                }
+
+                ICliffVestingContract(vestingContract).createVestingSchedule(
+                    baseToken,
+                    vestings[i].beneficiary,
+                    uint128(amountToVest),
+                    uint128(amountToVest),
+                    vestings[i].start,
+                    vestings[i].cliffDuration,
+                    vestings[i].vestingDuration
+                );
+
+                totalPercentageAmountBps += vestings[i].percentageAmountBps;
+            }
+
+            if (totalPercentageAmountBps != 10_000) {
+                revert Router__InvalidVestingAllocation();
+            }
+        }
     }
 
     /**

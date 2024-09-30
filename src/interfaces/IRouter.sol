@@ -14,6 +14,31 @@ interface IRouter {
     error Router__InsufficientLiquidity();
     error Router__Simulation(uint256 amount);
     error Router__Simulations(uint256[] amounts);
+    error Router__InsufficientReceivedBase();
+    error Router__InvalidCreateTMMarketAndVestingInputs();
+    error Router__InvalidVestingAllocation();
+    error Router__InvalidNativeAmountSent();
+
+    struct TMMarketCreationAndPurchaseArgs {
+        uint96 tokenType;
+        string name;
+        string symbol;
+        address quoteToken;
+        uint256 totalSupply;
+        uint256[] bidPrices;
+        uint256[] askPrices;
+        bytes args;
+        uint128 quoteTokenAmountIn;
+        uint256 baseTokenAmountOutMin;
+    }
+
+    struct VestingArgs {
+        address beneficiary;
+        uint16 percentageAmountBps;
+        uint80 start;
+        uint80 cliffDuration;
+        uint80 vestingDuration;
+    }
 
     function getFactory(uint256 v, uint256 sv) external view returns (address);
 
@@ -49,4 +74,10 @@ interface IRouter {
     function simulate(bytes[] calldata routes, uint256 amount, bool exactIn) external payable;
 
     function simulateSingle(bytes calldata route, uint256 amount, bool exactIn) external payable;
+
+    function createTMMarketAndVesting(
+        TMMarketCreationAndPurchaseArgs memory args,
+        address vestingContract,
+        VestingArgs[] memory vestings
+    ) external payable returns (address baseToken, address market, uint256 baseAmountReceived);
 }
