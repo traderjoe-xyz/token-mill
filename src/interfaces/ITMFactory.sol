@@ -9,14 +9,18 @@ interface ITMFactory {
     error TMFactory__InvalidBalance();
     error TMFactory__InvalidCaller();
     error TMFactory__InvalidQuoteToken();
-    error TMFactory__InvalidProtocolShare();
+    error TMFactory__InvalidFeeShares();
     error TMFactory__QuoteTokenAlreadyAdded();
     error TMFactory__QuoteTokenNotFound();
     error TMFactory__MaxQuoteTokensExceeded();
     error TMFactory__InvalidTokenType();
     error TMFactory__InvalidRecipient();
+    error TMFactory__InvalidProtocolShare();
     error TMFactory__AddressZero();
     error TMFactory__SameTokens();
+    error TMFactory__ZeroFeeRecipients();
+    error TMFactory__InvalidReferrerShare();
+    error TMFactory__InvalidReferrer();
 
     // packedPrices = `(askPrice << 128) | bidPrice` for each price point
     event MarketCreated(
@@ -30,17 +34,52 @@ interface ITMFactory {
         uint8 decimals,
         uint256[] packedPrices
     );
-    event MarketParametersUpdated(address indexed market, uint256 protocolShare, address creator);
-    event ProtocolShareUpdated(uint256 protocolShare);
+    event MarketFeeSharesUpdated(
+        address indexed market, uint256 protocolShare, uint256 creatorShare, uint256 stakingShare
+    );
+    event ProtocolSharesUpdated(uint256 protocolShare);
+    event MarketCreatorUpdated(address indexed market, address indexed creator);
     event TokenImplementationUpdated(uint96 tokenType, address implementation);
     event QuoteTokenAdded(address quoteToken);
     event QuoteTokenRemoved(address quoteToken);
-    event ProtocolClaimerUpdated(address recipient);
+    event ProtocolFeeRecipientUpdated(address recipient);
+    event ReferrerShareUpdated(uint256 referrerShare);
+    event FeesReceived(
+        address indexed token,
+        address indexed market,
+        address indexed referrer,
+        uint256 protocolFees,
+        uint256 referrerFees
+    );
+    event ReferrerFeesClaimed(address indexed token, address indexed referrer, uint256 claimedFees);
+    event ProtocolFeesClaimed(address indexed token, address indexed referrer, uint256 claimedFees);
+
+    struct Referrers {
+        uint256 total;
+        mapping(address => uint256) unclaimed;
+    }
 
     struct MarketParameters {
-        uint96 protocolShare;
+        uint16 protocolShare;
+        uint16 creatorShare;
+        uint16 stakingShare;
         address creator;
     }
+
+    struct MarketCreationParameters {
+        uint96 tokenType;
+        string name;
+        string symbol;
+        address quoteToken;
+        uint256 totalSupply;
+        uint16 creatorShare;
+        uint16 stakingShare;
+        uint256[] bidPrices;
+        uint256[] askPrices;
+        bytes args;
+    }
+
+    function STAKING() external view returns (address);
 
     function getCreatorOf(address market) external view returns (address);
 
@@ -48,15 +87,17 @@ interface ITMFactory {
 
     function getCreatorMarketAt(address creator, uint256 index) external view returns (address);
 
-    function getProtocolShareOf(address market) external view returns (uint256);
+    function getFeeSharesOf(address market) external view returns (uint256, uint256, uint256);
 
     function getTokenType(address token) external view returns (uint256);
 
     function getMarketOf(address token) external view returns (address);
 
-    function getProtocolShare() external view returns (uint256);
+    function getDefaultProtocolShare() external view returns (uint256);
 
-    function getProtocolClaimer() external view returns (address);
+    function getProtocolFeeRecipient() external view returns (address);
+
+    function getReferrerShare() external view returns (uint256);
 
     function getMarket(address tokenA, address tokenB) external view returns (bool tokenAisBase, address market);
 
@@ -70,26 +111,31 @@ interface ITMFactory {
 
     function getTokenImplementation(uint96 tokenType) external view returns (address);
 
-    function createMarketAndToken(
-        uint96 tokenType,
-        string memory name,
-        string memory symbol,
-        address quoteToken,
-        uint256 totalSupply,
-        uint256[] memory bidPrices,
-        uint256[] memory askPrices,
-        bytes memory args
-    ) external returns (address baseToken, address market);
+    function getReferrerFeesOf(address token, address referrer) external view returns (uint256);
 
-    function updateCreator(address market, address creator) external;
+    function getProtocolFees(address token) external view returns (uint256);
 
-    function claimFees(address market, address recipient) external returns (uint256 fees);
+    function createMarketAndToken(MarketCreationParameters calldata parameters)
+        external
+        returns (address baseToken, address market);
 
-    function updateProtocolShare(uint64 protocolShare) external;
+    function updateCreatorOf(address market, address creator) external;
 
-    function updateProtocolClaimer(address recipient) external;
+    function updateFeeSharesOf(address market, uint16 creatorShare, uint16 stakingShare) external;
 
-    function updateProtocolShareOf(address market, uint64 protocolShare) external;
+    function claimFees(address market) external returns (uint256 claimedFees);
+
+    function claimReferrerFees(address token) external returns (uint256 claimedFees);
+
+    function claimProtocolFees(address token) external returns (uint256 claimedFees);
+
+    function handleProtocolFees(address token, address referrer, uint256 protocolFees) external returns (bool);
+
+    function updateProtocolShare(uint16 protocolShare) external;
+
+    function updateReferrerShare(uint16 referrerShare) external;
+
+    function updateProtocolFeeRecipient(address recipient) external;
 
     function updateTokenImplementation(uint96 tokenType, address implementation) external;
 

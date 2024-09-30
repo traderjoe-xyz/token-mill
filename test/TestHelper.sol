@@ -10,6 +10,7 @@ import "../src/Router.sol";
 import "../src/TMMarket.sol";
 import "../src/templates/TMERC20.sol";
 import "./mocks/WNative.sol";
+import "./mocks/TransferTaxToken.sol";
 
 contract TestHelper is Test {
     TMFactory public factory;
@@ -29,14 +30,18 @@ contract TestHelper is Test {
     uint256[] public askPrices0w;
     uint256[] public bidPrices0w;
 
+    address public stakingAddress;
+
     function setUp() public virtual {
         wnative = new WNative();
 
-        address factoryImp = address(new TMFactory());
+        address factoryImp = address(new TMFactory(stakingAddress));
         factory = TMFactory(
             address(
                 new TransparentUpgradeableProxy(
-                    factoryImp, address(this), abi.encodeCall(TMFactory.initialize, (0.1e18, address(this)))
+                    factoryImp,
+                    address(this),
+                    abi.encodeCall(TMFactory.initialize, (0.2e4, 0.5e4, address(this), address(this)))
                 )
             )
         );
@@ -64,9 +69,11 @@ contract TestHelper is Test {
         bidPrices0w.push(askPrices0w[1] * 90 / 100);
         bidPrices0w.push(askPrices0w[2] * 95 / 100);
 
-        (token0, market0w) = factory.createMarketAndToken(
-            1, "Token0", "T0", address(wnative), 500_000_000e18, bidPrices0w, askPrices0w, abi.encode(18)
+        ITMFactory.MarketCreationParameters memory params = ITMFactory.MarketCreationParameters(
+            1, "Token0", "T0", address(wnative), 500_000_000e18, 0.2e4, 0.6e4, bidPrices0w, askPrices0w, abi.encode(18)
         );
+
+        (token0, market0w) = factory.createMarketAndToken(params);
 
         factory.addQuoteToken(address(token0));
 
@@ -80,9 +87,11 @@ contract TestHelper is Test {
         bidPrices[1] = askPrices[1] * 90 / 100;
         bidPrices[2] = askPrices[2];
 
-        (token1, market10) = factory.createMarketAndToken(
-            1, "Token1", "T1", address(token0), 100_000_000e18, bidPrices, askPrices, abi.encode(18)
+        params = ITMFactory.MarketCreationParameters(
+            1, "Token1", "T1", address(token0), 100_000_000e18, 0.2e4, 0.6e4, bidPrices, askPrices, abi.encode(18)
         );
+
+        (token1, market10) = factory.createMarketAndToken(params);
 
         factory.addQuoteToken(address(token1));
 
@@ -94,9 +103,11 @@ contract TestHelper is Test {
         bidPrices[1] = 10e18;
         bidPrices[2] = 20e18;
 
-        (token2, market21) = factory.createMarketAndToken(
-            1, "Token2", "T2", address(token1), 50_000_000e18, bidPrices, askPrices, abi.encode(18)
+        params = ITMFactory.MarketCreationParameters(
+            1, "Token2", "T2", address(token1), 50_000_000e18, 0.2e4, 0.6e4, bidPrices, askPrices, abi.encode(18)
         );
+
+        (token2, market21) = factory.createMarketAndToken(params);
 
         vm.label(token0, "Token0");
         vm.label(token1, "Token1");
@@ -105,5 +116,25 @@ contract TestHelper is Test {
         vm.label(market0w, "Market0W");
         vm.label(market10, "Market10");
         vm.label(market21, "Market21");
+    }
+
+    function _createTaxTokenMarket() internal returns (address taxToken, address market) {
+        uint256[] memory prices = new uint256[](2);
+
+        prices[0] = 1e18;
+        prices[1] = 1e18 + 1;
+
+        factory.updateTokenImplementation(2, address(new TransferTaxToken(address(factory), 0.1e18)));
+
+        ITMFactory.MarketCreationParameters memory params = ITMFactory.MarketCreationParameters(
+            2, "TaxToken", "TT", address(wnative), 500_000_000e18, 0.2e4, 0.6e4, prices, prices, new bytes(0)
+        );
+
+        (taxToken, market) = factory.createMarketAndToken(params);
+    }
+
+    function _predictContractAddress(uint256 deltaNonce) internal view returns (address) {
+        uint256 nonce = vm.getNonce(address(this)) + deltaNonce;
+        return vm.computeCreateAddress(address(this), nonce);
     }
 }

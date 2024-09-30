@@ -115,20 +115,23 @@ contract Router is IRouter {
      * @param amountIn The amount of tokens to be swapped.
      * @param amountOutMin The minimum amount of tokens to be received.
      * @param deadline The deadline by which the transaction must be executed.
+     * @param referrer The address of the referrer. Only used for TM markets.
      * @return The amount of tokens in and out.
      */
-    function swapExactIn(bytes memory route, address to, uint256 amountIn, uint256 amountOutMin, uint256 deadline)
-        external
-        payable
-        override
-        returns (uint256, uint256)
-    {
+    function swapExactIn(
+        bytes memory route,
+        address to,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        uint256 deadline,
+        address referrer
+    ) external payable override returns (uint256, uint256) {
         _checkDeadline(deadline);
         _checkRecipient(to);
 
         (address[] memory pairs, uint256[] memory ids, address[] memory tokens) = _getPairsAndIds(route);
 
-        uint256 amountOut = _swapExactIn(to, pairs, ids, tokens, amountIn, amountOutMin);
+        uint256 amountOut = _swapExactIn(pairs, ids, tokens, to, amountIn, amountOutMin, referrer);
 
         if (msg.value > 0) {
             uint256 leftOver = address(this).balance;
@@ -148,6 +151,7 @@ contract Router is IRouter {
      * @param amountIn The amount of tokens to be swapped.
      * @param amountOutMin The minimum amount of tokens to be received.
      * @param deadline The deadline by which the transaction must be executed.
+     * @param referrer The address of the referrer. Only used for TM markets.
      * @return The amount of tokens in and out.
      */
     function swapExactInSupportingFeeOnTransferTokens(
@@ -155,14 +159,16 @@ contract Router is IRouter {
         address to,
         uint256 amountIn,
         uint256 amountOutMin,
-        uint256 deadline
+        uint256 deadline,
+        address referrer
     ) public payable override returns (uint256, uint256) {
         _checkDeadline(deadline);
         _checkRecipient(to);
 
         (address[] memory pairs, uint256[] memory ids, address[] memory tokens) = _getPairsAndIds(route);
 
-        uint256 amountOut = _swapExactInSupportingFeeOnTransferTokens(to, pairs, ids, tokens, amountIn, amountOutMin);
+        uint256 amountOut =
+            _swapExactInSupportingFeeOnTransferTokens(to, pairs, ids, tokens, amountIn, amountOutMin, referrer);
 
         if (msg.value > 0) {
             uint256 leftOver = address(this).balance;
@@ -182,23 +188,29 @@ contract Router is IRouter {
      * @param amountOut The amount of tokens to be received.
      * @param amountInMax The maximum amount of tokens to be swapped.
      * @param deadline The deadline by which the transaction must be executed.
+     * @param referrer The address of the referrer. Only used for TM markets.
      * @return The amount of tokens in and out.
      */
-    function swapExactOut(bytes memory route, address to, uint256 amountOut, uint256 amountInMax, uint256 deadline)
-        public
-        payable
-        override
-        returns (uint256, uint256)
-    {
+    function swapExactOut(
+        bytes memory route,
+        address to,
+        uint256 amountOut,
+        uint256 amountInMax,
+        uint256 deadline,
+        address referrer
+    ) public payable override returns (uint256, uint256) {
         _checkDeadline(deadline);
         _checkRecipient(to);
 
         (address[] memory pairs, uint256[] memory ids, address[] memory tokens) = _getPairsAndIds(route);
-        uint256 amountIn = _getAmountIn(pairs, ids, tokens, amountOut);
 
-        if (amountIn > amountInMax) revert Router__ExceedsMaxInputAmount();
+        {
+            uint256 amountIn = _getAmountIn(pairs, ids, tokens, amountOut);
+            if (amountIn > amountInMax) revert Router__ExceedsMaxInputAmount();
+            amountInMax = amountIn;
+        }
 
-        uint256 actualAmountOut = _swapExactIn(to, pairs, ids, tokens, amountIn, amountOut);
+        uint256 actualAmountOut = _swapExactIn(pairs, ids, tokens, to, amountInMax, amountOut, referrer);
 
         if (msg.value > 0) {
             uint256 leftOver = address(this).balance;
@@ -207,7 +219,7 @@ contract Router is IRouter {
             }
         }
 
-        return (amountIn, actualAmountOut);
+        return (amountInMax, actualAmountOut);
     }
 
     /**
@@ -247,8 +259,8 @@ contract Router is IRouter {
      */
     function simulateSingle(bytes calldata route, uint256 amount, bool exactIn) external payable override {
         (uint256 amountIn, uint256 amountOut) = exactIn
-            ? swapExactInSupportingFeeOnTransferTokens(route, msg.sender, amount, 0, block.timestamp)
-            : swapExactOut(route, msg.sender, amount, type(uint256).max, block.timestamp);
+            ? swapExactInSupportingFeeOnTransferTokens(route, msg.sender, amount, 0, block.timestamp, address(0))
+            : swapExactOut(route, msg.sender, amount, type(uint256).max, block.timestamp, address(0));
 
         revert Router__Simulation(exactIn ? amountOut : amountIn);
     }
@@ -396,7 +408,7 @@ contract Router is IRouter {
                     revert Router__InvalidId();
                 }
             } else if (v == 3) {
-                (int256 deltaBaseAmount, int256 deltaQuoteAmount) =
+                (int256 deltaBaseAmount, int256 deltaQuoteAmount,) =
                     ITMMarket(pair).getDeltaAmounts(-int256(amount), t == 1);
 
                 if (t == 1) {
@@ -419,15 +431,19 @@ contract Router is IRouter {
      * @param to The address to which the tokens will be transferred.
      * @param pairs The pairs of the route.
      * @param ids The ids of the route.
+     * @param tokens The tokens of the route.
      * @param amount The amount of tokens to be swapped.
+     * @param amountOutMin The minimum amount of tokens to be received.
+     * @param referrer The address of the referrer. Only used for TM markets.
      */
     function _swapExactIn(
-        address to,
         address[] memory pairs,
         uint256[] memory ids,
         address[] memory tokens,
+        address to,
         uint256 amount,
-        uint256 amountOutMin
+        uint256 amountOutMin,
+        address referrer
     ) internal returns (uint256) {
         uint256 length = pairs.length;
         address pair = pairs[0];
@@ -440,10 +456,10 @@ contract Router is IRouter {
         _transfer(tokens[0], msg.sender, pair, amount);
 
         for (uint256 i; i < length;) {
-            (uint256 v, uint256 sv, uint256 t) = PackedRoute.decodeId(ids[i]);
+            uint256 id = ids[i];
             address next = ++i == length ? recipient : pairs[i];
 
-            amount = _swap(pair, next, amount, v, sv, t);
+            amount = _swap(pair, next, amount, id, referrer);
 
             pair = next;
         }
@@ -464,6 +480,7 @@ contract Router is IRouter {
      * @param tokens The tokens of the route.
      * @param amount The amount of tokens to be swapped.
      * @param amountOutMin The minimum amount of tokens to be received.
+     * @param referrer The address of the referrer. Only used for TM markets.
      * @return The amount of tokens out.
      */
     function _swapExactInSupportingFeeOnTransferTokens(
@@ -472,7 +489,8 @@ contract Router is IRouter {
         uint256[] memory ids,
         address[] memory tokens,
         uint256 amount,
-        uint256 amountOutMin
+        uint256 amountOutMin,
+        address referrer
     ) internal returns (uint256) {
         uint256 length = pairs.length;
         address pair = pairs[0];
@@ -487,12 +505,12 @@ contract Router is IRouter {
         address tokenOut;
         uint256 amountOut;
         for (uint256 i; i < length;) {
-            (uint256 v, uint256 sv, uint256 t) = PackedRoute.decodeId(ids[i]);
+            uint256 id = ids[i];
             tokenOut = tokens[++i];
             address next = i == length ? (tokenOut == address(0) ? address(this) : to) : pairs[i];
 
             uint256 balance = _balanceOf(tokenOut, next);
-            amountOut = _swap(pair, next, amount, v, sv, t);
+            amountOut = _swap(pair, next, amount, id, referrer);
             amount = _balanceOf(tokenOut, next) - balance;
 
             pair = next;
@@ -509,15 +527,15 @@ contract Router is IRouter {
      * @param pair The pair to swap the tokens in.
      * @param recipient The address to which the tokens will be transferred.
      * @param amount The amount of tokens to be swapped.
-     * @param v The version of the pair contract.
-     * @param sv The sub-version of the pair contract.
-     * @param t The type of the pair contract.
+     * @param id The id (version, sub-version, and type) of the pair.
      * @return The amount of tokens out.
      */
-    function _swap(address pair, address recipient, uint256 amount, uint256 v, uint256 sv, uint256 t)
+    function _swap(address pair, address recipient, uint256 amount, uint256 id, address referrer)
         internal
         returns (uint256)
     {
+        (uint256 v, uint256 sv, uint256 t) = PackedRoute.decodeId(id);
+
         if (v == 1) {
             (uint256 reserveIn, uint256 reserveOut,) = IV1Pair(pair).getReserves();
             (reserveIn, reserveOut) = t == 1 ? (reserveIn, reserveOut) : (reserveOut, reserveIn);
@@ -544,7 +562,7 @@ contract Router is IRouter {
             }
         } else if (v == 3) {
             (int256 deltaBaseAmount, int256 deltaQuoteAmount) =
-                ITMMarket(pair).swap(recipient, int256(amount), t == 1, new bytes(0));
+                ITMMarket(pair).swap(recipient, int256(amount), t == 1, new bytes(0), referrer);
 
             (uint256 amountIn, uint256 amountOut) = t == 1
                 ? (uint256(deltaBaseAmount), uint256(-deltaQuoteAmount))
