@@ -508,8 +508,7 @@ contract TMFactoryTest is Test {
 
         factory.updateReferrerShare(0.2e4);
 
-        Router router =
-            new Router(address(0), address(0), address(0), address(0), address(factory), address(0), address(wnative));
+        Router router = new Router(address(0), address(0), address(0), address(0), address(factory), address(wnative));
 
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token1);
 
@@ -626,8 +625,7 @@ contract TMFactoryTest is Test {
 
         factory.updateReferrerShare(0.3e4);
 
-        Router router =
-            new Router(address(0), address(0), address(0), address(0), address(factory), address(0), address(wnative));
+        Router router = new Router(address(0), address(0), address(0), address(0), address(factory), address(wnative));
 
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token1);
 
@@ -750,8 +748,7 @@ contract TMFactoryTest is Test {
     function test_ClaimFeesAndUpdateProtocolFees() public {
         (address token1, address market1) = _setUpAndCreateToken(alice, 0.5e18);
 
-        Router router =
-            new Router(address(0), address(0), address(0), address(0), address(factory), address(0), address(wnative));
+        Router router = new Router(address(0), address(0), address(0), address(0), address(factory), address(wnative));
 
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token1);
 

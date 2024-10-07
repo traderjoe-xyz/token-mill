@@ -31,7 +31,7 @@ interface IRouter {
 
     function getFactory(uint256 v, uint256 sv) external view returns (address);
 
-    function getVestingContract() external view returns (address);
+    function getStakingContract() external view returns (address);
 
     function getWNative() external view returns (address);
 

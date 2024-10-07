@@ -18,7 +18,7 @@ import {ITMFactory} from "./interfaces/ITMFactory.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
 import {IWNative} from "./interfaces/IWNative.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
-import {ICliffVestingContract} from "./interfaces/ICliffVestingContract.sol";
+import {ITMStaking} from "./interfaces/ITMStaking.sol";
 
 /**
  * @title Router Contract
@@ -37,7 +37,7 @@ contract Router is IRouter {
     IV2_2Factory internal immutable _v2_2Factory;
     ITMFactory internal immutable _tmFactory;
 
-    ICliffVestingContract internal immutable _vestingContract;
+    ITMStaking internal immutable _staking;
     IWNative internal immutable _wnative;
 
     /**
@@ -47,7 +47,6 @@ contract Router is IRouter {
      * @param v2_1Factory The address of the V2.1 factory contract.
      * @param v2_2Factory The address of the V2.2 factory contract.
      * @param tmFactory The address of the TM factory contract.
-     * @param vestingContract The address of the vesting contract.
      * @param wnative The address of the WNative contract.
      */
     constructor(
@@ -56,7 +55,6 @@ contract Router is IRouter {
         address v2_1Factory,
         address v2_2Factory,
         address tmFactory,
-        address vestingContract,
         address wnative
     ) {
         _v1Factory = IV1Factory(v1Factory);
@@ -69,7 +67,9 @@ contract Router is IRouter {
         _v2_2Factory = IV2_2Factory(v2_2Factory);
         _tmFactory = ITMFactory(tmFactory);
 
-        _vestingContract = ICliffVestingContract(vestingContract);
+        address staking = tmFactory == address(0) ? address(0) : ITMFactory(tmFactory).STAKING();
+
+        _staking = ITMStaking(staking);
         _wnative = IWNative(wnative);
     }
 
@@ -110,8 +110,8 @@ contract Router is IRouter {
     /**
      * @dev Returns the vesting contract.
      */
-    function getVestingContract() external view override returns (address) {
-        return address(_vestingContract);
+    function getStakingContract() external view override returns (address) {
+        return address(_staking);
     }
 
     /**
@@ -123,9 +123,9 @@ contract Router is IRouter {
 
     /**
      * @dev Creates a new TM market and vesting schedules for the specified recipients.
-     * Warning: If the token is a fee-on-transfer token, transferring tokens to the vesting contract
-     * should **not** have to pay the fee, ie, that sending 10 tokens to the vesting contract should
-     * result in the vesting contract receiving at least 10 tokens.
+     * Warning: If the token is a fee-on-transfer token, transferring tokens to the staking contract to vest them
+     * should **not** result in any transfer fee, ie, that sending 10 tokens to the staking contract should
+     * result in the staking contract receiving at least 10 tokens when vesting them with this function.
      * @param params The parameters for the market creation.
      * @param vestingParams The parameters for the vesting schedules.
      * @param referrer The address of the referrer.
@@ -175,7 +175,7 @@ contract Router is IRouter {
 
         if (amountBaseOut < minAmountBaseOut) revert Router__InsufficientOutputAmount();
 
-        IERC20(baseToken).forceApprove(address(_vestingContract), amountBaseOut);
+        IERC20(baseToken).forceApprove(address(_staking), amountBaseOut);
 
         uint256 total = TOTAL_PERCENT;
         uint256 remainingBase = amountBaseOut;
@@ -192,7 +192,7 @@ contract Router is IRouter {
                 total -= percent;
             }
 
-            _vestingContract.createVestingSchedule(
+            _staking.createVestingSchedule(
                 baseToken,
                 vesting.beneficiary,
                 uint128(amount),

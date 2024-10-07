@@ -4,14 +4,22 @@ pragma solidity ^0.8.20;
 import "./TestHelper.sol";
 
 import "./mocks/TransferTaxToken.sol";
-import "../src/CliffVestingContract.sol";
+import "../src/utils/TMStaking.sol";
 
 contract TestRouter is TestHelper {
     function setUp() public override {
-        vestingAddress = address(new CliffVestingContract());
+        stakingAddress = _predictContractAddress(6);
 
         super.setUp();
+
+        address stakingImp = address(new TMStaking(address(factory)));
+        address staking = address(
+            new TransparentUpgradeableProxy(stakingImp, address(this), abi.encodeCall(TMStaking.initialize, ()))
+        );
+
         setUpTokens();
+
+        assertEq(staking, stakingAddress, "setUp::1");
     }
 
     receive() external payable {}
@@ -780,12 +788,11 @@ contract TestRouter is TestHelper {
 
         assertEq(factory.getMarketOf(token), market, "test_Fuzz_CreateTMMarketAndVestings::1");
         assertEq(factory.getCreatorOf(market), address(this), "test_Fuzz_CreateTMMarketAndVestings::2");
-        assertEq(IERC20(token).balanceOf(vestingAddress), amount, "test_Fuzz_CreateTMMarketAndVestings::3");
+        assertEq(IERC20(token).balanceOf(stakingAddress), amount, "test_Fuzz_CreateTMMarketAndVestings::3");
         assertEq(address(this).balance, balance - amountQuoteIn, "test_Fuzz_CreateTMMarketAndVestings::4");
 
         for (uint256 i = 0; i < length; i++) {
-            ICliffVestingContract.VestingSchedule memory vesting =
-                ICliffVestingContract(vestingAddress).getVestingSchedule(token, i);
+            ITMStaking.VestingSchedule memory vesting = ITMStaking(stakingAddress).getVestingScheduleAt(token, i);
 
             assertEq(vesting.beneficiary, vestingParams[i].beneficiary, "test_Fuzz_CreateTMMarketAndVestings::5");
             assertGe(vesting.total, vestingParams[i].percent * amount / 1e18, "test_Fuzz_CreateTMMarketAndVestings::6");
@@ -807,12 +814,11 @@ contract TestRouter is TestHelper {
 
         assertEq(factory.getMarketOf(token), market, "test_Fuzz_CreateTMMarketAndVestings::11");
         assertEq(factory.getCreatorOf(market), address(this), "test_Fuzz_CreateTMMarketAndVestings::12");
-        assertEq(IERC20(token).balanceOf(vestingAddress), amount, "test_Fuzz_CreateTMMarketAndVestings::13");
+        assertEq(IERC20(token).balanceOf(stakingAddress), amount, "test_Fuzz_CreateTMMarketAndVestings::13");
         assertEq(address(this).balance, balance - amountQuoteIn, "test_Fuzz_CreateTMMarketAndVestings::14");
 
         for (uint256 i = 0; i < length; i++) {
-            ICliffVestingContract.VestingSchedule memory vesting =
-                ICliffVestingContract(vestingAddress).getVestingSchedule(token, i);
+            ITMStaking.VestingSchedule memory vesting = ITMStaking(stakingAddress).getVestingScheduleAt(token, i);
 
             assertEq(vesting.beneficiary, vestingParams[i].beneficiary, "test_Fuzz_CreateTMMarketAndVestings::15");
             assertGe(vesting.total, vestingParams[i].percent * amount / 1e18, "test_Fuzz_CreateTMMarketAndVestings::16");

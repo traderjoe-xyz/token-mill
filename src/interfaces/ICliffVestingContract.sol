@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
  * @title Cliff Vesting Contract Interface
  * @dev Interface of the cliff vesting contract.
  */
-interface ICliffVestingContract {
+interface ITMStaking {
     error CliffVestingContract__InvalidCliffDuration();
     error CliffVestingContract__InvalidVestingSchedule();
     error CliffVestingContract__InsufficientAmountReceived(uint256 received, uint256 minAmount);

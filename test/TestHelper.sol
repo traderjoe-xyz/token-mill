@@ -31,7 +31,6 @@ contract TestHelper is Test {
     uint256[] public bidPrices0w;
 
     address public stakingAddress;
-    address public vestingAddress;
 
     function setUp() public virtual {
         wnative = new WNative();
@@ -47,9 +46,7 @@ contract TestHelper is Test {
             )
         );
 
-        router = new Router(
-            address(0), address(0), address(0), address(0), address(factory), vestingAddress, address(wnative)
-        );
+        router = new Router(address(0), address(0), address(0), address(0), address(factory), address(wnative));
 
         basicToken = new TMERC20(address(factory));
 
