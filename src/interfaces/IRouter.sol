@@ -38,6 +38,7 @@ interface IRouter {
     function createTMMarketAndVestings(
         ITMFactory.MarketCreationParameters calldata params,
         VestingParameters[] calldata vestingParams,
+        address referrer,
         uint256 amountQuoteIn,
         uint256 minAmountBaseOut
     ) external payable returns (address base, address market, uint256 amountBaseOut);

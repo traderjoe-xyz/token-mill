@@ -128,6 +128,7 @@ contract Router is IRouter {
      * result in the vesting contract receiving at least 10 tokens.
      * @param params The parameters for the market creation.
      * @param vestingParams The parameters for the vesting schedules.
+     * @param referrer The address of the referrer.
      * @param amountQuoteIn The amount of quote tokens to be swapped.
      * @param minAmountBaseOut The minimum amount of base tokens to be received.
      * @return baseToken The address of the base token.
@@ -137,11 +138,11 @@ contract Router is IRouter {
     function createTMMarketAndVestings(
         ITMFactory.MarketCreationParameters calldata params,
         VestingParameters[] calldata vestingParams,
+        address referrer,
         uint256 amountQuoteIn,
         uint256 minAmountBaseOut
     ) external payable override returns (address baseToken, address market, uint256 amountBaseOut) {
-        uint256 length = vestingParams.length;
-        if (length == 0) revert Router__NoVestingParams();
+        if (vestingParams.length == 0) revert Router__NoVestingParams();
 
         address quoteToken = params.quoteToken;
         quoteToken = quoteToken == address(0) ? address(_wnative) : quoteToken;
@@ -163,12 +164,12 @@ contract Router is IRouter {
 
         uint256 balance = _balanceOf(quoteToken, market);
         _transfer(params.quoteToken, msg.sender, market, amountQuoteIn);
-        uint256 amountQuote = _balanceOf(quoteToken, market) - balance;
+        amountQuoteIn = _balanceOf(quoteToken, market) - balance;
 
         {
             (int256 deltaBaseAmount, int256 deltaQuoteAmount) =
-                ITMMarket(market).swap(address(this), int256(amountQuote), false, new bytes(0), msg.sender);
-            if (uint256(deltaQuoteAmount) != amountQuote) revert Router__TooManyQuoteTokenSent();
+                ITMMarket(market).swap(address(this), int256(amountQuoteIn), false, new bytes(0), referrer);
+            if (uint256(deltaQuoteAmount) != amountQuoteIn) revert Router__TooManyQuoteTokenSent();
             amountBaseOut = uint256(-deltaBaseAmount);
         }
 
@@ -178,7 +179,7 @@ contract Router is IRouter {
 
         uint256 total = TOTAL_PERCENT;
         uint256 remainingBase = amountBaseOut;
-        for (uint256 i; i < length; i++) {
+        for (uint256 i; i < vestingParams.length; i++) {
             VestingParameters calldata vesting = vestingParams[i];
 
             uint256 percent = vesting.percent;

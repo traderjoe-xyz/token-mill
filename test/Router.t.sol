@@ -774,8 +774,9 @@ contract TestRouter is TestHelper {
 
         uint256 balance = address(this).balance;
 
-        (address token, address market, uint256 amount) =
-            router.createTMMarketAndVestings{value: amountQuoteIn + 1e18}(params, vestingParams, amountQuoteIn, 1);
+        (address token, address market, uint256 amount) = router.createTMMarketAndVestings{value: amountQuoteIn + 1e18}(
+            params, vestingParams, address(this), amountQuoteIn, 1
+        );
 
         assertEq(factory.getMarketOf(token), market, "test_Fuzz_CreateTMMarketAndVestings::1");
         assertEq(factory.getCreatorOf(market), address(this), "test_Fuzz_CreateTMMarketAndVestings::2");
@@ -801,7 +802,8 @@ contract TestRouter is TestHelper {
         wnative.deposit{value: amountQuoteIn}();
         wnative.approve(address(router), amountQuoteIn);
 
-        (token, market, amount) = router.createTMMarketAndVestings{value: 1e18}(params, vestingParams, amountQuoteIn, 1);
+        (token, market, amount) =
+            router.createTMMarketAndVestings{value: 1e18}(params, vestingParams, address(this), amountQuoteIn, 1);
 
         assertEq(factory.getMarketOf(token), market, "test_Fuzz_CreateTMMarketAndVestings::11");
         assertEq(factory.getCreatorOf(market), address(this), "test_Fuzz_CreateTMMarketAndVestings::12");
@@ -827,35 +829,37 @@ contract TestRouter is TestHelper {
         IRouter.VestingParameters[] memory vestingParams = new IRouter.VestingParameters[](0);
 
         vm.expectRevert(IRouter.Router__NoVestingParams.selector);
-        router.createTMMarketAndVestings(params, vestingParams, 0, 0);
+        router.createTMMarketAndVestings(params, vestingParams, address(this), 0, 0);
 
         vestingParams = new IRouter.VestingParameters[](2);
 
         uint256 amountQuoteIn = address(this).balance;
 
         vm.expectRevert(IRouter.Router__TooManyQuoteTokenSent.selector);
-        router.createTMMarketAndVestings{value: amountQuoteIn}(params, vestingParams, amountQuoteIn, 1);
+        router.createTMMarketAndVestings{value: amountQuoteIn}(params, vestingParams, address(this), amountQuoteIn, 1);
 
         amountQuoteIn = 100e18;
 
         vm.expectRevert(IRouter.Router__InsufficientOutputAmount.selector);
-        router.createTMMarketAndVestings{value: amountQuoteIn}(params, vestingParams, amountQuoteIn, type(uint256).max);
+        router.createTMMarketAndVestings{value: amountQuoteIn}(
+            params, vestingParams, address(this), amountQuoteIn, type(uint256).max
+        );
 
         vestingParams[0].percent = 1e18 + 1;
 
         vm.expectRevert(IRouter.Router__InvalidVestingPercents.selector);
-        router.createTMMarketAndVestings{value: amountQuoteIn}(params, vestingParams, amountQuoteIn, 1);
+        router.createTMMarketAndVestings{value: amountQuoteIn}(params, vestingParams, address(this), amountQuoteIn, 1);
 
         vestingParams[0] = IRouter.VestingParameters(address(this), 0.8e18, uint80(block.timestamp + 1), 1, 2);
         vestingParams[1] = IRouter.VestingParameters(address(this), 0.2e18 + 1, uint80(block.timestamp + 1), 1, 2);
 
         vm.expectRevert(IRouter.Router__InvalidVestingPercents.selector);
-        router.createTMMarketAndVestings{value: amountQuoteIn}(params, vestingParams, amountQuoteIn, 1);
+        router.createTMMarketAndVestings{value: amountQuoteIn}(params, vestingParams, address(this), amountQuoteIn, 1);
 
         vestingParams[1].percent = 0.2e18 - 1;
 
         vm.expectRevert(IRouter.Router__InvalidVestingTotalPercents.selector);
-        router.createTMMarketAndVestings{value: amountQuoteIn}(params, vestingParams, amountQuoteIn, 1);
+        router.createTMMarketAndVestings{value: amountQuoteIn}(params, vestingParams, address(this), amountQuoteIn, 1);
     }
 
     function _getMarketCreationParameters(bool native, uint256 ratio)
