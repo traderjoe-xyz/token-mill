@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "./ITMFactory.sol";
+
 interface IRouter {
     error Router__OnlyWNative();
     error Router__InvalidMarket();
@@ -14,10 +16,31 @@ interface IRouter {
     error Router__InsufficientLiquidity();
     error Router__Simulation(uint256 amount);
     error Router__Simulations(uint256[] amounts);
+    error Router__NoVestingParams();
+    error Router__InvalidVestingPercents();
+    error Router__InvalidVestingTotalPercents();
+    error Router__TooManyQuoteTokenSent();
+
+    struct VestingParameters {
+        address beneficiary;
+        uint256 percent;
+        uint80 start;
+        uint80 cliffDuration;
+        uint80 endDuration;
+    }
 
     function getFactory(uint256 v, uint256 sv) external view returns (address);
 
+    function getVestingContract() external view returns (address);
+
     function getWNative() external view returns (address);
+
+    function createTMMarketAndVestings(
+        ITMFactory.MarketCreationParameters calldata params,
+        VestingParameters[] calldata vestingParams,
+        uint256 amountQuoteIn,
+        uint256 minAmountBaseOut
+    ) external payable returns (address base, address market, uint256 amountBaseOut);
 
     function swapExactIn(
         bytes memory route,

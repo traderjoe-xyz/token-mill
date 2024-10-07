@@ -48,7 +48,8 @@ contract TestRouterMultipleVersion is Test {
             )
         );
 
-        router = new Router(v1Factory, v2_0Router, v2_1Factory, address(0), address(factory), address(wavax));
+        router =
+            new Router(v1Factory, v2_0Router, v2_1Factory, address(0), address(factory), address(0), address(wavax));
 
         basicToken = new TMERC20(address(factory));
 
@@ -619,7 +620,8 @@ contract TestRouterMultipleVersion is Test {
     function test_Fuzz_GetFactory(uint256 sv) public {
         address v2_2Factory = makeAddr("v2_2Factory");
 
-        router = new Router(v1Factory, v2_0Router, v2_1Factory, v2_2Factory, address(factory), address(wavax));
+        router =
+            new Router(v1Factory, v2_0Router, v2_1Factory, v2_2Factory, address(factory), address(0), address(wavax));
 
         assertEq(router.getFactory(1, 0), address(v1Factory), "test_Fuzz_GetFactory::1");
         assertEq(router.getFactory(2, 0), address(v2_0Factory), "test_Fuzz_GetFactory::2");
