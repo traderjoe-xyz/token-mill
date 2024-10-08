@@ -281,19 +281,27 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         address referrer,
         uint256 amountQuoteIn,
         uint256 minAmountBaseOut
-    ) external payable override returns (address baseToken, address market, uint256 amountBaseOut) {
-        if (vestingParams.length == 0) revert TMFactory__NoVestingParams();
+    )
+        external
+        payable
+        override
+        returns (address baseToken, address market, uint256 amountBaseOut, uint256[] memory vestingIds)
+    {
+        uint256 length = vestingParams.length;
+        if (length == 0) revert TMFactory__NoVestingParams();
 
         (baseToken, market) = createMarketAndToken(params);
-        address quoteToken = params.quoteToken;
 
-        if (msg.value >= amountQuoteIn && quoteToken == WNATIVE) {
-            IWNative(quoteToken).deposit{value: amountQuoteIn}();
-            IERC20(quoteToken).safeTransfer(market, amountQuoteIn);
-        } else {
-            uint256 balance = IERC20(quoteToken).balanceOf(market);
-            IERC20(quoteToken).safeTransferFrom(msg.sender, market, amountQuoteIn);
-            amountQuoteIn = IERC20(quoteToken).balanceOf(market) - balance;
+        {
+            address quoteToken = params.quoteToken;
+            if (msg.value >= amountQuoteIn && quoteToken == WNATIVE) {
+                IWNative(quoteToken).deposit{value: amountQuoteIn}();
+                IERC20(quoteToken).safeTransfer(market, amountQuoteIn);
+            } else {
+                uint256 balance = IERC20(quoteToken).balanceOf(market);
+                IERC20(quoteToken).safeTransferFrom(msg.sender, market, amountQuoteIn);
+                amountQuoteIn = IERC20(quoteToken).balanceOf(market) - balance;
+            }
         }
 
         {
@@ -309,7 +317,10 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
         uint256 total = BPS;
         uint256 remainingBase = amountBaseOut;
-        for (uint256 i; i < vestingParams.length; i++) {
+
+        vestingIds = new uint256[](length);
+
+        for (uint256 i; i < length; i++) {
             VestingParameters calldata vesting = vestingParams[i];
 
             uint256 percent = vesting.percent;
@@ -322,7 +333,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
                 total -= percent;
             }
 
-            ITMStaking(STAKING).createVestingSchedule(
+            vestingIds[i] = ITMStaking(STAKING).createVestingSchedule(
                 baseToken,
                 vesting.beneficiary,
                 uint128(amount),

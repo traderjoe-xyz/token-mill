@@ -757,23 +757,24 @@ contract TestRouter is TestHelper {
         uint256 length = vestingParams.length;
         vm.assume(length > 0 && length <= 10);
 
-        uint256 remaining = 10_000;
-        for (uint256 i = 0; i < length; i++) {
-            uint256 percent = bound(vestingParams[i].percent, 1, remaining + i - length);
-            remaining -= percent;
+        {
+            uint256 remaining = 10_000;
+            for (uint256 i = 0; i < length; i++) {
+                uint256 percent = bound(vestingParams[i].percent, 1, remaining + i - length);
+                remaining -= percent;
 
-            uint256 start = bound(vestingParams[i].start, block.timestamp + 1, type(uint80).max);
-            uint256 cliff = bound(vestingParams[i].cliffDuration, 0, type(uint80).max - start);
-            uint256 end = bound(vestingParams[i].endDuration, cliff, type(uint80).max - start);
+                uint256 start = bound(vestingParams[i].start, block.timestamp + 1, type(uint80).max);
+                uint256 cliff = bound(vestingParams[i].cliffDuration, 0, type(uint80).max - start);
+                uint256 end = bound(vestingParams[i].endDuration, cliff, type(uint80).max - start);
 
-            if (vestingParams[i].beneficiary == address(0)) vestingParams[i].beneficiary = address(this);
-            vestingParams[i].percent = percent;
-            vestingParams[i].start = uint80(start);
-            vestingParams[i].cliffDuration = uint80(cliff);
-            vestingParams[i].endDuration = uint80(end);
+                if (vestingParams[i].beneficiary == address(0)) vestingParams[i].beneficiary = address(this);
+                vestingParams[i].percent = percent;
+                vestingParams[i].start = uint80(start);
+                vestingParams[i].cliffDuration = uint80(cliff);
+                vestingParams[i].endDuration = uint80(end);
+            }
+            vestingParams[length - 1].percent += remaining; // make sure it sums up to 1e18
         }
-
-        vestingParams[length - 1].percent += remaining; // make sure it sums up to 1e18
 
         ratio = bound(ratio, 0.1e18, 1e18);
         uint256 amountQuoteIn = 100e18;
@@ -782,9 +783,9 @@ contract TestRouter is TestHelper {
 
         uint256 balance = address(this).balance;
 
-        (address token, address market, uint256 amount) = factory.createMarketAndVestings{value: amountQuoteIn + 1e18}(
-            params, vestingParams, address(this), amountQuoteIn, 1
-        );
+        (address token, address market, uint256 amount, uint256[] memory vestingIds) = factory.createMarketAndVestings{
+            value: amountQuoteIn + 1e18
+        }(params, vestingParams, address(this), amountQuoteIn, 1);
 
         assertEq(factory.getMarketOf(token), market, "test_Fuzz_CreateMarketAndVestings::1");
         assertEq(factory.getCreatorOf(market), address(this), "test_Fuzz_CreateMarketAndVestings::2");
@@ -794,12 +795,13 @@ contract TestRouter is TestHelper {
         for (uint256 i = 0; i < length; i++) {
             ITMStaking.VestingSchedule memory vesting = ITMStaking(stakingAddress).getVestingScheduleAt(token, i);
 
-            assertEq(vesting.beneficiary, vestingParams[i].beneficiary, "test_Fuzz_CreateMarketAndVestings::5");
-            assertGe(vesting.total, vestingParams[i].percent * amount / 1e18, "test_Fuzz_CreateMarketAndVestings::6");
-            assertEq(vesting.released, 0, "test_Fuzz_CreateMarketAndVestings::7");
-            assertEq(vesting.start, vestingParams[i].start, "test_Fuzz_CreateMarketAndVestings::8");
-            assertEq(vesting.cliffDuration, vestingParams[i].cliffDuration, "test_Fuzz_CreateMarketAndVestings::9");
-            assertEq(vesting.vestingDuration, vestingParams[i].endDuration, "test_Fuzz_CreateMarketAndVestings::10");
+            assertEq(vestingIds[i], i, "test_Fuzz_CreateMarketAndVestings::5");
+            assertEq(vesting.beneficiary, vestingParams[i].beneficiary, "test_Fuzz_CreateMarketAndVestings::6");
+            assertGe(vesting.total, vestingParams[i].percent * amount / 1e18, "test_Fuzz_CreateMarketAndVestings::7");
+            assertEq(vesting.released, 0, "test_Fuzz_CreateMarketAndVestings::8");
+            assertEq(vesting.start, vestingParams[i].start, "test_Fuzz_CreateMarketAndVestings::9");
+            assertEq(vesting.cliffDuration, vestingParams[i].cliffDuration, "test_Fuzz_CreateMarketAndVestings::10");
+            assertEq(vesting.vestingDuration, vestingParams[i].endDuration, "test_Fuzz_CreateMarketAndVestings::11");
         }
 
         balance = address(this).balance;
@@ -807,23 +809,24 @@ contract TestRouter is TestHelper {
         wnative.deposit{value: amountQuoteIn}();
         wnative.approve(address(factory), amountQuoteIn);
 
-        (token, market, amount) =
+        (token, market, amount, vestingIds) =
             factory.createMarketAndVestings{value: 1e18}(params, vestingParams, address(this), amountQuoteIn, 1);
 
-        assertEq(factory.getMarketOf(token), market, "test_Fuzz_CreateMarketAndVestings::11");
-        assertEq(factory.getCreatorOf(market), address(this), "test_Fuzz_CreateMarketAndVestings::12");
-        assertEq(IERC20(token).balanceOf(stakingAddress), amount, "test_Fuzz_CreateMarketAndVestings::13");
-        assertEq(address(this).balance, balance - amountQuoteIn, "test_Fuzz_CreateMarketAndVestings::14");
+        assertEq(factory.getMarketOf(token), market, "test_Fuzz_CreateMarketAndVestings::12");
+        assertEq(factory.getCreatorOf(market), address(this), "test_Fuzz_CreateMarketAndVestings::13");
+        assertEq(IERC20(token).balanceOf(stakingAddress), amount, "test_Fuzz_CreateMarketAndVestings::14");
+        assertEq(address(this).balance, balance - amountQuoteIn, "test_Fuzz_CreateMarketAndVestings::15");
 
         for (uint256 i = 0; i < length; i++) {
             ITMStaking.VestingSchedule memory vesting = ITMStaking(stakingAddress).getVestingScheduleAt(token, i);
 
-            assertEq(vesting.beneficiary, vestingParams[i].beneficiary, "test_Fuzz_CreateMarketAndVestings::15");
-            assertGe(vesting.total, vestingParams[i].percent * amount / 1e18, "test_Fuzz_CreateMarketAndVestings::16");
-            assertEq(vesting.released, 0, "test_Fuzz_CreateMarketAndVestings::17");
-            assertEq(vesting.start, vestingParams[i].start, "test_Fuzz_CreateMarketAndVestings::18");
-            assertEq(vesting.cliffDuration, vestingParams[i].cliffDuration, "test_Fuzz_CreateMarketAndVestings::19");
-            assertEq(vesting.vestingDuration, vestingParams[i].endDuration, "test_Fuzz_CreateMarketAndVestings::20");
+            assertEq(vestingIds[i], i, "test_Fuzz_CreateMarketAndVestings::16");
+            assertEq(vesting.beneficiary, vestingParams[i].beneficiary, "test_Fuzz_CreateMarketAndVestings::17");
+            assertGe(vesting.total, vestingParams[i].percent * amount / 1e18, "test_Fuzz_CreateMarketAndVestings::18");
+            assertEq(vesting.released, 0, "test_Fuzz_CreateMarketAndVestings::19");
+            assertEq(vesting.start, vestingParams[i].start, "test_Fuzz_CreateMarketAndVestings::20");
+            assertEq(vesting.cliffDuration, vestingParams[i].cliffDuration, "test_Fuzz_CreateMarketAndVestings::21");
+            assertEq(vesting.vestingDuration, vestingParams[i].endDuration, "test_Fuzz_CreateMarketAndVestings::22");
         }
     }
 

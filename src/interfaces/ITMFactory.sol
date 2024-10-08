@@ -141,7 +141,10 @@ interface ITMFactory {
         address referrer,
         uint256 amountQuoteIn,
         uint256 minAmountBaseOut
-    ) external payable returns (address baseToken, address market, uint256 amountBaseOut);
+    )
+        external
+        payable
+        returns (address baseToken, address market, uint256 amountBaseOut, uint256[] memory vestingIds);
 
     function updateCreatorOf(address market, address creator) external;
 
