@@ -316,7 +316,9 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
 
         _update(staking, user, token, beneficiary, 0, int256(actualAmount));
 
-        emit VestingScheduleCreated(token, msg.sender, beneficiary, actualAmount, start, cliffDuration, vestingDuration);
+        emit VestingScheduleCreated(
+            token, msg.sender, beneficiary, index, actualAmount, start, cliffDuration, vestingDuration
+        );
     }
 
     /**
