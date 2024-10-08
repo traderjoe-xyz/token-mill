@@ -19,7 +19,7 @@ contract TMFactoryTest is Test {
     function setUp() public {
         wnative = address(new WNative());
 
-        address factoryImp = address(new TMFactory(staking));
+        address factoryImp = address(new TMFactory(staking, address(wnative)));
         factory = TMFactory(
             address(
                 new TransparentUpgradeableProxy(

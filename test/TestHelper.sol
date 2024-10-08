@@ -35,7 +35,7 @@ contract TestHelper is Test {
     function setUp() public virtual {
         wnative = new WNative();
 
-        address factoryImp = address(new TMFactory(stakingAddress));
+        address factoryImp = address(new TMFactory(stakingAddress, address(wnative)));
         factory = TMFactory(
             address(
                 new TransparentUpgradeableProxy(

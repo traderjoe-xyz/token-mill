@@ -13,6 +13,8 @@ import {ITMBaseERC20} from "./interfaces/ITMBaseERC20.sol";
 import {ImmutableCreate} from "./libraries/ImmutableCreate.sol";
 import {ImmutableHelper} from "./libraries/ImmutableHelper.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
+import {IWNative} from "./interfaces/IWNative.sol";
+import {ITMStaking} from "./interfaces/ITMStaking.sol";
 
 /**
  * @title TokenMill Factory Contract
@@ -26,6 +28,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     uint16 private constant BPS = 1e4;
 
     address public immutable override STAKING;
+    address public immutable override WNATIVE;
 
     address private _protocolFeeRecipient;
     uint16 private _defaultProtocolShare;
@@ -44,10 +47,11 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
     mapping(address token => Referrers referrers) private _referrers;
 
-    constructor(address staking) {
+    constructor(address staking, address wnative) {
         _disableInitializers();
 
         STAKING = staking;
+        WNATIVE = wnative;
     }
 
     /**
@@ -245,7 +249,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * @return market The address of the market.
      */
     function createMarketAndToken(MarketCreationParameters calldata parameters)
-        external
+        public
         override
         returns (address baseToken, address market)
     {
@@ -258,6 +262,90 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     }
 
     /**
+     * @dev Creates a new TM market and vesting schedules for the specified recipients.
+     * Warning: If the token is a fee-on-transfer token, transferring tokens to the staking contract to vest them
+     * should **not** result in any transfer fee, ie, that sending 10 tokens to the staking contract should
+     * result in the staking contract receiving at least 10 tokens when vesting them with this function.
+     * @param params The parameters for the market creation.
+     * @param vestingParams The parameters for the vesting schedules.
+     * @param referrer The address of the referrer.
+     * @param amountQuoteIn The amount of quote tokens to be swapped.
+     * @param minAmountBaseOut The minimum amount of base tokens to be received.
+     * @return baseToken The address of the base token.
+     * @return market The address of the market.
+     * @return amountBaseOut The amount of base tokens received.
+     */
+    function createMarketAndVestings(
+        MarketCreationParameters calldata params,
+        VestingParameters[] calldata vestingParams,
+        address referrer,
+        uint256 amountQuoteIn,
+        uint256 minAmountBaseOut
+    ) external payable override returns (address baseToken, address market, uint256 amountBaseOut) {
+        if (vestingParams.length == 0) revert TMFactory__NoVestingParams();
+
+        (baseToken, market) = createMarketAndToken(params);
+        address quoteToken = params.quoteToken;
+
+        if (msg.value >= amountQuoteIn && quoteToken == WNATIVE) {
+            IWNative(quoteToken).deposit{value: amountQuoteIn}();
+            IERC20(quoteToken).safeTransfer(market, amountQuoteIn);
+        } else {
+            uint256 balance = IERC20(quoteToken).balanceOf(market);
+            IERC20(quoteToken).safeTransferFrom(msg.sender, market, amountQuoteIn);
+            amountQuoteIn = IERC20(quoteToken).balanceOf(market) - balance;
+        }
+
+        {
+            (int256 deltaBaseAmount, int256 deltaQuoteAmount) =
+                ITMMarket(market).swap(address(this), int256(amountQuoteIn), false, new bytes(0), referrer);
+            if (uint256(deltaQuoteAmount) != amountQuoteIn) revert TMFactory__TooManyQuoteTokenSent();
+            amountBaseOut = uint256(-deltaBaseAmount);
+        }
+
+        if (amountBaseOut < minAmountBaseOut) revert TMFactory__InsufficientOutputAmount();
+
+        IERC20(baseToken).forceApprove(STAKING, amountBaseOut);
+
+        uint256 total = BPS;
+        uint256 remainingBase = amountBaseOut;
+        for (uint256 i; i < vestingParams.length; i++) {
+            VestingParameters calldata vesting = vestingParams[i];
+
+            uint256 percent = vesting.percent;
+            if (percent > total) revert TMFactory__InvalidVestingPercents();
+
+            uint256 amount = remainingBase * vesting.percent / total;
+
+            unchecked {
+                remainingBase -= amount;
+                total -= percent;
+            }
+
+            ITMStaking(STAKING).createVestingSchedule(
+                baseToken,
+                vesting.beneficiary,
+                uint128(amount),
+                uint128(amount),
+                vesting.start,
+                vesting.cliffDuration,
+                vesting.endDuration
+            );
+        }
+
+        if (total != 0) revert TMFactory__InvalidVestingTotalPercents();
+
+        _updateCreatorOf(_parameters[market], market, msg.sender);
+
+        if (msg.value > 0) {
+            uint256 leftOver = address(this).balance;
+            if (leftOver > 0) {
+                _transferNative(msg.sender, leftOver);
+            }
+        }
+    }
+
+    /**
      * @dev Updates the creator of the specified market.
      * @param market The address of the market.
      * @param creator The address of the creator.
@@ -267,12 +355,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
         if (msg.sender != parameters.creator) revert TMFactory__InvalidCaller();
 
-        _creatorMarkets[msg.sender].remove(market);
-        _creatorMarkets[creator].add(market);
-
-        parameters.creator = creator;
-
-        emit MarketCreatorUpdated(market, creator);
+        _updateCreatorOf(parameters, market, creator);
     }
 
     /**
@@ -602,5 +685,30 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         ITMBaseERC20(baseToken).factoryMint(market, p.totalSupply);
 
         if (IERC20(baseToken).balanceOf(market) != p.totalSupply) revert TMFactory__InvalidBalance();
+    }
+
+    /**
+     * @dev Updates the creator of the specified market.
+     * @param parameters The market parameters.
+     * @param market The address of the market.
+     * @param creator The address of the creator.
+     */
+    function _updateCreatorOf(MarketParameters storage parameters, address market, address creator) internal {
+        _creatorMarkets[msg.sender].remove(market);
+        _creatorMarkets[creator].add(market);
+
+        parameters.creator = creator;
+
+        emit MarketCreatorUpdated(market, creator);
+    }
+
+    /**
+     * @dev Transfers `amount` of native tokens to `to`.
+     * @param to The account to transfer the native tokens to.
+     * @param amount The amount of native tokens to transfer.
+     */
+    function _transferNative(address to, uint256 amount) internal {
+        (bool success,) = to.call{value: amount}(new bytes(0));
+        if (!success) revert TMFactory__TransferFailed();
     }
 }

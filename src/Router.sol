@@ -18,7 +18,6 @@ import {ITMFactory} from "./interfaces/ITMFactory.sol";
 import {ITMMarket} from "./interfaces/ITMMarket.sol";
 import {IWNative} from "./interfaces/IWNative.sol";
 import {IRouter} from "./interfaces/IRouter.sol";
-import {ITMStaking} from "./interfaces/ITMStaking.sol";
 
 /**
  * @title Router Contract
@@ -37,7 +36,6 @@ contract Router is IRouter {
     IV2_2Factory internal immutable _v2_2Factory;
     ITMFactory internal immutable _tmFactory;
 
-    ITMStaking internal immutable _staking;
     IWNative internal immutable _wnative;
 
     /**
@@ -67,9 +65,6 @@ contract Router is IRouter {
         _v2_2Factory = IV2_2Factory(v2_2Factory);
         _tmFactory = ITMFactory(tmFactory);
 
-        address staking = tmFactory == address(0) ? address(0) : ITMFactory(tmFactory).STAKING();
-
-        _staking = ITMStaking(staking);
         _wnative = IWNative(wnative);
     }
 
@@ -108,111 +103,10 @@ contract Router is IRouter {
     }
 
     /**
-     * @dev Returns the vesting contract.
-     */
-    function getStakingContract() external view override returns (address) {
-        return address(_staking);
-    }
-
-    /**
      * @dev Returns the WNative contract.
      */
     function getWNative() external view override returns (address) {
         return address(_wnative);
-    }
-
-    /**
-     * @dev Creates a new TM market and vesting schedules for the specified recipients.
-     * Warning: If the token is a fee-on-transfer token, transferring tokens to the staking contract to vest them
-     * should **not** result in any transfer fee, ie, that sending 10 tokens to the staking contract should
-     * result in the staking contract receiving at least 10 tokens when vesting them with this function.
-     * @param params The parameters for the market creation.
-     * @param vestingParams The parameters for the vesting schedules.
-     * @param referrer The address of the referrer.
-     * @param amountQuoteIn The amount of quote tokens to be swapped.
-     * @param minAmountBaseOut The minimum amount of base tokens to be received.
-     * @return baseToken The address of the base token.
-     * @return market The address of the market.
-     * @return amountBaseOut The amount of base tokens received.
-     */
-    function createTMMarketAndVestings(
-        ITMFactory.MarketCreationParameters calldata params,
-        VestingParameters[] calldata vestingParams,
-        address referrer,
-        uint256 amountQuoteIn,
-        uint256 minAmountBaseOut
-    ) external payable override returns (address baseToken, address market, uint256 amountBaseOut) {
-        if (vestingParams.length == 0) revert Router__NoVestingParams();
-
-        address quoteToken = params.quoteToken;
-        quoteToken = quoteToken == address(0) ? address(_wnative) : quoteToken;
-
-        (baseToken, market) = _tmFactory.createMarketAndToken(
-            ITMFactory.MarketCreationParameters(
-                params.tokenType,
-                params.name,
-                params.symbol,
-                quoteToken,
-                params.totalSupply,
-                params.creatorShare,
-                params.stakingShare,
-                params.bidPrices,
-                params.askPrices,
-                params.args
-            )
-        );
-
-        uint256 balance = _balanceOf(quoteToken, market);
-        _transfer(params.quoteToken, msg.sender, market, amountQuoteIn);
-        amountQuoteIn = _balanceOf(quoteToken, market) - balance;
-
-        {
-            (int256 deltaBaseAmount, int256 deltaQuoteAmount) =
-                ITMMarket(market).swap(address(this), int256(amountQuoteIn), false, new bytes(0), referrer);
-            if (uint256(deltaQuoteAmount) != amountQuoteIn) revert Router__TooManyQuoteTokenSent();
-            amountBaseOut = uint256(-deltaBaseAmount);
-        }
-
-        if (amountBaseOut < minAmountBaseOut) revert Router__InsufficientOutputAmount();
-
-        IERC20(baseToken).forceApprove(address(_staking), amountBaseOut);
-
-        uint256 total = TOTAL_PERCENT;
-        uint256 remainingBase = amountBaseOut;
-        for (uint256 i; i < vestingParams.length; i++) {
-            VestingParameters calldata vesting = vestingParams[i];
-
-            uint256 percent = vesting.percent;
-            if (percent > total) revert Router__InvalidVestingPercents();
-
-            uint256 amount = remainingBase * vesting.percent / total;
-
-            unchecked {
-                remainingBase -= amount;
-                total -= percent;
-            }
-
-            _staking.createVestingSchedule(
-                baseToken,
-                vesting.beneficiary,
-                uint128(amount),
-                uint128(amount),
-                vesting.start,
-                vesting.cliffDuration,
-                vesting.endDuration
-            );
-        }
-
-        if (total != 0) revert Router__InvalidVestingTotalPercents();
-
-        _tmFactory.updateCreatorOf(market, msg.sender);
-
-        if (msg.value > 0) {
-            uint256 leftOver = address(this).balance;
-            if (leftOver > 0) {
-                _transferNative(msg.sender, leftOver);
-            }
-        }
     }
 
     /**
