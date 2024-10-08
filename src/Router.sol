@@ -27,8 +27,6 @@ import {IRouter} from "./interfaces/IRouter.sol";
 contract Router is IRouter {
     using SafeERC20 for IERC20;
 
-    uint256 private constant TOTAL_PERCENT = 1e18;
-
     IV1Factory internal immutable _v1Factory;
     IV2_0Factory internal immutable _v2_0Factory;
     IV2_0Router internal immutable _v2_0Router;
