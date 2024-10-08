@@ -4,11 +4,22 @@ pragma solidity ^0.8.20;
 import "./TestHelper.sol";
 
 import "./mocks/TransferTaxToken.sol";
+import "../src/utils/TMStaking.sol";
 
 contract TestRouter is TestHelper {
     function setUp() public override {
+        stakingAddress = _predictContractAddress(6);
+
         super.setUp();
+
+        address stakingImp = address(new TMStaking(address(factory)));
+        address staking = address(
+            new TransparentUpgradeableProxy(stakingImp, address(this), abi.encodeCall(TMStaking.initialize, ()))
+        );
+
         setUpTokens();
+
+        assertEq(staking, stakingAddress, "setUp::1");
     }
 
     receive() external payable {}
@@ -738,5 +749,152 @@ contract TestRouter is TestHelper {
 
         vm.expectRevert(IRouter.Router__InsufficientOutputAmount.selector);
         router.swapExactOut{value: 1e18}(route, address(this), 1e18 - 1, 1e18, block.timestamp, address(0));
+    }
+
+    function test_Fuzz_CreateMarketAndVestings(ITMFactory.VestingParameters[] memory vestingParams, uint256 ratio)
+        public
+    {
+        uint256 length = vestingParams.length;
+        vm.assume(length > 0 && length <= 10);
+
+        {
+            uint256 remaining = 10_000;
+            for (uint256 i = 0; i < length; i++) {
+                uint256 percent = bound(vestingParams[i].percent, 1, remaining + i - length);
+                remaining -= percent;
+
+                uint256 start = bound(vestingParams[i].start, block.timestamp + 1, type(uint80).max);
+                uint256 cliff = bound(vestingParams[i].cliffDuration, 0, type(uint80).max - start);
+                uint256 end = bound(vestingParams[i].endDuration, cliff, type(uint80).max - start);
+
+                if (vestingParams[i].beneficiary == address(0)) vestingParams[i].beneficiary = address(this);
+                vestingParams[i].percent = percent;
+                vestingParams[i].start = uint80(start);
+                vestingParams[i].cliffDuration = uint80(cliff);
+                vestingParams[i].endDuration = uint80(end);
+            }
+            vestingParams[length - 1].percent += remaining; // make sure it sums up to 1e18
+        }
+
+        ratio = bound(ratio, 0.1e18, 1e18);
+        uint256 amountQuoteIn = 100e18;
+
+        ITMFactory.MarketCreationParameters memory params = _getMarketCreationParameters(ratio);
+
+        uint256 balance = address(this).balance;
+
+        (address token, address market, uint256 amount, uint256[] memory vestingIds) = factory.createMarketAndVestings{
+            value: amountQuoteIn + 1e18
+        }(params, vestingParams, address(this), amountQuoteIn, 1);
+
+        assertEq(factory.getMarketOf(token), market, "test_Fuzz_CreateMarketAndVestings::1");
+        assertEq(factory.getCreatorOf(market), address(this), "test_Fuzz_CreateMarketAndVestings::2");
+        assertEq(IERC20(token).balanceOf(stakingAddress), amount, "test_Fuzz_CreateMarketAndVestings::3");
+        assertEq(address(this).balance, balance - amountQuoteIn, "test_Fuzz_CreateMarketAndVestings::4");
+
+        for (uint256 i = 0; i < length; i++) {
+            ITMStaking.VestingSchedule memory vesting = ITMStaking(stakingAddress).getVestingScheduleAt(token, i);
+
+            assertEq(vestingIds[i], i, "test_Fuzz_CreateMarketAndVestings::5");
+            assertEq(vesting.beneficiary, vestingParams[i].beneficiary, "test_Fuzz_CreateMarketAndVestings::6");
+            assertGe(vesting.total, vestingParams[i].percent * amount / 1e18, "test_Fuzz_CreateMarketAndVestings::7");
+            assertEq(vesting.released, 0, "test_Fuzz_CreateMarketAndVestings::8");
+            assertEq(vesting.start, vestingParams[i].start, "test_Fuzz_CreateMarketAndVestings::9");
+            assertEq(vesting.cliffDuration, vestingParams[i].cliffDuration, "test_Fuzz_CreateMarketAndVestings::10");
+            assertEq(vesting.vestingDuration, vestingParams[i].endDuration, "test_Fuzz_CreateMarketAndVestings::11");
+        }
+
+        balance = address(this).balance;
+
+        wnative.deposit{value: amountQuoteIn}();
+        wnative.approve(address(factory), amountQuoteIn);
+
+        (token, market, amount, vestingIds) =
+            factory.createMarketAndVestings{value: 1e18}(params, vestingParams, address(this), amountQuoteIn, 1);
+
+        assertEq(factory.getMarketOf(token), market, "test_Fuzz_CreateMarketAndVestings::12");
+        assertEq(factory.getCreatorOf(market), address(this), "test_Fuzz_CreateMarketAndVestings::13");
+        assertEq(IERC20(token).balanceOf(stakingAddress), amount, "test_Fuzz_CreateMarketAndVestings::14");
+        assertEq(address(this).balance, balance - amountQuoteIn, "test_Fuzz_CreateMarketAndVestings::15");
+
+        for (uint256 i = 0; i < length; i++) {
+            ITMStaking.VestingSchedule memory vesting = ITMStaking(stakingAddress).getVestingScheduleAt(token, i);
+
+            assertEq(vestingIds[i], i, "test_Fuzz_CreateMarketAndVestings::16");
+            assertEq(vesting.beneficiary, vestingParams[i].beneficiary, "test_Fuzz_CreateMarketAndVestings::17");
+            assertGe(vesting.total, vestingParams[i].percent * amount / 1e18, "test_Fuzz_CreateMarketAndVestings::18");
+            assertEq(vesting.released, 0, "test_Fuzz_CreateMarketAndVestings::19");
+            assertEq(vesting.start, vestingParams[i].start, "test_Fuzz_CreateMarketAndVestings::20");
+            assertEq(vesting.cliffDuration, vestingParams[i].cliffDuration, "test_Fuzz_CreateMarketAndVestings::21");
+            assertEq(vesting.vestingDuration, vestingParams[i].endDuration, "test_Fuzz_CreateMarketAndVestings::22");
+        }
+    }
+
+    function test_Revert_CreateMarketAndVestings() public {
+        ITMFactory.MarketCreationParameters memory params = _getMarketCreationParameters(1e18);
+
+        ITMFactory.VestingParameters[] memory vestingParams = new ITMFactory.VestingParameters[](0);
+
+        vm.expectRevert(ITMFactory.TMFactory__NoVestingParams.selector);
+        factory.createMarketAndVestings(params, vestingParams, address(this), 0, 0);
+
+        vestingParams = new ITMFactory.VestingParameters[](2);
+
+        uint256 amountQuoteIn = address(this).balance;
+
+        vm.expectRevert(ITMFactory.TMFactory__TooManyQuoteTokenSent.selector);
+        factory.createMarketAndVestings{value: amountQuoteIn}(params, vestingParams, address(this), amountQuoteIn, 1);
+
+        amountQuoteIn = 100e18;
+
+        vm.expectRevert(ITMFactory.TMFactory__InsufficientOutputAmount.selector);
+        factory.createMarketAndVestings{value: amountQuoteIn}(
+            params, vestingParams, address(this), amountQuoteIn, type(uint256).max
+        );
+
+        vestingParams[0].percent = 1e4 + 1;
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidVestingPercents.selector);
+        factory.createMarketAndVestings{value: amountQuoteIn}(params, vestingParams, address(this), amountQuoteIn, 1);
+
+        vestingParams[0] = ITMFactory.VestingParameters(address(this), 0.8e4, uint80(block.timestamp + 1), 1, 2);
+        vestingParams[1] = ITMFactory.VestingParameters(address(this), 0.2e4 + 1, uint80(block.timestamp + 1), 1, 2);
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidVestingPercents.selector);
+        factory.createMarketAndVestings{value: amountQuoteIn}(params, vestingParams, address(this), amountQuoteIn, 1);
+
+        vestingParams[1].percent = 0.2e4 - 1;
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidVestingTotalPercents.selector);
+        factory.createMarketAndVestings{value: amountQuoteIn}(params, vestingParams, address(this), amountQuoteIn, 1);
+    }
+
+    function _getMarketCreationParameters(uint256 ratio)
+        internal
+        returns (ITMFactory.MarketCreationParameters memory)
+    {
+        require(ratio <= 1e18, "Ratio must be less than or equal to 1e18");
+
+        if (factory.getTokenImplementation(1) == address(0)) {
+            factory.updateTokenImplementation(1, address(new TMERC20(address(factory))));
+        }
+
+        if (!factory.isQuoteToken(address(wnative))) {
+            factory.addQuoteToken(address(wnative));
+        }
+
+        uint256[] memory askPrices = new uint256[](2);
+
+        askPrices[0] = 0;
+        askPrices[1] = 1e18;
+
+        uint256[] memory bidPrices = new uint256[](2);
+
+        bidPrices[0] = askPrices[0] * ratio / 1e18;
+        bidPrices[1] = askPrices[1] * ratio / 1e18;
+
+        return ITMFactory.MarketCreationParameters(
+            1, "Test", "TST", address(wnative), 100_000_000e18, 0.2e4, 0.6e4, bidPrices, askPrices, abi.encode(18)
+        );
     }
 }

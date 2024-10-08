@@ -293,8 +293,8 @@ contract TMLens {
                     detailedMarketData.bidPrices = market.getPricePoints(false);
                     (detailedMarketData.creatorPendingFees, detailedMarketData.stakingPendingFees) =
                         market.getPendingFees();
-                    detailedMarketData.protocolPendingFees = _TMFactory.getProtocolFees(baseToken);
-                    detailedMarketData.referrerPendingFees = _TMFactory.getReferrerFeesOf(baseToken, user);
+                    detailedMarketData.protocolPendingFees = _TMFactory.getProtocolFees(quoteToken);
+                    detailedMarketData.referrerPendingFees = _TMFactory.getReferrerFeesOf(quoteToken, user);
                     (detailedMarketData.totalStaked, detailedMarketData.totalLocked) =
                         stakingContract.getTotalStake(baseToken);
                 }

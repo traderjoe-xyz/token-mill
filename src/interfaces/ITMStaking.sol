@@ -24,6 +24,7 @@ interface ITMStaking {
         address indexed token,
         address indexed creator,
         address indexed beneficiary,
+        uint256 index,
         uint256 amount,
         uint80 start,
         uint80 cliffDuration,

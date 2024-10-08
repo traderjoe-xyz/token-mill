@@ -21,6 +21,12 @@ interface ITMFactory {
     error TMFactory__ZeroFeeRecipients();
     error TMFactory__InvalidReferrerShare();
     error TMFactory__InvalidReferrer();
+    error TMFactory__TransferFailed();
+    error TMFactory__NoVestingParams();
+    error TMFactory__InvalidVestingPercents();
+    error TMFactory__InvalidVestingTotalPercents();
+    error TMFactory__TooManyQuoteTokenSent();
+    error TMFactory__InsufficientOutputAmount();
 
     // packedPrices = `(askPrice << 128) | bidPrice` for each price point
     event MarketCreated(
@@ -79,7 +85,17 @@ interface ITMFactory {
         bytes args;
     }
 
+    struct VestingParameters {
+        address beneficiary;
+        uint256 percent;
+        uint80 start;
+        uint80 cliffDuration;
+        uint80 endDuration;
+    }
+
     function STAKING() external view returns (address);
+
+    function WNATIVE() external view returns (address);
 
     function getCreatorOf(address market) external view returns (address);
 
@@ -118,6 +134,17 @@ interface ITMFactory {
     function createMarketAndToken(MarketCreationParameters calldata parameters)
         external
         returns (address baseToken, address market);
+
+    function createMarketAndVestings(
+        MarketCreationParameters calldata params,
+        VestingParameters[] calldata vestingParams,
+        address referrer,
+        uint256 amountQuoteIn,
+        uint256 minAmountBaseOut
+    )
+        external
+        payable
+        returns (address baseToken, address market, uint256 amountBaseOut, uint256[] memory vestingIds);
 
     function updateCreatorOf(address market, address creator) external;
 
