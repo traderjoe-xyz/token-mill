@@ -27,6 +27,7 @@ interface ITMFactory {
     error TMFactory__InvalidVestingTotalPercents();
     error TMFactory__TooManyQuoteTokenSent();
     error TMFactory__InsufficientOutputAmount();
+    error TMFactory__BalanceOfFailed();
 
     // packedPrices = `(askPrice << 128) | bidPrice` for each price point
     event MarketCreated(

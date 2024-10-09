@@ -234,7 +234,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * @return The total protocol fees of the token.
      */
     function getProtocolFees(address token) external view override returns (uint256) {
-        uint256 balance = IERC20(token).balanceOf(address(this));
+        uint256 balance = _balanceOf(token, address(this));
         uint256 totalReferrer = _referrers[token].total;
 
         unchecked {
@@ -298,9 +298,9 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
                 IWNative(quoteToken).deposit{value: amountQuoteIn}();
                 IERC20(quoteToken).safeTransfer(market, amountQuoteIn);
             } else {
-                uint256 balance = IERC20(quoteToken).balanceOf(market);
+                uint256 balance = _balanceOf(quoteToken, market);
                 IERC20(quoteToken).safeTransferFrom(msg.sender, market, amountQuoteIn);
-                amountQuoteIn = IERC20(quoteToken).balanceOf(market) - balance;
+                amountQuoteIn = _balanceOf(quoteToken, market) - balance;
             }
         }
 
@@ -386,7 +386,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
             revert TMFactory__InvalidFeeShares();
         }
 
-        ITMMarket(market).claimFees(msg.sender, msg.sender, STAKING);
+        _claimFees(market, msg.sender);
 
         parameters.creatorShare = creatorShare;
         parameters.stakingShare = stakingShare;
@@ -406,7 +406,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
         if (msg.sender != creator && msg.sender != STAKING) revert TMFactory__InvalidCaller();
 
-        return ITMMarket(market).claimFees(msg.sender, _parameters[market].creator, STAKING);
+        return _claimFees(market, creator);
     }
 
     /**
@@ -415,7 +415,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * @return claimedFees The total fees claimed.
      */
     function claimReferrerFees(address token) external override returns (uint256 claimedFees) {
-        Referrers storage referrers = _referrers[token];
+        Referrers storage referrers = _referrers[token == address(0) ? WNATIVE : token];
 
         claimedFees = referrers.unclaimed[msg.sender];
         referrers.unclaimed[msg.sender] = 0;
@@ -424,7 +424,12 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
         emit ReferrerFeesClaimed(token, msg.sender, claimedFees);
 
-        IERC20(token).safeTransfer(msg.sender, claimedFees);
+        if (token == address(0)) {
+            IWNative(WNATIVE).withdraw(claimedFees);
+            _transferNative(msg.sender, claimedFees);
+        } else {
+            IERC20(token).safeTransfer(msg.sender, claimedFees);
+        }
 
         return claimedFees;
     }
@@ -441,7 +446,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         Referrers storage referrers = _referrers[token];
 
         uint256 totalReferrer = referrers.total;
-        uint256 balance = IERC20(token).balanceOf(address(this));
+        uint256 balance = _balanceOf(token, address(this));
 
         if (balance > totalReferrer) {
             unchecked {
@@ -595,6 +600,36 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     }
 
     /**
+     * @dev Returns the balance of the specified token for the specified account.
+     * @param token The address of the token.
+     * @param account The address of the account.
+     * @return The balance of the token for the account.
+     */
+    function _balanceOf(address token, address account) private view returns (uint256) {
+        return IERC20(token).balanceOf(account);
+    }
+
+    /**
+     * @dev Transfers `amount` of native tokens to `to`.
+     * @param to The account to transfer the native tokens to.
+     * @param amount The amount of native tokens to transfer.
+     */
+    function _transferNative(address to, uint256 amount) internal {
+        (bool success,) = to.call{value: amount}(new bytes(0));
+        if (!success) revert TMFactory__TransferFailed();
+    }
+
+    /**
+     * @dev Claims the fees of the specified market.
+     * @param market The address of the market.
+     * @param creator The address of the creator.
+     * @return claimedFees The total fees claimed.
+     */
+    function _claimFees(address market, address creator) internal returns (uint256 claimedFees) {
+        return ITMMarket(market).claimFees(msg.sender, creator, STAKING);
+    }
+
+    /**
      * @dev Updates the protocol share percentage.
      * @param protocolShare The protocol share percentage.
      */
@@ -695,7 +730,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         ITMMarket(market).initialize();
         ITMBaseERC20(baseToken).factoryMint(market, p.totalSupply);
 
-        if (IERC20(baseToken).balanceOf(market) != p.totalSupply) revert TMFactory__InvalidBalance();
+        if (_balanceOf(baseToken, market) != p.totalSupply) revert TMFactory__InvalidBalance();
     }
 
     /**
@@ -711,15 +746,5 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         parameters.creator = creator;
 
         emit MarketCreatorUpdated(market, creator);
-    }
-
-    /**
-     * @dev Transfers `amount` of native tokens to `to`.
-     * @param to The account to transfer the native tokens to.
-     * @param amount The amount of native tokens to transfer.
-     */
-    function _transferNative(address to, uint256 amount) internal {
-        (bool success,) = to.call{value: amount}(new bytes(0));
-        if (!success) revert TMFactory__TransferFailed();
     }
 }
