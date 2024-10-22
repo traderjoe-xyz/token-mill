@@ -153,6 +153,27 @@ contract TestTMMarket is TestHelper {
         ITMMarket(market0w).claimFees(address(0), address(0), address(0));
     }
 
+    function test_SwapUsingCallback() external {
+        _callbackReturn = ITokenMillCallback.tokenMillSwapCallback.selector;
+
+        wnative.deposit{value: 10e18}();
+
+        bytes memory data =
+            abi.encode(address(wnative), abi.encodeWithSelector(IERC20.transfer.selector, market0w, 10e18));
+
+        (int256 deltaBaseAmount, int256 deltaQuoteAmount) =
+            ITMMarket(market0w).swap(address(this), 10e18, false, data, address(0));
+
+        assertEq(deltaQuoteAmount, 10e18, "test_SwapUsingCallback::1");
+        assertLt(deltaBaseAmount, 0, "test_SwapUsingCallback::2");
+        assertEq(wnative.balanceOf(address(this)), 0, "test_SwapUsingCallback::3");
+        assertEq(wnative.balanceOf(market0w) + wnative.balanceOf(address(factory)), 10e18, "test_SwapUsingCallback::4");
+        assertEq(IERC20(token0).balanceOf(address(this)), uint256(-deltaBaseAmount), "test_SwapUsingCallback::5");
+        assertEq(
+            IERC20(token0).balanceOf(market0w), 500_000_000e18 - uint256(-deltaBaseAmount), "test_SwapUsingCallback::6"
+        );
+    }
+
     function tokenMillSwapCallback(int256, int256, bytes calldata data) external returns (bytes32) {
         if (data.length > 32) {
             (address cAddress, bytes memory cData) = abi.decode(data, (address, bytes));

@@ -228,14 +228,20 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
                 mstore(add(cdata, 128), data.length)
                 calldatacopy(add(cdata, 160), data.offset, data.length)
 
-                success := call(gas(), caller(), 0, add(28, cdata), add(160, data.length), 0, 4)
+                success := call(gas(), caller(), 0, add(28, cdata), add(160, data.length), 0, 32)
 
                 switch success
                 case 0 {
                     returndatacopy(0, 0, returndatasize())
                     revert(0, returndatasize())
                 }
-                default { success := and(eq(returndatasize(), 4), eq(shr(224, mload(0)), 0xc556a189)) } // tokenMillSwapCallback(int256,int256,bytes)
+                default {
+                    success :=
+                        and(
+                            eq(returndatasize(), 32),
+                            eq(mload(0), 0xc556a18900000000000000000000000000000000000000000000000000000000)
+                        )
+                } // tokenMillSwapCallback(int256,int256,bytes)
             }
 
             if (success == 0) revert TMMarket__InvalidSwapCallback();
