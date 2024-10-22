@@ -13,7 +13,7 @@ import "./mocks/WNative.sol";
 import "./mocks/TransferTaxToken.sol";
 
 contract TestHelper is Test {
-    TMFactory public factory;
+    ITMFactory public factory;
     Router public router;
     WNative public wnative;
 
@@ -36,7 +36,7 @@ contract TestHelper is Test {
         wnative = new WNative();
 
         address factoryImp = address(new TMFactory(stakingAddress, address(wnative)));
-        factory = TMFactory(
+        factory = ITMFactory(
             address(
                 new TransparentUpgradeableProxy(
                     factoryImp,

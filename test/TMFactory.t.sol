@@ -6,7 +6,7 @@ import "./TestHelper.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TMFactoryTest is Test {
-    TMFactory factory;
+    ITMFactory factory;
     address wnative;
     address proxyAdmin;
 
@@ -20,7 +20,7 @@ contract TMFactoryTest is Test {
         wnative = address(new WNative());
 
         address factoryImp = address(new TMFactory(staking, address(wnative)));
-        factory = TMFactory(
+        factory = ITMFactory(
             address(
                 new TransparentUpgradeableProxy(
                     factoryImp,
@@ -34,7 +34,7 @@ contract TMFactoryTest is Test {
     }
 
     function test_Constructor() public view {
-        assertEq(factory.owner(), address(this), "test_Constructor::1");
+        assertEq(Ownable(address(factory)).owner(), address(this), "test_Constructor::1");
         assertEq(factory.getDefaultProtocolShare(), 0.2e4, "test_Constructor::2");
         assertEq(factory.getProtocolFeeRecipient(), feeRecipient, "test_Constructor::3");
     }
@@ -730,19 +730,14 @@ contract TMFactoryTest is Test {
         assertEq(factory.getProtocolFees(address(wnative)), 0, "test_Fuzz_ClaimReferrerFees::20");
 
         vm.prank(alice);
-        assertEq(
-            factory.claimReferrerFees(address(wnative)), protocolFees3 * 0.55e4 / 1e4, "test_Fuzz_ClaimReferrerFees::21"
-        );
+        assertEq(factory.claimReferrerFees(address(0)), protocolFees3 * 0.55e4 / 1e4, "test_Fuzz_ClaimReferrerFees::21");
 
-        assertEq(
-            IERC20(wnative).balanceOf(alice),
-            protocolFees1 * 0.3e4 / 1e4 + protocolFees3 * 0.55e4 / 1e4,
-            "test_Fuzz_ClaimReferrerFees::22"
-        );
+        assertEq(IERC20(wnative).balanceOf(alice), protocolFees1 * 0.3e4 / 1e4, "test_Fuzz_ClaimReferrerFees::22");
+        assertEq(alice.balance, protocolFees3 * 0.55e4 / 1e4, "test_Fuzz_ClaimReferrerFees::23");
 
-        assertEq(factory.getReferrerFeesOf(address(wnative), alice), 0, "test_Fuzz_ClaimReferrerFees::23");
-        assertEq(factory.getReferrerFeesOf(address(wnative), bob), 0, "test_Fuzz_ClaimReferrerFees::24");
-        assertEq(factory.getProtocolFees(address(wnative)), 0, "test_Fuzz_ClaimReferrerFees::25");
+        assertEq(factory.getReferrerFeesOf(address(wnative), alice), 0, "test_Fuzz_ClaimReferrerFees::24");
+        assertEq(factory.getReferrerFeesOf(address(wnative), bob), 0, "test_Fuzz_ClaimReferrerFees::25");
+        assertEq(factory.getProtocolFees(address(wnative)), 0, "test_Fuzz_ClaimReferrerFees::26");
     }
 
     function test_ClaimFeesAndUpdateProtocolFees() public {

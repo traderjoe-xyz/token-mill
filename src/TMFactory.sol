@@ -47,6 +47,10 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
     mapping(address token => Referrers referrers) private _referrers;
 
+    receive() external payable {
+        if (msg.sender != WNATIVE) revert TMFactory__OnlyWNative();
+    }
+
     constructor(address staking, address wnative) {
         _disableInitializers();
 
