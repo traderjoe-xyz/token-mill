@@ -423,7 +423,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
         claimedFees = referrers.unclaimed[msg.sender];
 
-        if (claimedFees == 0) {
+        if (claimedFees > 0) {
             referrers.unclaimed[msg.sender] = 0;
 
             referrers.total -= claimedFees;
