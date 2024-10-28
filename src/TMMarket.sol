@@ -19,6 +19,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     using SafeERC20 for IERC20;
 
     uint256 private constant PRECISION = 1e18;
+    uint256 private constant BPS = 1e4;
 
     uint256 internal _state; // 0: uninitialized, 1: invalid, 2: locked, 3: initialized and unlocked
 
