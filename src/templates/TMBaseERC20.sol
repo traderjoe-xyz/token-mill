@@ -20,6 +20,8 @@ abstract contract TMBaseERC20 is ERC20Upgradeable, ITMBaseERC20 {
      * @param factory_ The address of the factory contract.
      */
     constructor(address factory_) {
+        _disableInitializers();
+
         _factory = factory_;
     }
 
