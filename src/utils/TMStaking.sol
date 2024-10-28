@@ -475,6 +475,8 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         uint256 shares = amount + lockedAmount;
 
         if (shares > 0) pending = (user.pending += (shares * (accRewardPerShare - user.accRewardPerShare)) / PRECISION);
+        else pending = user.pending;
+
         user.accRewardPerShare = accRewardPerShare;
 
         if ((deltaAmount | deltaLockedAmount) != 0) {
