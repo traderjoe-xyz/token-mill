@@ -191,6 +191,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @param deltaAmount The delta amount.
      * @param swapB2Q Whether to swap base to quote (true) or quote to base (false).
      * @param data The data to be passed to the swap callback. If the data is empty, the callback will be skipped.
+     * @param referrer The referrer address.
      * @return deltaBaseAmount The delta base amount.
      * @return deltaQuoteAmount The delta quote amount.
      */
@@ -366,11 +367,14 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
 
     /**
      * @dev Updates the reserves on a quote to base swap.
+     * @param referrer The referrer address.
+     * @param circulatingSupply The circulating supply.
      * @param baseReserve The base reserve.
      * @param quoteReserve The quote reserve.
      * @param toSend The amount to send.
      * @param toReceive The amount to receive.
      * @param quoteBalance The quote balance.
+     * @return The total fees.
      */
     function _updateReservesOnQ2B(
         address referrer,
