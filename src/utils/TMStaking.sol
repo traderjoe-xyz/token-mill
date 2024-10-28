@@ -208,6 +208,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
     /**
      * @dev Deposits the specified amount of tokens to the specified account.
      * The amount of tokens received must be greater than or equal to the specified minimum amount.
+     * Note that the first deposit / vesting will receive all the fees accumulated until that point.
      * @param token The address of the token.
      * @param to The address of the account.
      * @param amount The amount of tokens to be deposited.
@@ -279,6 +280,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
     /**
      * @dev Creates a vesting schedule for the specified token.
      * The amount of tokens received must be greater than or equal to the specified minimum amount.
+     * Note that the first deposit / vesting will receive all the fees accumulated until that point.
      * @param token The address of the token.
      * @param beneficiary The address of the beneficiary.
      * @param amount The amount of tokens to be vested.
