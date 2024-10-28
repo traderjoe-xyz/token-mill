@@ -10,6 +10,9 @@ interface IRouter {
     error Router__InvalidAmounts();
     error Router__ExceedsMaxInputAmount();
     error Router__InvalidId();
+    error Router__ZeroAddress();
+    error Router__ZeroAmount();
+    error Router__InvalidValue();
     error Router__ExceedsDeadline();
     error Router__InsufficientLiquidity();
     error Router__Simulation(uint256 amount);
