@@ -52,6 +52,8 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
     }
 
     constructor(address staking, address wnative) {
+        if (staking == address(0) || wnative == address(0)) revert TMFactory__AddressZero();
+
         _disableInitializers();
 
         STAKING = staking;
@@ -257,6 +259,10 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         override
         returns (address baseToken, address market)
     {
+        if (bytes(parameters.symbol).length == 0 || bytes(parameters.name).length == 0) {
+            revert TMFactory__InvalidTokenParameters();
+        }
+
         uint256[] memory packedPrices = ImmutableHelper.packPrices(parameters.bidPrices, parameters.askPrices);
 
         baseToken = _createToken(parameters);
@@ -292,6 +298,8 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         override
         returns (address baseToken, address market, uint256 amountBaseOut, uint256[] memory vestingIds)
     {
+        if (amountQuoteIn == 0) revert TMFactory__ZeroAmount();
+
         uint256 length = vestingParams.length;
         if (length == 0) revert TMFactory__NoVestingParams();
 
@@ -303,9 +311,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
                 IWNative(quoteToken).deposit{value: amountQuoteIn}();
                 IERC20(quoteToken).safeTransfer(market, amountQuoteIn);
             } else {
-                uint256 balance = _balanceOf(quoteToken, market);
                 IERC20(quoteToken).safeTransferFrom(msg.sender, market, amountQuoteIn);
-                amountQuoteIn = _balanceOf(quoteToken, market) - balance;
             }
         }
 
@@ -365,6 +371,8 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * @param creator The address of the creator.
      */
     function updateCreatorOf(address market, address creator) external override {
+        if (creator == address(0)) revert TMFactory__AddressZero();
+
         MarketParameters storage parameters = _parameters[market];
 
         if (msg.sender != parameters.creator) revert TMFactory__InvalidCaller();
