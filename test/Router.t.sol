@@ -689,15 +689,18 @@ contract TestRouter is TestHelper {
     function test_Revert_SwapExactIn() public {
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
 
-        vm.expectRevert(IRouter.Router__ExceedsDeadline.selector);
+        vm.expectRevert(IRouter.Router__ZeroAmount.selector);
         router.swapExactIn{value: 1e18}(new bytes(0), address(0), 0, 0, block.timestamp - 1, address(0));
 
+        vm.expectRevert(IRouter.Router__ExceedsDeadline.selector);
+        router.swapExactIn{value: 1e18}(new bytes(0), address(0), 1, 0, block.timestamp - 1, address(0));
+
         vm.expectRevert(IRouter.Router__InvalidRecipient.selector);
-        router.swapExactIn{value: 1e18}(new bytes(0), address(router), 0, 0, block.timestamp, address(0));
+        router.swapExactIn{value: 1e18}(new bytes(0), address(router), 1, 0, block.timestamp, address(0));
 
         vm.expectRevert(IRouter.Router__InvalidRecipient.selector);
         router.swapExactInSupportingFeeOnTransferTokens{value: 1e18}(
-            new bytes(0), address(router), 0, 0, block.timestamp, address(0)
+            new bytes(0), address(router), 1, 0, block.timestamp, address(0)
         );
 
         vm.expectRevert(IRouter.Router__InsufficientOutputAmount.selector);
@@ -724,11 +727,14 @@ contract TestRouter is TestHelper {
     function test_Revert_SwapExactOut() public {
         bytes memory route = abi.encodePacked(address(0), uint32(3 << 24), token0);
 
+        vm.expectRevert(IRouter.Router__ZeroAmount.selector);
+        router.swapExactOut(new bytes(0), address(0), 0, 0, block.timestamp, address(0));
+
         vm.expectRevert(IRouter.Router__ExceedsDeadline.selector);
-        router.swapExactOut(new bytes(0), address(0), 0, 0, block.timestamp - 1, address(0));
+        router.swapExactOut(new bytes(0), address(0), 1, 0, block.timestamp - 1, address(0));
 
         vm.expectRevert(IRouter.Router__InvalidRecipient.selector);
-        router.swapExactOut(new bytes(0), address(router), 0, 0, block.timestamp, address(0));
+        router.swapExactOut(new bytes(0), address(router), 1, 0, block.timestamp, address(0));
 
         vm.expectRevert(IRouter.Router__InvalidAmounts.selector);
         router.swapExactOut{value: 1e18}(route, address(this), 500_000_000e18 + 1, 0, block.timestamp, address(0));
@@ -835,8 +841,11 @@ contract TestRouter is TestHelper {
 
         ITMFactory.VestingParameters[] memory vestingParams = new ITMFactory.VestingParameters[](0);
 
-        vm.expectRevert(ITMFactory.TMFactory__NoVestingParams.selector);
+        vm.expectRevert(ITMFactory.TMFactory__ZeroAmount.selector);
         factory.createMarketAndVestings(params, vestingParams, address(this), 0, 0);
+
+        vm.expectRevert(ITMFactory.TMFactory__NoVestingParams.selector);
+        factory.createMarketAndVestings(params, vestingParams, address(this), 1, 0);
 
         vestingParams = new ITMFactory.VestingParameters[](2);
 

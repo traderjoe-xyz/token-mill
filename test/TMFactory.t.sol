@@ -192,6 +192,9 @@ contract TMFactoryTest is Test {
     ) public {
         vm.assume(sender != proxyAdmin);
 
+        if (bytes(name).length == 0) name = "Token";
+        if (bytes(symbol).length == 0) symbol = "T";
+
         decimals = uint8(bound(decimals, 0, 18));
         creatorShare = uint16(bound(creatorShare, 0, 0.8e4));
         stakingShare = 0.8e4 - creatorShare;
@@ -251,7 +254,23 @@ contract TMFactoryTest is Test {
         ITMFactory.MarketCreationParameters memory params;
         params.totalSupply = 1e18;
 
+        vm.expectRevert(ITMFactory.TMFactory__InvalidTokenParameters.selector);
+        factory.createMarketAndToken(params);
+
+        params.name = "Token";
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidTokenParameters.selector);
+        factory.createMarketAndToken(params);
+
+        params.symbol = "T";
+
         params.tokenType = tokenType;
+
+        uint256[] memory prices = new uint256[](2);
+        prices[0] = 0;
+        prices[1] = 1e18;
+        params.bidPrices = prices;
+        params.askPrices = prices;
 
         vm.expectRevert(ITMFactory.TMFactory__InvalidTokenType.selector);
         factory.createMarketAndToken(params);
@@ -261,12 +280,6 @@ contract TMFactoryTest is Test {
         factory.updateTokenImplementation(tokenType, badToken);
 
         params.quoteToken = wnative;
-
-        uint256[] memory prices = new uint256[](2);
-        prices[0] = 0;
-        prices[1] = 1e18;
-        params.bidPrices = prices;
-        params.askPrices = prices;
 
         vm.expectRevert(ITMFactory.TMFactory__InvalidQuoteToken.selector);
         factory.createMarketAndToken(params);
@@ -298,7 +311,7 @@ contract TMFactoryTest is Test {
             }
         }
 
-        vm.assume(sender != proxyAdmin && other != proxyAdmin);
+        vm.assume(sender != proxyAdmin && other != proxyAdmin && sender != address(0) && other != address(0));
 
         (, address market) = _setUpAndCreateToken(sender);
 

@@ -9,6 +9,8 @@ contract TestTMMarket is TestHelper {
     bytes32 private _callbackReturn;
 
     function setUp() public override {
+        stakingAddress = address(1);
+
         super.setUp();
         setUpTokens();
     }

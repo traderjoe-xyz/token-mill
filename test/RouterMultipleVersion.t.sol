@@ -37,7 +37,7 @@ contract TestRouterMultipleVersion is Test {
     function setUp() public {
         vm.createSelectFork(StdChains.getChain("avalanche").rpcUrl, 45959572);
 
-        address factoryImp = address(new TMFactory(address(0), address(0)));
+        address factoryImp = address(new TMFactory(address(1), address(1)));
         factory = ITMFactory(
             address(
                 new TransparentUpgradeableProxy(
