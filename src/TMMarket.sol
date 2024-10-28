@@ -390,27 +390,27 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 totalFees = _getFees(circulatingSupply, toSend, quoteBalance - quoteReserve);
 
         if (totalFees > 0) {
-            uint256 fees;
+            uint256 protocolFees;
             {
-                (uint256 protocolShare, uint256 creatorShare, uint256 stakingShare) = _getFeeShares();
+                (, uint256 creatorShare, uint256 stakingShare) = _getFeeShares();
 
-                uint256 totalShare = protocolShare + creatorShare + stakingShare;
-
-                uint256 creatorFees = totalFees * creatorShare / totalShare;
-                uint256 stakingFees = totalFees * stakingShare / totalShare;
-                fees = totalFees - creatorFees - stakingFees;
+                uint256 creatorFees = totalFees * creatorShare / BPS;
+                uint256 stakingFees = totalFees * stakingShare / BPS;
+                protocolFees = totalFees - creatorFees - stakingFees;
 
                 _creatorUnclaimedFees += uint128(creatorFees);
                 _stakingUnclaimedFees += uint128(stakingFees);
             }
 
-            quoteBalance -= fees;
+            if (protocolFees > 0) {
+                quoteBalance -= protocolFees;
 
-            address factory = _factory();
-            address quoteToken = _quoteToken();
+                address factory = _factory();
+                address quoteToken = _quoteToken();
 
-            IERC20(quoteToken).safeTransfer(factory, fees);
-            ITMFactory(factory).handleProtocolFees(quoteToken, referrer, fees);
+                IERC20(quoteToken).safeTransfer(factory, protocolFees);
+                ITMFactory(factory).handleProtocolFees(quoteToken, referrer, protocolFees);
+            }
         }
 
         _baseReserve = uint128(baseReserve - toSend);
