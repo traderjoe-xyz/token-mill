@@ -417,7 +417,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         uint256 timestamp
     ) internal view virtual returns (uint256) {
         return timestamp < start + vestingDuration
-            ? (timestamp > start + cliffDuration ? (total * (timestamp - start)) / vestingDuration : 0)
+            ? (timestamp < start + cliffDuration ? 0 : (total * (timestamp - start)) / vestingDuration)
             : total;
     }
 
