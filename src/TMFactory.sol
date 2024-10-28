@@ -370,6 +370,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
         if (msg.sender != parameters.creator) revert TMFactory__InvalidCaller();
 
+        _claimFees(market, msg.sender);
         _updateCreatorOf(parameters, market, creator);
     }
 
