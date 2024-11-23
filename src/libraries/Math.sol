@@ -20,7 +20,7 @@ library Math {
     function addDelta(uint256 x, int256 delta) internal pure returns (uint256 y) {
         uint256 success;
 
-        assembly {
+        assembly ("memory-safe") {
             y := add(x, delta)
 
             success := iszero(or(gt(x, MAX_INT256), gt(y, MAX_INT256)))
@@ -36,7 +36,7 @@ library Math {
      * @return msb The most significant bit of x
      */
     function mostSignificantBit(uint256 x) internal pure returns (uint256 msb) {
-        assembly {
+        assembly ("memory-safe") {
             let n := mul(128, gt(x, 0xffffffffffffffffffffffffffffffff))
             x := shr(n, x)
             msb := add(msb, n)
@@ -81,7 +81,7 @@ library Math {
 
         uint256 msb = mostSignificantBit(x);
 
-        assembly {
+        assembly ("memory-safe") {
             sqrtX := shl(shr(1, msb), 1)
 
             sqrtX := shr(1, add(sqrtX, div(x, sqrtX)))
@@ -104,7 +104,7 @@ library Math {
      * @return r The minimum of the two numbers
      */
     function min(uint256 x, uint256 y) internal pure returns (uint256 r) {
-        assembly {
+        assembly ("memory-safe") {
             r := xor(y, mul(xor(x, y), lt(x, y)))
         }
     }
@@ -116,7 +116,7 @@ library Math {
      * @return r The maximum of the two numbers
      */
     function max(uint256 x, uint256 y) internal pure returns (uint256 r) {
-        assembly {
+        assembly ("memory-safe") {
             r := xor(y, mul(xor(x, y), gt(x, y)))
         }
     }
@@ -127,7 +127,7 @@ library Math {
      * @return r The absolute value of x
      */
     function abs(int256 x) internal pure returns (uint256 r) {
-        assembly {
+        assembly ("memory-safe") {
             let mask := sar(255, x)
             r := xor(add(x, mask), mask)
         }
@@ -143,7 +143,7 @@ library Math {
     function div(uint256 x, uint256 y, bool roundUp) internal pure returns (uint256 z) {
         if (y == 0) revert Math__DivisionByZero();
 
-        assembly {
+        assembly ("memory-safe") {
             z := add(div(x, y), iszero(or(iszero(mod(x, y)), iszero(roundUp))))
         }
     }
@@ -168,7 +168,7 @@ library Math {
         // 512-bit multiply [prod1 prod0] = x * y. Compute the product mod 2^256 and mod 2^256 - 1, then use
         // the Chinese Remainder Theorem to reconstruct the 512 bit result. The result is stored in two 256
         // variables such that product = prod1 * 2^256 + prod0.
-        assembly {
+        assembly ("memory-safe") {
             let mm := mulmod(x, y, not(0))
             let prod0 := mul(x, y)
             let prod1 := sub(sub(mm, prod0), lt(mm, prod0))
@@ -247,7 +247,7 @@ library Math {
      * @return z1 The higher 256 bits of the result
      */
     function mul512(uint256 x, uint256 y) internal pure returns (uint256 z0, uint256 z1) {
-        assembly {
+        assembly ("memory-safe") {
             let mm := mulmod(x, y, not(0))
             z0 := mul(x, y)
             z1 := sub(sub(mm, z0), lt(mm, z0))
@@ -266,7 +266,7 @@ library Math {
     function add512(uint256 x0, uint256 x1, uint256 y0, uint256 y1) internal pure returns (uint256 z0, uint256 z1) {
         uint256 success;
 
-        assembly {
+        assembly ("memory-safe") {
             let rz1 := add(x1, y1)
 
             z0 := add(x0, y0)
@@ -301,7 +301,7 @@ library Math {
 
         // Condition: a_3 >= b / 4
         // => x_1 >= b^2 / 4 = 2^254
-        assembly {
+        assembly ("memory-safe") {
             let n := mul(lt(x1, 0x100000000000000000000000000000000), 128)
             x1 := shl(n, x1)
             shift := n
@@ -336,7 +336,7 @@ library Math {
 
         uint256 sp = sqrt(x1, false); // s' = sqrt(x1)
 
-        assembly {
+        assembly ("memory-safe") {
             let rp := sub(x1, mul(sp, sp)) // r' = x1 - s^2
 
             let nom := or(shl(128, rp), shr(128, x0)) // r'b + a_1

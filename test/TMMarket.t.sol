@@ -183,7 +183,7 @@ contract TestTMMarket is TestHelper {
             (bool s,) = address(cAddress).call(cData);
 
             if (!s) {
-                assembly {
+                assembly ("memory-safe") {
                     returndatacopy(0, 0, returndatasize())
                     revert(0, returndatasize())
                 }

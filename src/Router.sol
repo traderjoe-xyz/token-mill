@@ -243,7 +243,7 @@ contract Router is IRouter {
             );
 
             if (bytes4(data) == IRouter.Router__Simulation.selector) {
-                assembly {
+                assembly ("memory-safe") {
                     mstore(add(amounts, mul(i, 0x20)), mload(add(data, 0x24)))
                 }
             } else {
@@ -330,7 +330,7 @@ contract Router is IRouter {
                     if (pair == address(0)) revert Router__InvalidMarket();
                     if ((sv | t) != 0) revert Router__InvalidId();
 
-                    assembly {
+                    assembly ("memory-safe") {
                         id := or(id, lt(tokenIn, tokenOut))
                     }
                 } else if (v == 2) {
@@ -355,7 +355,7 @@ contract Router is IRouter {
                         revert Router__InvalidId();
                     }
 
-                    assembly {
+                    assembly ("memory-safe") {
                         id := or(sub(id, t), swapForY)
                     }
                 } else if (v == 3) {
@@ -365,7 +365,7 @@ contract Router is IRouter {
                     if (pair == address(0)) revert Router__InvalidMarket();
                     if ((sv | t) != 0) revert Router__InvalidId();
 
-                    assembly {
+                    assembly ("memory-safe") {
                         id := or(id, iszero(iszero(swapB2Q)))
                     }
                 } else {

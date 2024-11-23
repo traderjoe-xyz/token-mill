@@ -891,7 +891,7 @@ contract PricePointsTest is Test {
         uint256 nb = pricePoints.length - 1;
 
         if (nb > 10) {
-            assembly {
+            assembly ("memory-safe") {
                 mstore(pricePoints, 11)
             }
             nb = 10;

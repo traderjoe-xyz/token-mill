@@ -656,7 +656,7 @@ contract TestRouterMultipleVersion is Test {
 
         uint256 amount0;
         uint256 amount1;
-        assembly {
+        assembly ("memory-safe") {
             amount0 := mload(add(d, 0x64))
             amount1 := mload(add(d, 0x84))
         }
@@ -701,7 +701,7 @@ contract TestRouterMultipleVersion is Test {
 
         uint256 amount0;
         uint256 amount1;
-        assembly {
+        assembly ("memory-safe") {
             amount0 := mload(add(d, 0x64))
             amount1 := mload(add(d, 0x84))
         }
@@ -747,7 +747,7 @@ contract TestRouterMultipleVersion is Test {
 
         uint256 amount0;
         uint256 amount1;
-        assembly {
+        assembly ("memory-safe") {
             amount0 := mload(add(d, 0x64))
             amount1 := mload(add(d, 0x84))
         }
@@ -794,7 +794,7 @@ contract TestRouterMultipleVersion is Test {
 
         uint256 amount0;
         uint256 amount1;
-        assembly {
+        assembly ("memory-safe") {
             amount0 := mload(add(d, 0x64))
             amount1 := mload(add(d, 0x84))
         }
