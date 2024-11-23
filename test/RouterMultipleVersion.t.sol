@@ -24,7 +24,7 @@ contract TestRouterMultipleVersion is Test {
     uint256 initialWavaxBalance = 1_000_000e18;
     uint256 initialUsdcBalance = 10_000_000e6;
 
-    TMFactory public factory;
+    ITMFactory public factory;
     Router public router;
     TMERC20 public basicToken;
 
@@ -37,8 +37,8 @@ contract TestRouterMultipleVersion is Test {
     function setUp() public {
         vm.createSelectFork(StdChains.getChain("avalanche").rpcUrl, 45959572);
 
-        address factoryImp = address(new TMFactory(address(0), address(0)));
-        factory = TMFactory(
+        address factoryImp = address(new TMFactory(address(1), address(1)));
+        factory = ITMFactory(
             address(
                 new TransparentUpgradeableProxy(
                     factoryImp,

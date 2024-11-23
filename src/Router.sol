@@ -53,6 +53,8 @@ contract Router is IRouter {
         address tmFactory,
         address wnative
     ) {
+        if (wnative == address(0)) revert Router__ZeroAddress();
+
         _v1Factory = IV1Factory(v1Factory);
 
         address factory = v2_0Router == address(0) ? address(0) : IV2_0Router(v2_0Router).factory();
@@ -126,6 +128,7 @@ contract Router is IRouter {
         uint256 deadline,
         address referrer
     ) external payable override returns (uint256, uint256) {
+        _checkAmount(amountIn);
         _checkDeadline(deadline);
         _checkRecipient(to);
 
@@ -199,6 +202,7 @@ contract Router is IRouter {
         uint256 deadline,
         address referrer
     ) public payable override returns (uint256, uint256) {
+        _checkAmount(amountOut);
         _checkDeadline(deadline);
         _checkRecipient(to);
 
@@ -278,7 +282,15 @@ contract Router is IRouter {
      * @param recipient The address to check.
      */
     function _checkRecipient(address recipient) internal view {
-        if (recipient == address(this)) revert Router__InvalidRecipient();
+        if (recipient == address(this) || recipient == address(0)) revert Router__InvalidRecipient();
+    }
+
+    /**
+     * @dev Checks if the amount is not zero.
+     * @param amount The amount to check.
+     */
+    function _checkAmount(uint256 amount) internal pure {
+        if (amount == 0) revert Router__ZeroAmount();
     }
 
     /**
@@ -502,6 +514,8 @@ contract Router is IRouter {
             amount = _balanceOf(token, pair) - balanceBefore;
         }
 
+        _checkAmount(amount);
+
         address tokenOut;
         uint256 amountOut;
         for (uint256 i; i < length;) {
@@ -607,6 +621,8 @@ contract Router is IRouter {
                 _wnative.withdraw(amount);
                 _transferNative(to, amount);
             } else {
+                if (msg.value < amount) revert Router__InvalidValue();
+
                 _wnative.deposit{value: amount}();
                 IERC20(address(_wnative)).safeTransfer(to, amount);
             }

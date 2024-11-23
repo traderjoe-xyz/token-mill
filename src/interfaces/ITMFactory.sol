@@ -17,6 +17,7 @@ interface ITMFactory {
     error TMFactory__InvalidRecipient();
     error TMFactory__InvalidProtocolShare();
     error TMFactory__AddressZero();
+    error TMFactory__ZeroAmount();
     error TMFactory__SameTokens();
     error TMFactory__ZeroFeeRecipients();
     error TMFactory__InvalidReferrerShare();
@@ -28,6 +29,8 @@ interface ITMFactory {
     error TMFactory__TooManyQuoteTokenSent();
     error TMFactory__InsufficientOutputAmount();
     error TMFactory__BalanceOfFailed();
+    error TMFactory__InvalidTokenParameters();
+    error TMFactory__OnlyWNative();
 
     // packedPrices = `(askPrice << 128) | bidPrice` for each price point
     event MarketCreated(

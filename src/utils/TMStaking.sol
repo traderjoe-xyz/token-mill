@@ -189,7 +189,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         User storage user = staking.users[account];
 
         address market = ITMFactory(FACTORY).getMarketOf(token);
-        if (market == address(0)) revert TMStakingInvalidToken(token);
+        if (market == address(0)) revert TMStaking__InvalidToken(token);
 
         uint256 shares = user.amount + user.lockedAmount;
         uint256 totalShares = staking.totalStaked + staking.totalLocked;
@@ -208,6 +208,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
     /**
      * @dev Deposits the specified amount of tokens to the specified account.
      * The amount of tokens received must be greater than or equal to the specified minimum amount.
+     * Note that the first deposit / vesting will receive all the fees accumulated until that point.
      * @param token The address of the token.
      * @param to The address of the account.
      * @param amount The amount of tokens to be deposited.
@@ -220,7 +221,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         nonReentrant
         returns (uint256 actualAmount)
     {
-        if (to == address(0)) revert TMStakingZeroBeneficiary();
+        if (to == address(0)) revert TMStaking__ZeroBeneficiary();
 
         Staking storage staking = _stakings[token];
         User storage user = staking.users[to];
@@ -238,14 +239,14 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
      * @return The amount of tokens withdrawn.
      */
     function withdraw(address token, address to, uint256 amount) external override nonReentrant returns (uint256) {
-        if (amount == 0) revert TMStakingZeroAmount();
-        if (amount > type(uint128).max) revert TMStakingOverflow();
-        if (to == address(0)) revert TMStakingZeroBeneficiary();
+        if (amount == 0) revert TMStaking__ZeroAmount();
+        if (amount > type(uint128).max) revert TMStaking__Overflow();
+        if (to == address(0)) revert TMStaking__ZeroBeneficiary();
 
         Staking storage staking = _stakings[token];
         User storage user = staking.users[msg.sender];
 
-        _update(staking, user, token, msg.sender, -int256(uint256(amount)), 0);
+        _update(staking, user, token, msg.sender, -int256(amount), 0);
 
         IERC20(token).safeTransfer(to, amount);
 
@@ -259,6 +260,8 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
      * @return The amount of tokens claimed.
      */
     function claimRewards(address token, address to) external override nonReentrant returns (uint256) {
+        if (to == address(0)) revert TMStaking__ZeroAddress();
+
         Staking storage staking = _stakings[token];
         User storage user = staking.users[msg.sender];
 
@@ -279,6 +282,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
     /**
      * @dev Creates a vesting schedule for the specified token.
      * The amount of tokens received must be greater than or equal to the specified minimum amount.
+     * Note that the first deposit / vesting will receive all the fees accumulated until that point.
      * @param token The address of the token.
      * @param beneficiary The address of the beneficiary.
      * @param amount The amount of tokens to be vested.
@@ -297,9 +301,9 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         uint80 cliffDuration,
         uint80 vestingDuration
     ) external override nonReentrant returns (uint256 index) {
-        if (cliffDuration > vestingDuration) revert TMStakingInvalidCliffDuration();
-        if (start + vestingDuration <= block.timestamp) revert TMStakingInvalidVestingSchedule();
-        if (beneficiary == address(0)) revert TMStakingZeroBeneficiary();
+        if (cliffDuration > vestingDuration) revert TMStaking__InvalidCliffDuration();
+        if (start + vestingDuration <= block.timestamp) revert TMStaking__InvalidVestingSchedule();
+        if (beneficiary == address(0)) revert TMStaking__ZeroBeneficiary();
 
         uint256 actualAmount = _transferFrom(token, msg.sender, amount, minAmount);
 
@@ -340,7 +344,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
             _vestingSchedule(total, vesting.start, vesting.cliffDuration, vesting.vestingDuration, block.timestamp);
 
         unlocked = vested - vesting.released;
-        if (unlocked == 0) revert TMStakingZeroUnlockedAmount();
+        if (unlocked == 0) revert TMStaking__ZeroUnlockedAmount();
 
         vesting.released = uint128(vested);
 
@@ -362,15 +366,15 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         nonReentrant
         returns (uint256)
     {
-        if (newBeneficiary == address(0)) revert TMStakingZeroBeneficiary();
+        if (newBeneficiary == address(0)) revert TMStaking__ZeroBeneficiary();
 
         Staking storage staking = _stakings[token];
         VestingSchedule storage vesting = staking.vestingSchedules[index];
 
         address oldBeneficiary = vesting.beneficiary;
 
-        if (oldBeneficiary != msg.sender) revert TMStakingOnlyBeneficiary();
-        if (oldBeneficiary == newBeneficiary) revert TMStakingSameBeneficiary();
+        if (oldBeneficiary != msg.sender) revert TMStaking__OnlyBeneficiary();
+        if (oldBeneficiary == newBeneficiary) revert TMStaking__SameBeneficiary();
 
         User storage oldUser = staking.users[oldBeneficiary];
         User storage newUser = staking.users[newBeneficiary];
@@ -382,7 +386,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         uint256 releasable = vested - vesting.released;
         uint256 locked = total - vested;
 
-        if (locked == 0) revert TMStakingVestingExpired();
+        if (locked == 0) revert TMStaking__VestingExpired();
 
         vesting.beneficiary = newBeneficiary;
         vesting.released = uint128(vested);
@@ -415,7 +419,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         uint256 timestamp
     ) internal view virtual returns (uint256) {
         return timestamp < start + vestingDuration
-            ? (timestamp > start + cliffDuration ? (total * (timestamp - start)) / vestingDuration : 0)
+            ? (timestamp < start + cliffDuration ? 0 : (total * (timestamp - start)) / vestingDuration)
             : total;
     }
 
@@ -436,9 +440,9 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         IERC20(token).safeTransferFrom(from, address(this), amount);
         actualAmount = IERC20(token).balanceOf(address(this)) - balance;
 
-        if (actualAmount == 0) revert TMStakingZeroAmount();
-        if (actualAmount > type(uint128).max) revert TMStakingOverflow();
-        if (actualAmount < minAmount) revert TMStakingInsufficientAmountReceived(actualAmount, minAmount);
+        if (actualAmount == 0) revert TMStaking__ZeroAmount();
+        if (actualAmount > type(uint128).max) revert TMStaking__Overflow();
+        if (actualAmount < minAmount) revert TMStaking__InsufficientAmountReceived(actualAmount, minAmount);
     }
 
     /**
@@ -473,6 +477,8 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         uint256 shares = amount + lockedAmount;
 
         if (shares > 0) pending = (user.pending += (shares * (accRewardPerShare - user.accRewardPerShare)) / PRECISION);
+        else pending = user.pending;
+
         user.accRewardPerShare = accRewardPerShare;
 
         if ((deltaAmount | deltaLockedAmount) != 0) {
@@ -491,7 +497,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
             // that one, or both, of the absolute values of the deltas are greater than the respective amounts so we
             // need to revert.
             if (int256(amount | lockedAmount) < 0) {
-                revert TMStakingInsufficientStake(int256(amount), int256(lockedAmount));
+                revert TMStaking__InsufficientStake(int256(amount), int256(lockedAmount));
             }
 
             unchecked {
@@ -503,7 +509,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
             // adding the deltas to the total will not overflow as the deltas are constrained to be within the
             // [- max(uint128), max(uint128)] range. However, if one of the totals is bigger than the maximum uint128 value,
             // we need to revert.
-            if ((totalStaked | totalLocked) > type(uint128).max) revert TMStakingOverflow();
+            if ((totalStaked | totalLocked) > type(uint128).max) revert TMStaking__Overflow();
 
             // If the new amounts are 0, the user no longer has any stake in the token, so we need to remove the token
             // from the user's token set.
@@ -537,7 +543,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         returns (address market, uint256 totalStaked, uint256 totalLocked, uint256 accRewardPerShare)
     {
         market = ITMFactory(FACTORY).getMarketOf(token);
-        if (market == address(0)) revert TMStakingInvalidToken(token);
+        if (market == address(0)) revert TMStaking__InvalidToken(token);
 
         totalStaked = staking.totalStaked;
         totalLocked = staking.totalLocked;

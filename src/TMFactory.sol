@@ -47,7 +47,13 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
     mapping(address token => Referrers referrers) private _referrers;
 
+    receive() external payable {
+        if (msg.sender != WNATIVE) revert TMFactory__OnlyWNative();
+    }
+
     constructor(address staking, address wnative) {
+        if (staking == address(0) || wnative == address(0)) revert TMFactory__AddressZero();
+
         _disableInitializers();
 
         STAKING = staking;
@@ -253,9 +259,13 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         override
         returns (address baseToken, address market)
     {
-        baseToken = _createToken(parameters);
+        if (bytes(parameters.symbol).length == 0 || bytes(parameters.name).length == 0) {
+            revert TMFactory__InvalidTokenParameters();
+        }
 
         uint256[] memory packedPrices = ImmutableHelper.packPrices(parameters.bidPrices, parameters.askPrices);
+
+        baseToken = _createToken(parameters);
         market = _createMarket(parameters, packedPrices, baseToken);
 
         return (baseToken, market);
@@ -266,6 +276,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * Warning: If the token is a fee-on-transfer token, transferring tokens to the staking contract to vest them
      * should **not** result in any transfer fee, ie, that sending 10 tokens to the staking contract should
      * result in the staking contract receiving at least 10 tokens when vesting them with this function.
+     * Note that the first vesting will receive all the fees from the swap.
      * @param params The parameters for the market creation.
      * @param vestingParams The parameters for the vesting schedules.
      * @param referrer The address of the referrer.
@@ -287,6 +298,8 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         override
         returns (address baseToken, address market, uint256 amountBaseOut, uint256[] memory vestingIds)
     {
+        if (amountQuoteIn == 0) revert TMFactory__ZeroAmount();
+
         uint256 length = vestingParams.length;
         if (length == 0) revert TMFactory__NoVestingParams();
 
@@ -298,9 +311,7 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
                 IWNative(quoteToken).deposit{value: amountQuoteIn}();
                 IERC20(quoteToken).safeTransfer(market, amountQuoteIn);
             } else {
-                uint256 balance = _balanceOf(quoteToken, market);
                 IERC20(quoteToken).safeTransferFrom(msg.sender, market, amountQuoteIn);
-                amountQuoteIn = _balanceOf(quoteToken, market) - balance;
             }
         }
 
@@ -346,8 +357,6 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
 
         if (total != 0) revert TMFactory__InvalidVestingTotalPercents();
 
-        _updateCreatorOf(_parameters[market], market, msg.sender);
-
         if (msg.value > 0) {
             uint256 leftOver = address(this).balance;
             if (leftOver > 0) {
@@ -362,10 +371,13 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * @param creator The address of the creator.
      */
     function updateCreatorOf(address market, address creator) external override {
+        if (creator == address(0)) revert TMFactory__AddressZero();
+
         MarketParameters storage parameters = _parameters[market];
 
         if (msg.sender != parameters.creator) revert TMFactory__InvalidCaller();
 
+        _claimFees(market, msg.sender);
         _updateCreatorOf(parameters, market, creator);
     }
 
@@ -418,20 +430,21 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         Referrers storage referrers = _referrers[token == address(0) ? WNATIVE : token];
 
         claimedFees = referrers.unclaimed[msg.sender];
-        referrers.unclaimed[msg.sender] = 0;
 
-        referrers.total -= claimedFees;
+        if (claimedFees > 0) {
+            referrers.unclaimed[msg.sender] = 0;
 
-        emit ReferrerFeesClaimed(token, msg.sender, claimedFees);
+            referrers.total -= claimedFees;
 
-        if (token == address(0)) {
-            IWNative(WNATIVE).withdraw(claimedFees);
-            _transferNative(msg.sender, claimedFees);
-        } else {
-            IERC20(token).safeTransfer(msg.sender, claimedFees);
+            emit ReferrerFeesClaimed(token, msg.sender, claimedFees);
+
+            if (token == address(0)) {
+                IWNative(WNATIVE).withdraw(claimedFees);
+                _transferNative(msg.sender, claimedFees);
+            } else {
+                IERC20(token).safeTransfer(msg.sender, claimedFees);
+            }
         }
-
-        return claimedFees;
     }
 
     /**
@@ -481,12 +494,12 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         if (referrer != address(0)) {
             if (referrer == STAKING) revert TMFactory__InvalidReferrer();
 
-            Referrers storage referrers = _referrers[token];
-
             referrerFees = (protocolFees * _referrerShare) / BPS;
             protocolFees -= referrerFees;
 
             if (referrerFees > 0) {
+                Referrers storage referrers = _referrers[token];
+
                 referrers.total += referrerFees;
                 unchecked {
                     referrers.unclaimed[referrer] += referrerFees;
@@ -693,6 +706,11 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
         if (baseToken == p.quoteToken) revert TMFactory__SameTokens();
         if (!_quoteTokens.contains(p.quoteToken)) revert TMFactory__InvalidQuoteToken();
 
+        uint16 protocolShare = _defaultProtocolShare;
+        if (uint256(protocolShare) + p.creatorShare + p.stakingShare != BPS) {
+            revert TMFactory__InvalidFeeShares();
+        }
+
         bytes memory immutableArgs =
             ImmutableHelper.getImmutableArgs(address(this), baseToken, p.quoteToken, p.totalSupply, packedPrices);
 
@@ -710,16 +728,10 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
             packedPrices
         );
 
-        uint16 protocolShare = _defaultProtocolShare;
-
         _allMarkets.push(market);
         _markets[baseToken][p.quoteToken] = _encodeMarket(1, market);
         _markets[p.quoteToken][baseToken] = _encodeMarket(0, market);
         _tokens[baseToken] = _encodeToken(p.tokenType, market);
-
-        if (uint256(protocolShare) + p.creatorShare + p.stakingShare != BPS) {
-            revert TMFactory__InvalidFeeShares();
-        }
 
         _parameters[market] = MarketParameters(protocolShare, p.creatorShare, p.stakingShare, msg.sender);
         _creatorMarkets[msg.sender].add(market);

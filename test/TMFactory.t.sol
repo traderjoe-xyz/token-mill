@@ -6,7 +6,7 @@ import "./TestHelper.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TMFactoryTest is Test {
-    TMFactory factory;
+    ITMFactory factory;
     address wnative;
     address proxyAdmin;
 
@@ -20,7 +20,7 @@ contract TMFactoryTest is Test {
         wnative = address(new WNative());
 
         address factoryImp = address(new TMFactory(staking, address(wnative)));
-        factory = TMFactory(
+        factory = ITMFactory(
             address(
                 new TransparentUpgradeableProxy(
                     factoryImp,
@@ -34,7 +34,7 @@ contract TMFactoryTest is Test {
     }
 
     function test_Constructor() public view {
-        assertEq(factory.owner(), address(this), "test_Constructor::1");
+        assertEq(Ownable(address(factory)).owner(), address(this), "test_Constructor::1");
         assertEq(factory.getDefaultProtocolShare(), 0.2e4, "test_Constructor::2");
         assertEq(factory.getProtocolFeeRecipient(), feeRecipient, "test_Constructor::3");
     }
@@ -192,6 +192,9 @@ contract TMFactoryTest is Test {
     ) public {
         vm.assume(sender != proxyAdmin);
 
+        if (bytes(name).length == 0) name = "Token";
+        if (bytes(symbol).length == 0) symbol = "T";
+
         decimals = uint8(bound(decimals, 0, 18));
         creatorShare = uint16(bound(creatorShare, 0, 0.8e4));
         stakingShare = 0.8e4 - creatorShare;
@@ -251,7 +254,23 @@ contract TMFactoryTest is Test {
         ITMFactory.MarketCreationParameters memory params;
         params.totalSupply = 1e18;
 
+        vm.expectRevert(ITMFactory.TMFactory__InvalidTokenParameters.selector);
+        factory.createMarketAndToken(params);
+
+        params.name = "Token";
+
+        vm.expectRevert(ITMFactory.TMFactory__InvalidTokenParameters.selector);
+        factory.createMarketAndToken(params);
+
+        params.symbol = "T";
+
         params.tokenType = tokenType;
+
+        uint256[] memory prices = new uint256[](2);
+        prices[0] = 0;
+        prices[1] = 1e18;
+        params.bidPrices = prices;
+        params.askPrices = prices;
 
         vm.expectRevert(ITMFactory.TMFactory__InvalidTokenType.selector);
         factory.createMarketAndToken(params);
@@ -261,12 +280,6 @@ contract TMFactoryTest is Test {
         factory.updateTokenImplementation(tokenType, badToken);
 
         params.quoteToken = wnative;
-
-        uint256[] memory prices = new uint256[](2);
-        prices[0] = 0;
-        prices[1] = 1e18;
-        params.bidPrices = prices;
-        params.askPrices = prices;
 
         vm.expectRevert(ITMFactory.TMFactory__InvalidQuoteToken.selector);
         factory.createMarketAndToken(params);
@@ -298,7 +311,7 @@ contract TMFactoryTest is Test {
             }
         }
 
-        vm.assume(sender != proxyAdmin && other != proxyAdmin);
+        vm.assume(sender != proxyAdmin && other != proxyAdmin && sender != address(0) && other != address(0));
 
         (, address market) = _setUpAndCreateToken(sender);
 
@@ -730,19 +743,14 @@ contract TMFactoryTest is Test {
         assertEq(factory.getProtocolFees(address(wnative)), 0, "test_Fuzz_ClaimReferrerFees::20");
 
         vm.prank(alice);
-        assertEq(
-            factory.claimReferrerFees(address(wnative)), protocolFees3 * 0.55e4 / 1e4, "test_Fuzz_ClaimReferrerFees::21"
-        );
+        assertEq(factory.claimReferrerFees(address(0)), protocolFees3 * 0.55e4 / 1e4, "test_Fuzz_ClaimReferrerFees::21");
 
-        assertEq(
-            IERC20(wnative).balanceOf(alice),
-            protocolFees1 * 0.3e4 / 1e4 + protocolFees3 * 0.55e4 / 1e4,
-            "test_Fuzz_ClaimReferrerFees::22"
-        );
+        assertEq(IERC20(wnative).balanceOf(alice), protocolFees1 * 0.3e4 / 1e4, "test_Fuzz_ClaimReferrerFees::22");
+        assertEq(alice.balance, protocolFees3 * 0.55e4 / 1e4, "test_Fuzz_ClaimReferrerFees::23");
 
-        assertEq(factory.getReferrerFeesOf(address(wnative), alice), 0, "test_Fuzz_ClaimReferrerFees::23");
-        assertEq(factory.getReferrerFeesOf(address(wnative), bob), 0, "test_Fuzz_ClaimReferrerFees::24");
-        assertEq(factory.getProtocolFees(address(wnative)), 0, "test_Fuzz_ClaimReferrerFees::25");
+        assertEq(factory.getReferrerFeesOf(address(wnative), alice), 0, "test_Fuzz_ClaimReferrerFees::24");
+        assertEq(factory.getReferrerFeesOf(address(wnative), bob), 0, "test_Fuzz_ClaimReferrerFees::25");
+        assertEq(factory.getProtocolFees(address(wnative)), 0, "test_Fuzz_ClaimReferrerFees::26");
     }
 
     function test_ClaimFeesAndUpdateProtocolFees() public {

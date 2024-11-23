@@ -4,18 +4,19 @@ pragma solidity ^0.8.20;
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 interface ITMStaking {
-    error TMStakingZeroAmount();
-    error TMStakingOverflow();
-    error TMStakingInvalidToken(address token);
-    error TMStakingInsufficientStake(int256 amount, int256 lockedAmount);
-    error TMStakingInvalidVestingSchedule();
-    error TMStakingInvalidCliffDuration();
-    error TMStakingZeroBeneficiary();
-    error TMStakingInsufficientAmountReceived(uint256 received, uint256 minAmount);
-    error TMStakingOnlyBeneficiary();
-    error TMStakingZeroUnlockedAmount();
-    error TMStakingSameBeneficiary();
-    error TMStakingVestingExpired();
+    error TMStaking__ZeroAmount();
+    error TMStaking__ZeroAddress();
+    error TMStaking__Overflow();
+    error TMStaking__InvalidToken(address token);
+    error TMStaking__InsufficientStake(int256 amount, int256 lockedAmount);
+    error TMStaking__InvalidVestingSchedule();
+    error TMStaking__InvalidCliffDuration();
+    error TMStaking__ZeroBeneficiary();
+    error TMStaking__InsufficientAmountReceived(uint256 received, uint256 minAmount);
+    error TMStaking__OnlyBeneficiary();
+    error TMStaking__ZeroUnlockedAmount();
+    error TMStaking__SameBeneficiary();
+    error TMStaking__VestingExpired();
 
     event Update(address indexed account, address indexed token, int256 deltaAmount, int256 deltaLockedAmount);
     event Claim(address indexed account, address indexed token, address indexed rewardToken, uint256 amount);

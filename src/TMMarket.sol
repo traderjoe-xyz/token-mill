@@ -19,6 +19,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
     using SafeERC20 for IERC20;
 
     uint256 private constant PRECISION = 1e18;
+    uint256 private constant BPS = 1e4;
 
     uint256 internal _state; // 0: uninitialized, 1: invalid, 2: locked, 3: initialized and unlocked
 
@@ -191,6 +192,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @param deltaAmount The delta amount.
      * @param swapB2Q Whether to swap base to quote (true) or quote to base (false).
      * @param data The data to be passed to the swap callback. If the data is empty, the callback will be skipped.
+     * @param referrer The referrer address.
      * @return deltaBaseAmount The delta base amount.
      * @return deltaQuoteAmount The delta quote amount.
      */
@@ -228,14 +230,20 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
                 mstore(add(cdata, 128), data.length)
                 calldatacopy(add(cdata, 160), data.offset, data.length)
 
-                success := call(gas(), caller(), 0, add(28, cdata), add(160, data.length), 0, 4)
+                success := call(gas(), caller(), 0, add(28, cdata), add(160, data.length), 0, 32)
 
                 switch success
                 case 0 {
                     returndatacopy(0, 0, returndatasize())
                     revert(0, returndatasize())
                 }
-                default { success := and(eq(returndatasize(), 4), eq(shr(224, mload(0)), 0xc556a189)) } // tokenMillSwapCallback(int256,int256,bytes)
+                default {
+                    success :=
+                        and(
+                            eq(returndatasize(), 32),
+                            eq(mload(0), 0xc556a18900000000000000000000000000000000000000000000000000000000)
+                        )
+                } // tokenMillSwapCallback(int256,int256,bytes)
             }
 
             if (success == 0) revert TMMarket__InvalidSwapCallback();
@@ -360,11 +368,14 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
 
     /**
      * @dev Updates the reserves on a quote to base swap.
+     * @param referrer The referrer address.
+     * @param circulatingSupply The circulating supply.
      * @param baseReserve The base reserve.
      * @param quoteReserve The quote reserve.
      * @param toSend The amount to send.
      * @param toReceive The amount to receive.
      * @param quoteBalance The quote balance.
+     * @return The total fees.
      */
     function _updateReservesOnQ2B(
         address referrer,
@@ -380,27 +391,27 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 totalFees = _getFees(circulatingSupply, toSend, quoteBalance - quoteReserve);
 
         if (totalFees > 0) {
-            uint256 fees;
+            uint256 protocolFees;
             {
-                (uint256 protocolShare, uint256 creatorShare, uint256 stakingShare) = _getFeeShares();
+                (, uint256 creatorShare, uint256 stakingShare) = _getFeeShares();
 
-                uint256 totalShare = protocolShare + creatorShare + stakingShare;
-
-                uint256 creatorFees = totalFees * creatorShare / totalShare;
-                uint256 stakingFees = totalFees * stakingShare / totalShare;
-                fees = totalFees - creatorFees - stakingFees;
+                uint256 creatorFees = totalFees * creatorShare / BPS;
+                uint256 stakingFees = totalFees * stakingShare / BPS;
+                protocolFees = totalFees - creatorFees - stakingFees;
 
                 _creatorUnclaimedFees += uint128(creatorFees);
                 _stakingUnclaimedFees += uint128(stakingFees);
             }
 
-            quoteBalance -= fees;
+            if (protocolFees > 0) {
+                quoteBalance -= protocolFees;
 
-            address factory = _factory();
-            address quoteToken = _quoteToken();
+                address factory = _factory();
+                address quoteToken = _quoteToken();
 
-            IERC20(quoteToken).safeTransfer(factory, fees);
-            ITMFactory(factory).handleProtocolFees(quoteToken, referrer, fees);
+                IERC20(quoteToken).safeTransfer(factory, protocolFees);
+                ITMFactory(factory).handleProtocolFees(quoteToken, referrer, protocolFees);
+            }
         }
 
         _baseReserve = uint128(baseReserve - toSend);
