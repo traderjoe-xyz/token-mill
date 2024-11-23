@@ -26,7 +26,7 @@ contract ImmutableContractTest is Test {
         for (uint256 i; i < data.length / 20; ++i) {
             address value;
 
-            assembly {
+            assembly ("memory-safe") {
                 value := shr(96, mload(add(data, add(32, mul(i, 20)))))
             }
 
@@ -36,7 +36,7 @@ contract ImmutableContractTest is Test {
         for (uint256 i; i < data.length / 32; ++i) {
             uint256 value;
 
-            assembly {
+            assembly ("memory-safe") {
                 value := mload(add(data, add(32, mul(i, 32))))
             }
 
@@ -47,7 +47,7 @@ contract ImmutableContractTest is Test {
 
         uint256 badLength = bound(data.length, type(uint16).max - runtimecode.length - 1, type(uint256).max);
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(data, badLength)
         }
 
@@ -75,7 +75,7 @@ contract ImmutableContractTest is Test {
         for (uint256 i; i < data.length / 20; ++i) {
             address value;
 
-            assembly {
+            assembly ("memory-safe") {
                 value := shr(96, mload(add(data, add(32, mul(i, 20)))))
             }
 
@@ -85,7 +85,7 @@ contract ImmutableContractTest is Test {
         for (uint256 i; i < data.length / 32; ++i) {
             uint256 value;
 
-            assembly {
+            assembly ("memory-safe") {
                 value := mload(add(data, add(32, mul(i, 32))))
             }
 
@@ -96,7 +96,7 @@ contract ImmutableContractTest is Test {
 
         uint256 badLength = bound(data.length, type(uint16).max - runtimecode.length - 1, type(uint256).max);
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(data, badLength)
         }
 

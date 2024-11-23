@@ -25,7 +25,7 @@ library ImmutableCreate {
 
         uint256 codeLength = code.length;
 
-        assembly {
+        assembly ("memory-safe") {
             let memEndSlot := add(add(code, codeLength), 0x20)
             let memEndValue := mload(memEndSlot)
 
@@ -62,7 +62,7 @@ library ImmutableCreate {
 
         uint256 codeLength = code.length;
 
-        assembly {
+        assembly ("memory-safe") {
             let memEnd := mload(add(code, codeLength))
 
             let size := add(codeLength, 0x0c) // 10 bytes for the creation code and 2 bytes for the offset of the immutable args

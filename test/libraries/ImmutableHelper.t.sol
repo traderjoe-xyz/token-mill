@@ -13,7 +13,7 @@ contract ImmutableHelperTest is Test {
 
         vm.assume(length >= ImmutableHelper.MIN_LENGTH);
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(bidPrices, length)
             mstore(askPrices, length)
         }
@@ -57,7 +57,7 @@ contract ImmutableHelperTest is Test {
 
         vm.assume(lengthBid >= ImmutableHelper.MIN_LENGTH && lengthAsk >= ImmutableHelper.MIN_LENGTH);
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(bidPrices, add(lengthAsk, 1))
         }
 
@@ -67,7 +67,7 @@ contract ImmutableHelperTest is Test {
         ImmutableHelper.packPrices(bidPrices, askPrices);
 
         uint256 length = bound(lengthBid, 0, ImmutableHelper.MIN_LENGTH - 1);
-        assembly {
+        assembly ("memory-safe") {
             mstore(bidPrices, length)
             mstore(askPrices, length)
         }
@@ -76,7 +76,7 @@ contract ImmutableHelperTest is Test {
         ImmutableHelper.packPrices(bidPrices, askPrices);
 
         length = bound(lengthBid, ImmutableHelper.MAX_LENGTH + 1, type(uint256).max);
-        assembly {
+        assembly ("memory-safe") {
             mstore(bidPrices, length)
             mstore(askPrices, length)
         }
@@ -87,7 +87,7 @@ contract ImmutableHelperTest is Test {
         length = lengthBid < lengthAsk ? lengthBid : lengthAsk;
         length = length > ImmutableHelper.MAX_LENGTH ? ImmutableHelper.MAX_LENGTH : length;
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(bidPrices, length)
             mstore(askPrices, length)
         }
@@ -163,7 +163,7 @@ contract ImmutableHelperTest is Test {
 
         length = length > ImmutableHelper.MAX_LENGTH ? ImmutableHelper.MAX_LENGTH : length;
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(packedPrices, length)
         }
 
@@ -187,7 +187,7 @@ contract ImmutableHelperTest is Test {
         {
             address factory_;
 
-            assembly {
+            assembly ("memory-safe") {
                 ptr := add(immutableArgs, 32)
                 factory_ := shr(96, mload(ptr))
             }
@@ -198,7 +198,7 @@ contract ImmutableHelperTest is Test {
         {
             address baseToken_;
 
-            assembly {
+            assembly ("memory-safe") {
                 ptr := add(ptr, 20)
                 baseToken_ := shr(96, mload(ptr))
             }
@@ -209,7 +209,7 @@ contract ImmutableHelperTest is Test {
         {
             address quoteToken_;
 
-            assembly {
+            assembly ("memory-safe") {
                 ptr := add(ptr, 20)
                 quoteToken_ := shr(96, mload(ptr))
             }
@@ -220,7 +220,7 @@ contract ImmutableHelperTest is Test {
         {
             uint256 basePrecision;
 
-            assembly {
+            assembly ("memory-safe") {
                 ptr := add(ptr, 20)
                 basePrecision := shr(192, mload(ptr))
             }
@@ -231,7 +231,7 @@ contract ImmutableHelperTest is Test {
         {
             uint256 quotePrecision;
 
-            assembly {
+            assembly ("memory-safe") {
                 ptr := add(ptr, 8)
                 quotePrecision := shr(192, mload(ptr))
             }
@@ -240,7 +240,7 @@ contract ImmutableHelperTest is Test {
         {
             uint256 totalSupply_;
 
-            assembly {
+            assembly ("memory-safe") {
                 ptr := add(ptr, 8)
                 totalSupply_ := shr(128, mload(ptr))
             }
@@ -251,7 +251,7 @@ contract ImmutableHelperTest is Test {
         {
             uint256 widthScaled;
 
-            assembly {
+            assembly ("memory-safe") {
                 ptr := add(ptr, 16)
                 widthScaled := shr(128, mload(ptr))
             }
@@ -264,7 +264,7 @@ contract ImmutableHelperTest is Test {
         {
             uint256 length_;
 
-            assembly {
+            assembly ("memory-safe") {
                 ptr := add(ptr, 16)
                 length_ := shr(248, mload(ptr))
             }
@@ -273,14 +273,14 @@ contract ImmutableHelperTest is Test {
         }
 
         {
-            assembly {
+            assembly ("memory-safe") {
                 ptr := add(ptr, 1)
             }
 
             for (uint256 i = 0; i < length; i++) {
                 uint256 price;
 
-                assembly {
+                assembly ("memory-safe") {
                     price := mload(ptr)
                     ptr := add(ptr, 32)
                 }
@@ -306,7 +306,7 @@ contract ImmutableHelperTest is Test {
 
         {
             uint256 badLength = bound(length, 0, ImmutableHelper.MIN_LENGTH - 1);
-            assembly {
+            assembly ("memory-safe") {
                 mstore(packedPrices, badLength)
             }
 
@@ -321,7 +321,7 @@ contract ImmutableHelperTest is Test {
             ImmutableHelper.getImmutableArgs(factory, address(0), address(0), totalSupply, packedPrices);
 
             badLength = bound(length, ImmutableHelper.MAX_LENGTH + 1, type(uint256).max);
-            assembly {
+            assembly ("memory-safe") {
                 mstore(packedPrices, badLength)
             }
 
@@ -336,7 +336,7 @@ contract ImmutableHelperTest is Test {
             ImmutableHelper.getImmutableArgs(factory, address(0), address(0), totalSupply, packedPrices);
         }
 
-        assembly {
+        assembly ("memory-safe") {
             mstore(packedPrices, length)
         }
 
