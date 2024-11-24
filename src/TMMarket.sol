@@ -217,12 +217,37 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
             : (Math.abs(deltaBaseAmount), Math.abs(deltaQuoteAmount), IERC20(_baseToken()), IERC20(_quoteToken()));
 
         if (toSend > 0) IERC20(tokenToSend).safeTransfer(recipient, toSend);
-        if (
-            data.length > 0
-                && ITokenMillCallback(recipient).tokenMillSwapCallback(deltaBaseAmount, deltaQuoteAmount, data)
-                    != ITokenMillCallback.tokenMillSwapCallback.selector
-        ) {
-            revert TMMarket__InvalidSwapCallback();
+
+        if (data.length > 0) {
+            bytes memory cdata = new bytes(160 + data.length);
+            uint256 success;
+
+            assembly {
+                mstore(cdata, 0xc556a189) // tokenMillSwapCallback(int256,int256,bytes)
+
+                mstore(add(cdata, 32), deltaBaseAmount)
+                mstore(add(cdata, 64), deltaQuoteAmount)
+                mstore(add(cdata, 96), 96)
+                mstore(add(cdata, 128), data.length)
+                calldatacopy(add(cdata, 160), data.offset, data.length)
+
+                success := call(gas(), caller(), 0, add(28, cdata), add(160, data.length), 0, 32)
+
+                switch success
+                case 0 {
+                    returndatacopy(0, 0, returndatasize())
+                    revert(0, returndatasize())
+                }
+                default {
+                    success :=
+                        and(
+                            eq(returndatasize(), 32),
+                            eq(mload(0), 0xc556a18900000000000000000000000000000000000000000000000000000000)
+                        )
+                } // tokenMillSwapCallback(int256,int256,bytes)
+            }
+
+            if (success == 0) revert TMMarket__InvalidSwapCallback();
         }
 
         uint256 quoteFees;
