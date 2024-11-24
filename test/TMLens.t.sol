@@ -191,23 +191,32 @@ contract TestTMLens is TestHelper {
         TMLens.SingleTokenUserStakingData memory detailedSingleStakingData =
             lens.getSingleDetailedStakingDataPerUser(bob, token0, 0, 10);
 
-        assertEq(detailedSingleStakingData.sharesAmount, 0, "test_getDetailedStakingDataPerUser::7");
-        assertEq(detailedSingleStakingData.lockedSharesAmount, 2e18, "test_getDetailedStakingDataPerUser::8");
-        assertEq(detailedSingleStakingData.pendingRewards, 0, "test_getDetailedStakingDataPerUser::9");
-        assertEq(detailedSingleStakingData.vestingSchedules.length, 1, "test_getDetailedStakingDataPerUser::10");
+        assertEq(detailedSingleStakingData.market, market0w, "test_getDetailedStakingDataPerUser::7");
+        assertEq(detailedSingleStakingData.baseToken, token0, "test_getDetailedStakingDataPerUser::8");
+        assertEq(detailedSingleStakingData.baseTokenName, "Token0", "test_getDetailedStakingDataPerUser::9");
+        assertEq(detailedSingleStakingData.baseTokenSymbol, "T0", "test_getDetailedStakingDataPerUser::10");
+        assertEq(detailedSingleStakingData.baseTokenDecimals, 18, "test_getDetailedStakingDataPerUser::11");
+        assertEq(detailedSingleStakingData.quoteToken, address(wnative), "test_getDetailedStakingDataPerUser::12");
+        assertEq(detailedSingleStakingData.quoteTokenName, "Wrapped Native", "test_getDetailedStakingDataPerUser::13");
+        assertEq(detailedSingleStakingData.quoteTokenSymbol, "WNATIVE", "test_getDetailedStakingDataPerUser::14");
+        assertEq(detailedSingleStakingData.quoteTokenDecimals, 18, "test_getDetailedStakingDataPerUser::15");
+        assertEq(detailedSingleStakingData.sharesAmount, 0, "test_getDetailedStakingDataPerUser::16");
+        assertEq(detailedSingleStakingData.lockedSharesAmount, 2e18, "test_getDetailedStakingDataPerUser::17");
+        assertEq(detailedSingleStakingData.pendingRewards, 0, "test_getDetailedStakingDataPerUser::18");
+        assertEq(detailedSingleStakingData.vestingSchedules.length, 1, "test_getDetailedStakingDataPerUser::19");
 
         ITMStaking.VestingSchedule memory vestingSchedule = detailedSingleStakingData.vestingSchedules[0];
 
-        assertEq(vestingSchedule.beneficiary, bob, "test_getDetailedStakingDataPerUser::11");
-        assertEq(vestingSchedule.total, 2e18, "test_getDetailedStakingDataPerUser::12");
-        assertEq(vestingSchedule.released, 0, "test_getDetailedStakingDataPerUser::13");
-        assertEq(vestingSchedule.start, 1, "test_getDetailedStakingDataPerUser::14");
-        assertEq(vestingSchedule.cliffDuration, 100, "test_getDetailedStakingDataPerUser::15");
-        assertEq(vestingSchedule.vestingDuration, 100, "test_getDetailedStakingDataPerUser::16");
+        assertEq(vestingSchedule.beneficiary, bob, "test_getDetailedStakingDataPerUser::20");
+        assertEq(vestingSchedule.total, 2e18, "test_getDetailedStakingDataPerUser::21");
+        assertEq(vestingSchedule.released, 0, "test_getDetailedStakingDataPerUser::22");
+        assertEq(vestingSchedule.start, 1, "test_getDetailedStakingDataPerUser::23");
+        assertEq(vestingSchedule.cliffDuration, 100, "test_getDetailedStakingDataPerUser::24");
+        assertEq(vestingSchedule.vestingDuration, 100, "test_getDetailedStakingDataPerUser::25");
 
         TMLens.DetailedMarketData memory detailedMarketData = lens.getSingleDetailedMarketData(market0w, address(0));
-        assertEq(detailedMarketData.totalStaked, 1e18, "test_getDetailedStakingDataPerUser::17");
-        assertEq(detailedMarketData.totalLocked, 2e18, "test_getDetailedStakingDataPerUser::18");
+        assertEq(detailedMarketData.totalStaked, 1e18, "test_getDetailedStakingDataPerUser::26");
+        assertEq(detailedMarketData.totalLocked, 2e18, "test_getDetailedStakingDataPerUser::27");
     }
 
     function test_getSingleDetailedTokenStakingData() public {

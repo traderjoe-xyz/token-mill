@@ -62,6 +62,15 @@ contract TMLens {
     }
 
     struct SingleTokenUserStakingData {
+        address market;
+        address baseToken;
+        string baseTokenName;
+        string baseTokenSymbol;
+        uint256 baseTokenDecimals;
+        address quoteToken;
+        string quoteTokenName;
+        string quoteTokenSymbol;
+        uint256 quoteTokenDecimals;
         uint256 sharesAmount;
         uint256 lockedSharesAmount;
         uint256 pendingRewards;
@@ -214,7 +223,19 @@ contract TMLens {
                 vestingSchedules[i] = stakingContract.getVestingScheduleAt(tokenAddress, globalVestingIndex);
             }
 
+            address market = _TMFactory.getMarketOf(tokenAddress);
+            address quoteToken = ITMMarket(market).getQuoteToken();
+
             singleTokenUserStakingData = SingleTokenUserStakingData({
+                market: market,
+                baseToken: tokenAddress,
+                baseTokenName: IERC20Metadata(tokenAddress).name(),
+                baseTokenSymbol: IERC20Metadata(tokenAddress).symbol(),
+                baseTokenDecimals: IERC20Metadata(tokenAddress).decimals(),
+                quoteToken: quoteToken,
+                quoteTokenName: IERC20Metadata(quoteToken).name(),
+                quoteTokenSymbol: IERC20Metadata(quoteToken).symbol(),
+                quoteTokenDecimals: IERC20Metadata(quoteToken).decimals(),
                 sharesAmount: amount,
                 lockedSharesAmount: lockedAmount,
                 pendingRewards: stakingContract.getPendingRewards(tokenAddress, userAddress),
