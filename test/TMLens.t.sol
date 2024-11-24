@@ -191,6 +191,10 @@ contract TestTMLens is TestHelper {
         TMLens.SingleTokenUserStakingData memory detailedSingleStakingData =
             lens.getSingleDetailedStakingDataPerUser(bob, token0, 0, 10);
 
+        assertEq(detailedSingleStakingData.baseToken, token0, "test_getDetailedStakingDataPerUser::7");
+        assertEq(detailedSingleStakingData.baseTokenName, "Token0", "test_getDetailedStakingDataPerUser::8");
+        assertEq(detailedSingleStakingData.baseTokenSymbol, "T0", "test_getDetailedStakingDataPerUser::9");
+        assertEq(detailedSingleStakingData.baseTokenDecimals, 18, "test_getDetailedStakingDataPerUser::10");
         assertEq(detailedSingleStakingData.sharesAmount, 0, "test_getDetailedStakingDataPerUser::7");
         assertEq(detailedSingleStakingData.lockedSharesAmount, 2e18, "test_getDetailedStakingDataPerUser::8");
         assertEq(detailedSingleStakingData.pendingRewards, 0, "test_getDetailedStakingDataPerUser::9");

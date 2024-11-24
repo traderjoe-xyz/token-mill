@@ -62,6 +62,10 @@ contract TMLens {
     }
 
     struct SingleTokenUserStakingData {
+        address baseToken;
+        string baseTokenName;
+        string baseTokenSymbol;
+        uint256 baseTokenDecimals;
         uint256 sharesAmount;
         uint256 lockedSharesAmount;
         uint256 pendingRewards;
@@ -215,6 +219,10 @@ contract TMLens {
             }
 
             singleTokenUserStakingData = SingleTokenUserStakingData({
+                baseToken: tokenAddress,
+                baseTokenName: IERC20Metadata(tokenAddress).name(),
+                baseTokenSymbol: IERC20Metadata(tokenAddress).symbol(),
+                baseTokenDecimals: IERC20Metadata(tokenAddress).decimals(),
                 sharesAmount: amount,
                 lockedSharesAmount: lockedAmount,
                 pendingRewards: stakingContract.getPendingRewards(tokenAddress, userAddress),
