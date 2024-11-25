@@ -19,12 +19,15 @@ interface ITMMarket is IPricePoints {
     error TMMarket__AlreadyInitialized();
     error TMMarket__InvalidCirculatingSupply();
 
+    struct Fees {
+        uint256 creatorFees;
+        uint256 stakingFees;
+        uint256 protocolFees;
+        uint256 referrerFees;
+    }
+
     event Swap(
-        address indexed sender,
-        address indexed recipient,
-        int256 deltaBaseAmount,
-        int256 deltaQuoteAmount,
-        uint256 quoteFees
+        address indexed sender, address indexed recipient, int256 deltaBaseAmount, int256 deltaQuoteAmount, Fees fees
     );
     event FeesClaimed(address indexed token, address indexed caller, uint256 claimedFees);
 

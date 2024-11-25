@@ -477,25 +477,25 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
      * Must be called by a valid market contract.
      * @param token The address of the quote token.
      * @param referrer The address of the referrer.
-     * @param protocolFees The total protocol fees.
-     * @return bool for gas optimization. This value can be ignored.
+     * @param totalProtocolFees The total protocol fees.
+     * @return protocolFees The protocol fees (excluding the referrer fees).
+     * @return referrerFees The referrer fees.
      */
-    function handleProtocolFees(address token, address referrer, uint256 protocolFees)
+    function handleProtocolFees(address token, address referrer, uint256 totalProtocolFees)
         external
         override
-        returns (bool)
+        returns (uint256 protocolFees, uint256 referrerFees)
     {
         MarketParameters storage parameters = _parameters[msg.sender];
         if (parameters.protocolShare + parameters.creatorShare + parameters.stakingShare != BPS) {
             revert TMFactory__InvalidCaller(); // A valid market must have the share percentages summing up to 100%.
         }
 
-        uint256 referrerFees;
         if (referrer != address(0)) {
             if (referrer == STAKING) revert TMFactory__InvalidReferrer();
 
-            referrerFees = (protocolFees * _referrerShare) / BPS;
-            protocolFees -= referrerFees;
+            referrerFees = (totalProtocolFees * _referrerShare) / BPS;
+            protocolFees = totalProtocolFees - referrerFees;
 
             if (referrerFees > 0) {
                 Referrers storage referrers = _referrers[token];
@@ -505,11 +505,11 @@ contract TMFactory is Ownable2StepUpgradeable, ITMFactory {
                     referrers.unclaimed[referrer] += referrerFees;
                 }
             }
+        } else {
+            protocolFees = totalProtocolFees;
         }
 
         emit FeesReceived(token, msg.sender, referrer, protocolFees, referrerFees);
-
-        return true;
     }
 
     /**

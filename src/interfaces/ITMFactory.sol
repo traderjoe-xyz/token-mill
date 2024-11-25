@@ -160,7 +160,9 @@ interface ITMFactory {
 
     function claimProtocolFees(address token) external returns (uint256 claimedFees);
 
-    function handleProtocolFees(address token, address referrer, uint256 protocolFees) external returns (bool);
+    function handleProtocolFees(address token, address referrer, uint256 totalProtocolFees)
+        external
+        returns (uint256 protocolFees, uint256 referrerFees);
 
     function updateProtocolShare(uint16 protocolShare) external;
 

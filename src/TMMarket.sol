@@ -250,17 +250,18 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
             if (success == 0) revert TMMarket__InvalidSwapCallback();
         }
 
-        uint256 quoteFees;
+        Fees memory fees;
+
         {
             uint256 balance = tokenToReceive.balanceOf(address(this));
             if (balance > type(uint128).max) revert TMMarket__ReserveOverflow();
 
-            quoteFees = swapB2Q
+            fees = swapB2Q
                 ? _updateReservesOnB2Q(baseReserve, quoteReserve, toSend, toReceive, balance)
                 : _updateReservesOnQ2B(referrer, circulatingSupply, baseReserve, quoteReserve, toSend, toReceive, balance);
         }
 
-        emit Swap(msg.sender, recipient, deltaBaseAmount, deltaQuoteAmount, quoteFees);
+        emit Swap(msg.sender, recipient, deltaBaseAmount, deltaQuoteAmount, fees);
     }
 
     /**
@@ -358,13 +359,13 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 toSend,
         uint256 toReceive,
         uint256 baseBalance
-    ) internal returns (uint256) {
+    ) internal returns (Fees memory) {
         if (baseReserve + toReceive > baseBalance) revert TMMarket__InsufficientAmount();
 
         _baseReserve = uint128(baseBalance);
         _quoteReserve = uint128(quoteReserve - toSend);
 
-        return 0;
+        return Fees(0, 0, 0, 0);
     }
 
     /**
@@ -376,7 +377,7 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
      * @param toSend The amount to send.
      * @param toReceive The amount to receive.
      * @param quoteBalance The quote balance.
-     * @return The total fees.
+     * @return fees The fees for each party.
      */
     function _updateReservesOnQ2B(
         address referrer,
@@ -386,39 +387,42 @@ contract TMMarket is PricePoints, ImmutableContract, ITMMarket {
         uint256 toSend,
         uint256 toReceive,
         uint256 quoteBalance
-    ) internal returns (uint256) {
+    ) internal returns (Fees memory fees) {
         if (quoteReserve + toReceive > quoteBalance) revert TMMarket__InsufficientAmount();
 
         uint256 totalFees = _getFees(circulatingSupply, toSend, quoteBalance - quoteReserve);
 
         if (totalFees > 0) {
-            uint256 protocolFees;
+            uint256 totalProtocolFees;
             {
                 (, uint256 creatorShare, uint256 stakingShare) = _getFeeShares();
 
                 uint256 creatorFees = totalFees * creatorShare / BPS;
                 uint256 stakingFees = totalFees * stakingShare / BPS;
-                protocolFees = totalFees - creatorFees - stakingFees;
+
+                totalProtocolFees = totalFees - creatorFees - stakingFees;
 
                 _creatorUnclaimedFees += uint128(creatorFees);
                 _stakingUnclaimedFees += uint128(stakingFees);
+
+                fees.creatorFees = creatorFees;
+                fees.stakingFees = stakingFees;
             }
 
-            if (protocolFees > 0) {
-                quoteBalance -= protocolFees;
+            if (totalProtocolFees > 0) {
+                quoteBalance -= totalProtocolFees;
 
                 address factory = _factory();
                 address quoteToken = _quoteToken();
 
-                IERC20(quoteToken).safeTransfer(factory, protocolFees);
-                ITMFactory(factory).handleProtocolFees(quoteToken, referrer, protocolFees);
+                IERC20(quoteToken).safeTransfer(factory, totalProtocolFees);
+                (fees.protocolFees, fees.referrerFees) =
+                    ITMFactory(factory).handleProtocolFees(quoteToken, referrer, totalProtocolFees);
             }
         }
 
         _baseReserve = uint128(baseReserve - toSend);
         _quoteReserve = uint128(quoteBalance);
-
-        return totalFees;
     }
 
     /**
