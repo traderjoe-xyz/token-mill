@@ -19,6 +19,7 @@ interface ITMStaking {
     error TMStaking__VestingExpired();
 
     event Update(address indexed account, address indexed token, int256 deltaAmount, int256 deltaLockedAmount);
+    event Unlock(address indexed account, address indexed token, uint256 indexed index, uint256 unlocked);
     event Claim(address indexed account, address indexed token, address indexed rewardToken, uint256 amount);
     event EmergencyUpdate(address indexed account, address indexed token, int256 deltaAmount, int256 deltaLockedAmount);
     event VestingScheduleCreated(

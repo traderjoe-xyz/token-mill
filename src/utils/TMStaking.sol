@@ -351,6 +351,8 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         if (total == vested) user.vestingIndices.remove(index);
 
         _update(staking, user, token, beneficiary, int256(unlocked), -int256(unlocked));
+
+        emit Unlock(beneficiary, token, index, unlocked);
     }
 
     /**
@@ -397,6 +399,7 @@ contract TMStaking is ReentrancyGuardUpgradeable, ITMStaking {
         _update(staking, oldUser, token, oldBeneficiary, int256(releasable), -int256(locked + releasable));
         _update(staking, newUser, token, newBeneficiary, 0, int256(locked));
 
+        emit Unlock(oldBeneficiary, token, index, releasable);
         emit VestingScheduleTransferred(token, index, oldBeneficiary, newBeneficiary);
 
         return locked;
