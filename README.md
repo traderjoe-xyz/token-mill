@@ -8,6 +8,26 @@ Token Mill offers flexibility by allowing creators to define separate curves for
 
 The tokens launched on Token Mill will always come from a trusted set of templates. This approach ensures that the tokens are secure and that the bonding curve is correctly implemented. Templates can be added or removed over time, and the factory will always use the latest version of the template.
 
+
+# Usage
+
+## Documentation
+
+https://docs.tokenmill.xyz/
+
+
+## Build
+
+```shell
+$ forge build
+```
+
+## Test
+
+```shell
+$ forge test
+```
+
 # Contracts
 
 ## [Token Mill Factory](./src/TMFactory.sol)
@@ -138,31 +158,4 @@ $$
 r_y = y - \sum_{i=0}^{m-1} \frac{p_{i+1} + p_i}{2}w
 $$
 
-# Foundry
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
-
-Foundry consists of:
-
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://docs.tokenmill.xyz/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
