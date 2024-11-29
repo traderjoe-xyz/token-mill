@@ -55,7 +55,6 @@ library ImmutableCreate {
      */
     function create2(bytes memory runtimecode, bytes memory immutableArgs, bytes32 salt) internal returns (address c) {
         uint256 runtimecodeLength = runtimecode.length;
-
         if (runtimecodeLength + immutableArgs.length > 0xfffd) revert ImmutableCreate__MaxLengthExceeded();
 
         bytes memory code = bytes.concat(runtimecode, immutableArgs);
@@ -63,18 +62,19 @@ library ImmutableCreate {
         uint256 codeLength = code.length;
 
         assembly ("memory-safe") {
-            let memEnd := mload(add(code, codeLength))
+            let memEndSlot := add(add(code, codeLength), 0x20)
+            let memEndValue := mload(memEndSlot)
 
-            let size := add(codeLength, 0x0c) // 10 bytes for the creation code and 2 bytes for the offset of the immutable args
+            let size := add(codeLength, 0x0d) // 11 bytes for the creation code and 2 bytes for the offset of the immutable args
 
-            let creationCode := or(0x6100003d81600a3d39f3, shl(0x38, add(codeLength, 0x02)))
+            let creationCode := or(0x610000600081600b8239f3, shl(0x40, add(codeLength, 0x02)))
 
             mstore(code, creationCode)
-            mstore(add(add(code, codeLength), 0x20), shl(0xf0, runtimecodeLength))
+            mstore(memEndSlot, shl(0xf0, runtimecodeLength))
 
-            c := create2(0, add(code, 0x16), size, salt)
+            c := create2(0, add(code, 0x15), size, salt)
 
-            mstore(add(code, codeLength), memEnd) // restore the memory
+            mstore(memEndSlot, memEndValue) // restore the memory
         }
 
         if (c == address(0)) revert ImmutableCreate__DeploymentFailed();
