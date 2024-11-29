@@ -151,7 +151,7 @@ Foundry consists of:
 
 ## Documentation
 
-https://book.getfoundry.sh/
+https://docs.tokenmill.xyz/
 
 ## Usage
 
